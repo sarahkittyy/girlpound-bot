@@ -87,12 +87,11 @@ pub async fn start_bot(rcon_controller: RconController) {
         let rcon_controller = rcon_controller.clone();
 
         if let Some(live_player_channel) = live_player_channel {
-            let mut interval = time::interval(time::Duration::from_secs(6 * 60));
+            let mut interval = time::interval(time::Duration::from_secs(5 * 60));
             tokio::spawn(async move {
                 interval.tick().await;
 
                 loop {
-                    interval.tick().await;
                     let Ok(player_count) = rcon_controller.write().await.player_count().await
                     else {
                         continue;
@@ -104,6 +103,7 @@ pub async fn start_bot(rcon_controller: RconController) {
                         })
                         .await
                         .expect("Could not edit channel name");
+                    interval.tick().await;
                 }
             });
         }
