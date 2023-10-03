@@ -1,0 +1,22 @@
+{
+  "name": "girlpound-bot",
+  "version": "1.0.0",
+  "description": "Rust bot for the tiny kitty's girl pound TF2 server.",
+  "main": "pm2.config.js",
+  "scripts": {
+    "up-prod": "pm2 start target/release/girlpound-bot --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sarahkittyy/girlpound-bot.git"
+  },
+  "author": "Sarah Ohlin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sarahkittyy/girlpound-bot/issues"
+  },
+  "homepage": "https://github.com/sarahkittyy/girlpound-bot#readme",
+  "dependencies": {
+    "pm2": "^5.3.0"
+  }
+}
