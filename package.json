@@ -4,7 +4,7 @@
   "description": "Rust bot for the tiny kitty's girl pound TF2 server.",
   "main": "pm2.config.js",
   "scripts": {
-    "up-prod": "pm2 start target/release/girlpound-bot --watch"
+    "up-prod": "pm2 startOrRestart ecosystem.config.js"
   },
   "repository": {
     "type": "git",
