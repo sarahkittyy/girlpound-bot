@@ -27,9 +27,8 @@ fn spawn_player_count_thread(
     if let Some(live_player_channel) = live_player_channel {
         let mut interval = time::interval(time::Duration::from_secs(5 * 60));
         tokio::spawn(async move {
-            interval.tick().await;
-
             loop {
+                interval.tick().await;
                 let player_count = {
                     let mut rcon = rcon_controller.write().await;
                     match rcon.player_count().await {
@@ -49,7 +48,6 @@ fn spawn_player_count_thread(
                     .await
                     .expect("Could not edit channel name");
                 println!("Updated player count to {}", player_count);
-                interval.tick().await;
             }
         });
     }
