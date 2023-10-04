@@ -30,8 +30,16 @@ fn spawn_player_count_thread(
             interval.tick().await;
 
             loop {
-                let Ok(player_count) = rcon_controller.write().await.player_count().await else {
-                    continue;
+                let player_count = {
+                    let mut rcon = rcon_controller.write().await;
+                    match rcon.player_count().await {
+                        Ok(count) => count,
+                        Err(e) => {
+                            println!("Error getting player count: {:?}", e);
+                            let _ = rcon.reconnect().await;
+                            continue;
+                        }
+                    }
                 };
                 // edit channel name to reflect player count
                 live_player_channel

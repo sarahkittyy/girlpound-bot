@@ -7,6 +7,7 @@ use tokio::net::TcpStream;
 pub struct RconController {
     pub connection: Connection<TcpStream>,
     pub address: String,
+    pub password: String,
 }
 
 impl RconController {
@@ -18,7 +19,16 @@ impl RconController {
         Ok(RconController {
             connection,
             address: address.to_owned(),
+            password: password.to_owned(),
         })
+    }
+
+    pub async fn reconnect(&mut self) -> Result<(), Error> {
+        self.connection = <Connection<TcpStream>>::builder()
+            .connect(&self.address, &self.password)
+            .await?;
+
+        Ok(())
     }
 
     pub async fn run(&mut self, cmd: &str) -> Result<String, Error> {
