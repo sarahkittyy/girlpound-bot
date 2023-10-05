@@ -452,6 +452,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "poise",
+ "rand",
  "rcon",
  "regex",
  "tokio",

@@ -102,7 +102,7 @@ pub async fn start_bot(rcon_controller: RconController, log_receiver: LogReceive
         let rcon_controller = rcon_controller.clone();
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
-                commands: vec![commands::rcon(), commands::online()],
+                commands: vec![commands::rcon(), commands::online(), commands::meow()],
                 ..Default::default()
             })
             .token(bot_token)
