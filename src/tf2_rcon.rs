@@ -45,4 +45,16 @@ impl RconController {
             Err("Could not parse player count".into())
         }
     }
+
+    pub async fn player_list(&mut self) -> Result<Vec<String>, Error> {
+        let status_msg = self.run("status").await?;
+
+        let re = Regex::new(r#"\d+\s"(.+)""#).unwrap();
+        let mut players = Vec::new();
+        for caps in re.captures_iter(&status_msg) {
+            players.push(caps[1].to_owned());
+        }
+
+        Ok(players)
+    }
 }

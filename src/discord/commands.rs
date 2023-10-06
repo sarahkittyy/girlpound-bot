@@ -23,9 +23,14 @@ pub async fn rcon(
 #[poise::command(slash_command)]
 pub async fn online(ctx: Context<'_>) -> Result<(), Error> {
     let mut rcon = ctx.data().rcon_controller.write().await;
-    let count = rcon.player_count().await?;
-    ctx.say(format!("There are {} players online.", count))
-        .await?;
+    let players = rcon.player_list().await?;
+    let list = players.join(", ");
+    ctx.say(format!(
+        "There are {}/24 players online.\n`{}`",
+        players.len(),
+        list
+    ))
+    .await?;
     Ok(())
 }
 
