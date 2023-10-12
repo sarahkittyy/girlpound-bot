@@ -2,6 +2,7 @@ use super::Context;
 use crate::Error;
 
 use poise;
+use poise::serenity_prelude as serenity;
 use rand::prelude::*;
 
 /// Sends an RCON command to the server.
@@ -19,18 +20,33 @@ pub async fn rcon(
     Ok(())
 }
 
-/// Displays current server player count.
+/// Displays current server player count & map.
 #[poise::command(slash_command)]
-pub async fn online(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     let mut rcon = ctx.data().rcon_controller.write().await;
-    let players = rcon.player_list().await?;
-    let list = players.join(", ");
+    let state = rcon.status().await?;
+    let list = state
+        .players
+        .iter()
+        .map(|p| p.name.as_str())
+        .collect::<Vec<&str>>()
+        .join(", ");
     ctx.say(format!(
-        "There are {}/24 players online.\n`{}`",
-        players.len(),
+        "Currently playing: `{}`\nThere are {}/24 players online.\n`{}`",
+        state.map,
+        state.players.len(),
         list
     ))
     .await?;
+    Ok(())
+}
+
+/// Pick a random user with the given role
+#[poise::command(slash_command)]
+pub async fn reacted_users(
+    ctx: Context<'_>,
+    #[description = "The message to fetch reactions from"] message: serenity::Message,
+) -> Result<(), Error> {
     Ok(())
 }
 

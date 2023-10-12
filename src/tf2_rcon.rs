@@ -4,6 +4,15 @@ use rcon::Connection;
 use regex::Regex;
 use tokio::net::TcpStream;
 
+pub struct Player {
+    pub name: String,
+}
+
+pub struct GameState {
+    pub players: Vec<Player>,
+    pub map: String,
+}
+
 pub struct RconController {
     pub connection: Connection<TcpStream>,
     pub address: String,
@@ -46,15 +55,33 @@ impl RconController {
         }
     }
 
-    pub async fn player_list(&mut self) -> Result<Vec<String>, Error> {
+    pub async fn status(&mut self) -> Result<GameState, Error> {
         let status_msg = self.run("status").await?;
 
+        let players = Self::parse_player_list(&status_msg)?;
+        let map = Self::parse_current_map(&status_msg)?;
+
+        Ok(GameState { players, map })
+    }
+
+    fn parse_player_list(status_msg: &str) -> Result<Vec<Player>, Error> {
         let re = Regex::new(r#"\d+\s"(.+)""#).unwrap();
         let mut players = Vec::new();
-        for caps in re.captures_iter(&status_msg) {
-            players.push(caps[1].to_owned());
+        for caps in re.captures_iter(status_msg) {
+            players.push(Player {
+                name: caps[1].to_owned(),
+            });
         }
 
         Ok(players)
+    }
+
+    fn parse_current_map(status_msg: &str) -> Result<String, Error> {
+        let re = Regex::new(r#"map\s+:\s+(.+) at:"#).unwrap();
+        if let Some(caps) = re.captures(status_msg) {
+            Ok(caps[1].to_owned())
+        } else {
+            Err("Could not parse current map".into())
+        }
     }
 }

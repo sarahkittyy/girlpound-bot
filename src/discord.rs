@@ -102,7 +102,7 @@ pub async fn start_bot(rcon_controller: RconController, log_receiver: LogReceive
         let rcon_controller = rcon_controller.clone();
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
-                commands: vec![commands::rcon(), commands::online(), commands::meow()],
+                commands: vec![commands::rcon(), commands::meow(), commands::status()],
                 ..Default::default()
             })
             .token(bot_token)
@@ -116,7 +116,7 @@ pub async fn start_bot(rcon_controller: RconController, log_receiver: LogReceive
                     )
                     .await?;
 
-                    ctx.set_activity(serenity::Activity::playing("tf2.fluffycat.gay:7005"))
+                    ctx.set_activity(serenity::Activity::playing("tf2.fluffycat.gay:19990"))
                         .await;
 
                     Ok(PoiseData { rcon_controller })
