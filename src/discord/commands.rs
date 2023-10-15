@@ -2,7 +2,7 @@ use super::Context;
 use crate::Error;
 
 use poise;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity};
 use rand::prelude::*;
 
 /// Sends an RCON command to the server.
@@ -47,6 +47,38 @@ pub async fn reacted_users(
     ctx: Context<'_>,
     #[description = "The message to fetch reactions from"] message: serenity::Message,
 ) -> Result<(), Error> {
+    let mut total = vec![];
+    let mut after: Option<serenity::UserId> = None;
+    let r_type = &message.reactions.first().unwrap().reaction_type;
+    loop {
+        let mut users = match message
+            .reaction_users(&ctx, r_type.clone(), Some(50), after)
+            .await
+        {
+            Ok(users) => users,
+            Err(e) => {
+                println!("Error fetching users: {:?}", e);
+                break;
+            }
+        };
+        let user_count = users.len();
+        if user_count == 0 {
+            break;
+        }
+        let last_user_id = users.last().unwrap().id;
+        total.append(&mut users);
+        if user_count < 50 {
+            break;
+        } else {
+            after = Some(last_user_id)
+        }
+    }
+    let str = total
+        .iter()
+        .map(|u| u.tag())
+        .collect::<Vec<String>>()
+        .join("\n");
+    ctx.reply(format!("```\n{}\n```", str)).await?;
     Ok(())
 }
 
@@ -79,10 +111,12 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
         "mrrrrrrrrrrrr",
         "mrrrrrraow.................",
         "mew !!! mew :3 myaow raow :3 !!!",
+        "is she, yknow, like, *curls paw*?",
+        "rrrr",
         ":3",
     ];
     let r = (random::<f32>() * meows.len() as f32).floor() as usize;
 
-    poise::send_reply(ctx, |message| message.ephemeral(true).content(meows[r])).await?;
+    poise::send_reply(ctx, |message| message.content(meows[r])).await?;
     Ok(())
 }
