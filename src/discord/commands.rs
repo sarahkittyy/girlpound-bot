@@ -78,7 +78,8 @@ pub async fn reacted_users(
         .map(|u| u.tag())
         .collect::<Vec<String>>()
         .join("\n");
-    ctx.reply(format!("```\n{}\n```", str)).await?;
+    ctx.reply(format!("emoji: {}\n```\n{}\n```", r_type, str))
+        .await?;
     Ok(())
 }
 
