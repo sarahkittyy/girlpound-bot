@@ -113,6 +113,10 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
         "mrrrrrraow.................",
         "mew !!! mew :3 myaow raow :3 !!!",
         "is she, yknow, like, *curls paw*?",
+        "ehe, uhm, mraow !! >w<",
+        "guh wuh huh ?? nya...",
+        "eep!! *purrs*",
+        "rawr i'm feral !!!! grrr >_<",
         "rrrr",
         ":3",
     ];

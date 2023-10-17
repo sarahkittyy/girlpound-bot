@@ -1,7 +1,11 @@
 use std::env;
 use std::sync::Arc;
 
-use crate::{logs::LogReceiver, tf2_rcon::RconController, Error};
+use crate::{
+    logs::{LogReceiver, ParsedLogMessage},
+    tf2_rcon::RconController,
+    Error,
+};
 use poise::serenity_prelude as serenity;
 
 use tokio::{self, sync::RwLock, time};
@@ -25,6 +29,7 @@ fn spawn_player_count_thread(
     println!("LIVE_PLAYER_CHANNEL: {:?}", live_player_channel);
 
     if let Some(live_player_channel) = live_player_channel {
+        // check player count in this interval
         let mut interval = time::interval(time::Duration::from_secs(5 * 60));
         tokio::spawn(async move {
             loop {
@@ -34,6 +39,7 @@ fn spawn_player_count_thread(
                     match rcon.player_count().await {
                         Ok(count) => count,
                         Err(e) => {
+                            // try to reconnect on error.
                             println!("Error getting player count: {:?}", e);
                             let _ = rcon.reconnect().await;
                             continue;
@@ -53,6 +59,7 @@ fn spawn_player_count_thread(
     }
 }
 
+/// receives logs from the tf2 server & posts them in a channel
 fn spawn_log_thread(mut log_receiver: LogReceiver, ctx: Arc<serenity::CacheAndHttp>) {
     let logs_channel: Option<serenity::ChannelId> = env::var("SRCDS_LOG_CHANNEL_ID")
         .ok()
@@ -61,26 +68,28 @@ fn spawn_log_thread(mut log_receiver: LogReceiver, ctx: Arc<serenity::CacheAndHt
     println!("SRCDS_LOG_CHANNEL_ID: {logs_channel:?}");
 
     if let Some(logs_channel) = logs_channel {
-        let mut interval = time::interval(time::Duration::from_secs(5));
+        let mut interval = time::interval(time::Duration::from_secs(1));
         tokio::spawn(async move {
-            interval.tick().await;
-
             loop {
+                interval.tick().await;
                 let msgs = log_receiver.drain().await;
-                if msgs.len() > 0 {
-                    let content = msgs
-                        .iter()
-                        .map(|v| format!("`{}`", v))
-                        .collect::<Vec<String>>()
-                        .join("\n");
-                    if let Err(e) = logs_channel
-                        .send_message(ctx.as_ref(), |m| m.content(format!("{content}")))
-                        .await
-                    {
-                        println!("Error sending log message: {e:?}");
+                let mut output = String::new();
+                for msg in msgs {
+                    let parsed = ParsedLogMessage::from_message(&msg);
+                    if parsed.is_known() {
+                        output += parsed.as_discord_message().as_str();
+                        output += "\n";
                     }
                 }
-                interval.tick().await;
+                if output.len() == 0 {
+                    continue;
+                }
+                if let Err(e) = logs_channel
+                    .send_message(ctx.as_ref(), |m| m.content(output))
+                    .await
+                {
+                    println!("Could not send message to logs channel: {:?}", e);
+                }
             }
         });
     }

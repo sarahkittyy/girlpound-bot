@@ -20,6 +20,7 @@ pub struct RconController {
 }
 
 impl RconController {
+    /// initialize the controller
     pub async fn connect(address: &str, password: &str) -> Result<Self, Error> {
         let connection = <Connection<TcpStream>>::builder()
             .connect(address, password)
@@ -32,6 +33,7 @@ impl RconController {
         })
     }
 
+    /// reconnect to tf2 on failure
     pub async fn reconnect(&mut self) -> Result<(), Error> {
         self.connection = <Connection<TcpStream>>::builder()
             .connect(&self.address, &self.password)
@@ -40,6 +42,7 @@ impl RconController {
         Ok(())
     }
 
+    /// run an rcon command and return the output
     pub async fn run(&mut self, cmd: &str) -> Result<String, Error> {
         self.connection.cmd(cmd).await.map_err(|e| e.into())
     }
