@@ -1,8 +1,9 @@
+use regex::Regex;
 use std::net::Ipv4Addr;
 
 use super::LogMessage;
 
-use nom::{bytes::complete::*, character::complete::*, sequence::Tuple, IResult, Parser};
+use nom::{bytes::complete::*, character::complete::*, sequence::Tuple, Err, IResult, Parser};
 
 /// a parsed log message
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -31,7 +32,7 @@ impl ParsedLogMessage {
     pub fn as_discord_message(&self) -> String {
         match self {
             ParsedLogMessage::ChatMessage { from, message } => {
-                format!("`{}: {}`", from.name, message)
+                format!("`{}: {}`", safe_strip(&from.name), safe_strip(message))
             }
             ParsedLogMessage::Connected { user, .. } => {
                 format!("`{} {} connected.`", user.name, user.steamid)
@@ -42,6 +43,10 @@ impl ParsedLogMessage {
             ParsedLogMessage::Unknown => "Unknown message".to_owned(),
         }
     }
+}
+
+fn safe_strip(s: &str) -> String {
+    s.replace("`", "\\`")
 }
 
 fn parse_log_message(i: &str) -> IResult<&str, ParsedLogMessage> {
@@ -83,15 +88,22 @@ fn ipv4(i: &str) -> IResult<&str, Ipv4Addr> {
 }
 
 fn user(i: &str) -> IResult<&str, User> {
-    let (i, _startquote) = tag("\"")(i)?;
-    let (i, name) = take_until1("<")(i)?;
-    let (i, (_, uid, _)) = (char('<'), digit1, char('>')).parse(i)?;
-    let (i, (_, steamid, _)) = (char('<'), take_until1(">"), char('>')).parse(i)?;
-    let (i, (_, team, _)) = (char('<'), take_while(char::is_alphabetic), char('>')).parse(i)?;
-    let (i, _endquote) = tag("\"")(i)?;
+    let re = Regex::new(r#""(.*)<(\d+)><(\[U:.*\])><(Red|Blue)>""#).unwrap();
+    let Some(caps) = re.captures(i) else {
+        return Err(Err::Error(nom::error::Error::new(
+            i,
+            nom::error::ErrorKind::Tag,
+        )));
+    };
+
+    let len = caps.get(0).unwrap().len();
+    let name = caps.get(1).unwrap().as_str();
+    let uid = caps.get(2).unwrap().as_str();
+    let steamid = caps.get(3).unwrap().as_str();
+    let team = caps.get(4).unwrap().as_str();
 
     Ok((
-        i,
+        &i[len..],
         User {
             name: name.to_owned(),
             uid: uid.parse().unwrap(),
