@@ -46,7 +46,7 @@ impl ParsedLogMessage {
 }
 
 fn safe_strip(s: &str) -> String {
-    s.replace("`", "\\`")
+    s.replace("`", "")
 }
 
 fn parse_log_message(i: &str) -> IResult<&str, ParsedLogMessage> {
