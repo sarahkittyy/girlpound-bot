@@ -51,25 +51,31 @@ impl ParsedLogMessage {
                 format!("`{}: {}`", safe_strip(&from.name), safe_strip(message))
             }
             ParsedLogMessage::Connected { user, .. } => {
-                format!("+ `{} {} connected.`", user.name, user.steamid)
+                format!("+ `{} {} connected.`", safe_strip(&user.name), user.steamid)
             }
             ParsedLogMessage::Disconnected { user, reason } => {
                 format!(
                     "\\- `{} {} disconnected: {}`",
-                    user.name, user.steamid, reason
+                    safe_strip(&user.name),
+                    user.steamid,
+                    reason
                 )
             }
             ParsedLogMessage::StartedMap(map) => format!(":map: Changed map: `{}`", map),
             ParsedLogMessage::Revenge { from, to } => {
                 format!(
                     ":crossed_swords: `{}` got REVENGE on `{}!`",
-                    from.name, to.name
+                    safe_strip(&from.name),
+                    safe_strip(&to.name)
                 )
             }
             ParsedLogMessage::Domination { from, to } => {
                 format!(
                     ":crossed_swords: `{}`{} is DOMINATING `{}!`{}",
-                    from.name, dominator_dom_score, to.name, victim_dom_score
+                    safe_strip(&from.name),
+                    dominator_dom_score,
+                    safe_strip(&to.name),
+                    victim_dom_score
                 )
             }
             ParsedLogMessage::Unknown => "Unknown message".to_owned(),
