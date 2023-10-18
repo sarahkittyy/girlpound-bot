@@ -8,6 +8,8 @@ use crate::{
 };
 use poise::serenity_prelude as serenity;
 
+use sqlx::{MySql, Pool};
+use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tokio::{self, sync::RwLock, time};
 
 mod commands;
@@ -59,8 +61,75 @@ fn spawn_player_count_thread(
     }
 }
 
+/// updates the domination score between users
+async fn update_domination_score(pool: &Pool<MySql>, msg: &ParsedLogMessage) -> Result<i32, Error> {
+    let ParsedLogMessage::Domination {
+        from: dominator,
+        to: victim,
+    } = msg
+    else {
+        return Err("Not a domination message".into());
+    };
+
+    let mut sign = 1;
+    let lt_steamid: &String = if dominator.steamid < victim.steamid {
+        sign = -1;
+        &dominator.steamid
+    } else {
+        &victim.steamid
+    };
+    let gt_steamid: &String = if dominator.steamid > victim.steamid {
+        &dominator.steamid
+    } else {
+        sign = -1;
+        &victim.steamid
+    };
+
+    // try to fetch the existing score
+    let results = sqlx::query!(
+        r#"
+        SELECT * FROM `domination`
+        WHERE `lt_steamid` = ? AND `gt_steamid` = ?
+    "#,
+        lt_steamid,
+        gt_steamid
+    )
+    .fetch_all(pool)
+    .await?;
+
+    if results.len() > 2 {
+        unreachable!("More than two rows in the database for a domination relationship")
+    }
+
+    let new_score = if results.len() == 0 {
+        sign
+    } else {
+        results.first().unwrap().score + sign
+    };
+
+    sqlx::query!(
+        r#"
+		INSERT INTO `domination` (`lt_steamid`, `gt_steamid`, `score`)
+		VALUES (?, ?, ?)
+		ON DUPLICATE KEY UPDATE `score` = ? 
+	"#,
+        lt_steamid,
+        gt_steamid,
+        new_score,
+        new_score
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(new_score * sign)
+}
+
 /// receives logs from the tf2 server & posts them in a channel
-fn spawn_log_thread(mut log_receiver: LogReceiver, ctx: Arc<serenity::CacheAndHttp>) {
+fn spawn_log_thread(
+    mut log_receiver: LogReceiver,
+    pool: Pool<MySql>,
+    ctx: Arc<serenity::CacheAndHttp>,
+) {
     let logs_channel: Option<serenity::ChannelId> = env::var("SRCDS_LOG_CHANNEL_ID")
         .ok()
         .and_then(|id| id.parse::<u64>().ok().map(serenity::ChannelId));
@@ -76,10 +145,22 @@ fn spawn_log_thread(mut log_receiver: LogReceiver, ctx: Arc<serenity::CacheAndHt
                 let mut output = String::new();
                 for msg in msgs {
                     let parsed = ParsedLogMessage::from_message(&msg);
-                    if parsed.is_known() {
-                        output += parsed.as_discord_message().as_str();
-                        output += "\n";
+
+                    if parsed.is_unknown() {
+                        continue;
                     }
+
+                    let dom_score: Option<i32> = match update_domination_score(&pool, &parsed).await
+                    {
+                        Ok(score) => Some(score),
+                        Err(e) => {
+                            println!("Could not update dom score: {:?}", e);
+                            None
+                        }
+                    };
+
+                    output += parsed.as_discord_message(dom_score).as_str();
+                    output += "\n";
                 }
                 if output.len() == 0 {
                     continue;
@@ -95,8 +176,22 @@ fn spawn_log_thread(mut log_receiver: LogReceiver, ctx: Arc<serenity::CacheAndHt
     }
 }
 
+/// read console stuff
+fn spawn_stdin_thread(log_receiver: LogReceiver) {
+    tokio::spawn(async move {
+        let mut stdin = BufReader::new(io::stdin()).lines();
+        while let Ok(Some(line)) = stdin.next_line().await {
+            log_receiver.spoof_message(&line).await;
+        }
+    });
+}
+
 /// initialize the discord bot
-pub async fn start_bot(rcon_controller: RconController, log_receiver: LogReceiver) {
+pub async fn start_bot(
+    rcon_controller: RconController,
+    log_receiver: LogReceiver,
+    pool: Pool<MySql>,
+) {
     let rcon_controller = Arc::new(RwLock::new(rcon_controller));
 
     let bot_token = env::var("BOT_TOKEN").expect("Could not find env variable BOT_TOKEN");
@@ -140,11 +235,13 @@ pub async fn start_bot(rcon_controller: RconController, log_receiver: LogReceive
             .await
             .expect("Failed to build girlpounder bot.")
     };
+    // stdin thread
 
     // launch alt threads
     let ctx = girlpounder.client().cache_and_http.clone();
     spawn_player_count_thread(rcon_controller.clone(), ctx.clone());
-    spawn_log_thread(log_receiver, ctx.clone());
+    spawn_log_thread(log_receiver.clone(), pool.clone(), ctx.clone());
+    spawn_stdin_thread(log_receiver.clone());
 
     let fut = girlpounder.start();
     println!("Bot started!");

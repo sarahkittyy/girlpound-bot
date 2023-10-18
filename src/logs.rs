@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, fmt::Display, net::Ipv4Addr, sync::Arc};
 
-use chrono::{DateTime, NaiveDateTime};
-use tokio::{net::UdpSocket, sync::RwLock, task::JoinHandle};
+use chrono::{DateTime, NaiveDateTime, Utc};
+use tokio::{net::UdpSocket, sync::RwLock};
 
 mod parsing;
 pub use parsing::*;
@@ -32,9 +32,8 @@ impl Display for LogMessage {
     }
 }
 
+#[derive(Clone)]
 pub struct LogReceiver {
-    sock: Arc<UdpSocket>,
-    task: JoinHandle<()>,
     messages: Arc<RwLock<VecDeque<LogMessage>>>,
 }
 
@@ -48,7 +47,7 @@ impl LogReceiver {
             .ok()
             .and_then(|p| if p.len() > 0 { Some(p) } else { None });
 
-        let task = {
+        let _task = {
             let sock = sock.clone();
             let messages = messages.clone();
             tokio::spawn(async move {
@@ -68,17 +67,24 @@ impl LogReceiver {
             })
         };
 
-        Ok(LogReceiver {
-            sock,
-            task,
-            messages,
-        })
+        Ok(LogReceiver { messages })
     }
 
     /// retrieve all log messages from the queue
     pub async fn drain(&mut self) -> Vec<LogMessage> {
         let mut messages = self.messages.write().await;
         messages.drain(..).collect()
+    }
+
+    pub async fn spoof_message(&self, msg: &str) {
+        let expected_password: Option<String> = std::env::var("SRCDS_LOG_PASSWORD")
+            .ok()
+            .and_then(|p| if p.len() > 0 { Some(p) } else { None });
+        self.messages.write().await.push_back(LogMessage {
+            timestamp: Utc::now(),
+            message: msg.to_owned(),
+            password: expected_password,
+        });
     }
 }
 

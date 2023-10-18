@@ -32,11 +32,20 @@ impl ParsedLogMessage {
         }
     }
 
-    pub fn is_known(&self) -> bool {
-        self != &ParsedLogMessage::Unknown
+    pub fn is_unknown(&self) -> bool {
+        match self {
+            Self::Unknown => true,
+            _ => false,
+        }
     }
 
-    pub fn as_discord_message(&self) -> String {
+    pub fn as_discord_message(&self, dom_score: Option<i32>) -> String {
+        let dominator_dom_score = dom_score
+            .map(|s| format!(" **({})**", s))
+            .unwrap_or("".to_owned());
+        let victim_dom_score = dom_score
+            .map(|s| format!(" **({})**", s * -1))
+            .unwrap_or("".to_owned());
         match self {
             ParsedLogMessage::ChatMessage { from, message } => {
                 format!("`{}: {}`", safe_strip(&from.name), safe_strip(message))
@@ -59,8 +68,8 @@ impl ParsedLogMessage {
             }
             ParsedLogMessage::Domination { from, to } => {
                 format!(
-                    ":crossed_swords: `{}` is DOMINATING `{}!`",
-                    from.name, to.name
+                    ":crossed_swords: `{}`{} is DOMINATING `{}!`{}",
+                    from.name, dominator_dom_score, to.name, victim_dom_score
                 )
             }
             ParsedLogMessage::Unknown => "Unknown message".to_owned(),

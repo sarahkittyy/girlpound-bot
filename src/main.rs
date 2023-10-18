@@ -11,15 +11,24 @@ mod tf2_rcon;
 use logs::LogReceiver;
 use tf2_rcon::RconController;
 
+use sqlx::mysql::MySql;
+use sqlx::Pool;
+
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Error> {
     dotenv().ok();
     println!("Starting the girlpound bot...");
 
     let rcon_addr = env::var("RCON_ADDR").expect("Could not find env variable RCON_ADDR");
     let rcon_pass = env::var("RCON_PASS").expect("Could not find env variable RCON_PASS");
+
+    let db_url = env::var("DATABASE_URL").expect("Could not find env variable DATABASE_URL");
+
+    // migrate the db
+    let pool = Pool::<MySql>::connect(&db_url).await?;
+    sqlx::migrate!().run(&pool).await?;
 
     let controller = RconController::connect(&rcon_addr, &rcon_pass)
         .await
@@ -38,5 +47,6 @@ async fn main() {
         .await
         .expect("Could not bind log receiver");
     println!("Starting discord bot...");
-    discord::start_bot(controller, log_receiver).await;
+    discord::start_bot(controller, log_receiver, pool).await;
+    Ok(())
 }
