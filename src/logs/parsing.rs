@@ -88,7 +88,7 @@ fn ipv4(i: &str) -> IResult<&str, Ipv4Addr> {
 }
 
 fn user(i: &str) -> IResult<&str, User> {
-    let re = Regex::new(r#""(.*)<(\d+)><(\[U:.*\])><(Red|Blue)>""#).unwrap();
+    let re = Regex::new(r#""(.*)<(\d+)><(\[U:.*\])><(\w*)?>""#).unwrap();
     let Some(caps) = re.captures(i) else {
         return Err(Err::Error(nom::error::Error::new(
             i,
