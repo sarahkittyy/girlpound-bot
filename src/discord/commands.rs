@@ -14,7 +14,13 @@ pub async fn rcon(
     let mut rcon = ctx.data().rcon_controller.write().await;
     let reply = rcon.run(&cmd).await;
     match reply {
-        Ok(output) => ctx.say(format!("```\n{}\n```", output)).await,
+        Ok(output) => {
+            if output.len() == 0 {
+                ctx.say(":white_check_mark:").await
+            } else {
+                ctx.say(format!("```\n{}\n```", output)).await
+            }
+        }
         Err(e) => ctx.say(format!("RCON error: {:?}", e)).await,
     }?;
     Ok(())
