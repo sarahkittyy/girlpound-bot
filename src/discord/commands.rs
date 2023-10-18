@@ -31,11 +31,14 @@ pub async fn rcon(
 pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     let mut rcon = ctx.data().rcon_controller.write().await;
     let state = rcon.status().await?;
+
+    use crate::logs::safe_strip;
+
     let list = state
         .players
         .iter()
-        .map(|p| p.name.as_str())
-        .collect::<Vec<&str>>()
+        .map(|p| safe_strip(&p.name))
+        .collect::<Vec<String>>()
         .join(", ");
     ctx.say(format!(
         "Currently playing: `{}`\nThere are {}/24 players online.\n`{}`",

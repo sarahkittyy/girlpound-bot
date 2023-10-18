@@ -83,7 +83,7 @@ impl ParsedLogMessage {
     }
 }
 
-fn safe_strip(s: &str) -> String {
+pub fn safe_strip(s: &str) -> String {
     s.replace("`", "")
 }
 
