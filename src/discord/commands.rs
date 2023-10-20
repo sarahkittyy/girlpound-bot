@@ -5,12 +5,7 @@ use poise;
 use poise::serenity_prelude::{self as serenity};
 use rand::prelude::*;
 
-/// Sends an RCON command to the server.
-#[poise::command(slash_command)]
-pub async fn rcon(
-    ctx: Context<'_>,
-    #[description = "The command to send."] cmd: String,
-) -> Result<(), Error> {
+pub async fn rcon_and_reply(ctx: Context<'_>, cmd: String) -> Result<(), Error> {
     let mut rcon = ctx.data().rcon_controller.write().await;
     let reply = rcon.run(&cmd).await;
     match reply {
@@ -24,6 +19,97 @@ pub async fn rcon(
         Err(e) => ctx.say(format!("RCON error: {:?}", e)).await,
     }?;
     Ok(())
+}
+
+/// Sends an RCON command to the server.
+#[poise::command(slash_command)]
+pub async fn rcon(
+    ctx: Context<'_>,
+    #[description = "The command to send."] cmd: String,
+) -> Result<(), Error> {
+    rcon_and_reply(ctx, cmd).await
+}
+
+/// Ban a user from the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2ban(
+    ctx: Context<'_>,
+    #[description = "The username to ban."] username: String,
+    #[description = "Time to ban them for, in minutes"] minutes: u32,
+    #[description = "The reason for the ban"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("undesirable".to_owned());
+    rcon_and_reply(ctx, format!("sm_ban {} {} {}", username, minutes, reason)).await
+}
+
+/// Unban a user from the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2unban(
+    ctx: Context<'_>,
+    #[description = "The steamid / ip to ban."] steamid: String,
+    #[description = "The reason for the unban"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("chill".to_owned());
+    rcon_and_reply(ctx, format!("sm_unban {} {}", steamid, reason)).await
+}
+
+/// Kick a user from the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2kick(
+    ctx: Context<'_>,
+    #[description = "The username to kick."] username: String,
+    #[description = "The reason for the kick"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("".to_owned());
+    rcon_and_reply(ctx, format!("sm_kick {} {}", username, reason)).await
+}
+
+/// Mute a user's vc on the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2mute(
+    ctx: Context<'_>,
+    #[description = "The username to mute."] username: String,
+    #[description = "Time to mute them for, in minutes"] minutes: Option<u32>,
+    #[description = "The reason for the mute"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("".to_owned());
+    let minutes = minutes.unwrap_or(0);
+    rcon_and_reply(ctx, format!("sm_mute {} {} {}", username, minutes, reason)).await
+}
+
+/// Unmute a user's vc on the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2unmute(
+    ctx: Context<'_>,
+    #[description = "The username to unmute."] username: String,
+    #[description = "The reason for the unmute"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("".to_owned());
+    rcon_and_reply(ctx, format!("sm_unmute {} {}", username, reason)).await
+}
+
+/// Gag a user's text chat on the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2gag(
+    ctx: Context<'_>,
+    #[description = "The username to gag."] username: String,
+    #[description = "Time to gag them for, in minutes"] minutes: Option<u32>,
+    #[description = "The reason for the gag"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("".to_owned());
+    let minutes = minutes.unwrap_or(0);
+    rcon_and_reply(ctx, format!("sm_gag {} {} {}", username, minutes, reason)).await
+}
+
+/// Ungag a user's text chat on the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2ungag(
+    ctx: Context<'_>,
+    #[description = "The username to ungag."] username: String,
+    #[description = "The reason for the ungag"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("".to_owned());
+    rcon_and_reply(ctx, format!("sm_gag {} {}", username, reason)).await
 }
 
 /// Displays current server player count & map.

@@ -211,6 +211,13 @@ pub async fn start_bot(
                     commands::meow(),
                     commands::status(),
                     commands::reacted_users(),
+                    commands::tf2ban(),
+                    commands::tf2unban(),
+                    commands::tf2kick(),
+                    commands::tf2mute(),
+                    commands::tf2unmute(),
+                    commands::tf2gag(),
+                    commands::tf2ungag(),
                 ],
                 ..Default::default()
             })
