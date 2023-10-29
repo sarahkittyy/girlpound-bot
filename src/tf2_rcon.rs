@@ -61,7 +61,7 @@ impl RconController {
     pub async fn status(&mut self) -> Result<GameState, Error> {
         let status_msg = self.run("status").await?;
 
-        let players = Self::parse_player_list(&status_msg)?;
+        let players = Self::parse_player_list(&status_msg)?.into_iter().filter(|p| p.name != "kitty girl TV").collect();
         let map = Self::parse_current_map(&status_msg)?;
 
         Ok(GameState { players, map })
