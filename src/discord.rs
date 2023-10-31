@@ -232,7 +232,7 @@ pub async fn start_bot(
                     )
                     .await?;
 
-                    ctx.set_activity(serenity::Activity::playing("tf2.fluffycat.gay:19990"))
+                    ctx.set_activity(serenity::Activity::playing("tf2.fluffycat.gay"))
                         .await;
 
                     Ok(PoiseData { rcon_controller })
