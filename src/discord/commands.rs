@@ -172,13 +172,16 @@ pub async fn reacted_users(
             after = Some(last_user_id)
         }
     }
-    let str = total
-        .iter()
-        .map(|u| u.tag())
-        .collect::<Vec<String>>()
-        .join("\n");
-    ctx.reply(format!("emoji: {}\n```\n{}\n```", r_type, str))
-        .await?;
+    let names = total.iter().map(|u| u.tag()).collect::<Vec<String>>();
+    let winner = names.choose(&mut rand::thread_rng()).unwrap();
+
+    ctx.reply(format!(
+        "emoji: {}\ncount: {}\nchosen: {}",
+        r_type,
+        names.len(),
+        winner
+    ))
+    .await?;
     Ok(())
 }
 
