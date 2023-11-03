@@ -145,7 +145,7 @@ pub async fn reacted_users(
 ) -> Result<(), Error> {
     let mut total = vec![];
     let mut after: Option<serenity::UserId> = None;
-    let msg = ctx.http().get_message(channel, message).await?;
+    let msg = ctx.http().get_message(channel.0, message.0).await?;
     let r_type = &msg.reactions.first().unwrap().reaction_type;
     loop {
         let mut users = match msg
