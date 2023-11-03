@@ -140,13 +140,15 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command)]
 pub async fn reacted_users(
     ctx: Context<'_>,
-    #[description = "The message to fetch reactions from"] message: serenity::Message,
+    #[description = "The message's channel"] channel: serenity::ChannelId,
+    #[description = "The message to fetch reactions from"] message: serenity::MessageId,
 ) -> Result<(), Error> {
     let mut total = vec![];
     let mut after: Option<serenity::UserId> = None;
-    let r_type = &message.reactions.first().unwrap().reaction_type;
+    let msg = ctx.http().get_message(channel, message).await?;
+    let r_type = &msg.reactions.first().unwrap().reaction_type;
     loop {
-        let mut users = match message
+        let mut users = match msg
             .reaction_users(&ctx, r_type.clone(), Some(50), after)
             .await
         {
