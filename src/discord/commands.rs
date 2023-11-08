@@ -57,7 +57,10 @@ pub async fn feedback(
         })
         .await?;
 
-    poise::send_reply(ctx, |m| m.content("Feedback anonymously sent!")).await?;
+    poise::send_reply(ctx, |m| {
+        m.ephemeral(true).content("Feedback anonymously sent!")
+    })
+    .await?;
     Ok(())
 }
 
