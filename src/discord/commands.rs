@@ -1,3 +1,5 @@
+use std::env;
+
 use super::Context;
 use crate::Error;
 
@@ -18,6 +20,44 @@ pub async fn rcon_and_reply(ctx: Context<'_>, cmd: String) -> Result<(), Error> 
         }
         Err(e) => ctx.say(format!("RCON error: {:?}", e)).await,
     }?;
+    Ok(())
+}
+
+/// Sends anonymous feedback to the server owner.
+#[poise::command(slash_command)]
+pub async fn feedback(
+    ctx: Context<'_>,
+    #[description = "The feedback to share."] msg: String,
+    #[description = "An optional attachment"] attachment: Option<serenity::Attachment>,
+) -> Result<(), Error> {
+    // get the owner id in the env file
+    let Ok(owner_id) = env::var("FEEDBACK_USER") else {
+        poise::send_reply(ctx, |m| {
+            m.ephemeral(true)
+                .content("Feedback is not configured properly! Message an admin.")
+        })
+        .await?;
+        return Ok(());
+    };
+
+    // get the owner
+    let recip = serenity::UserId(owner_id.parse()?);
+    let dm_channel = recip.create_dm_channel(ctx).await?;
+    dm_channel
+        .send_message(ctx, |m| {
+            m.embed(|e| {
+                let mut r = e.title("anon feedback").description(msg);
+
+                if let Some(attachment) = attachment {
+                    r = r.image(attachment.url);
+                }
+
+                r
+            })
+        })
+        .await?;
+
+    poise::send_reply(ctx, |m| m.content("Feedback anonymously sent!")).await?;
     Ok(())
 }
 
