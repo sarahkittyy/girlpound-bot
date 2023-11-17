@@ -59,6 +59,9 @@ pub async fn event_handler(
     match event {
         // Event::GuildMemberAddition { new_member: member } => {}
         Event::Message { new_message: msg } => {
+            if msg.author.bot {
+                return Ok(());
+            }
             if let Some(guild_id) = msg.guild_id {
                 if !msg.author.has_role(ctx, guild_id, data.member_role).await? {
                     if give_new_member_access(msg, data).await? {
