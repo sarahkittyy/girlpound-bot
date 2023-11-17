@@ -1,180 +1,24 @@
+use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 
-use crate::{
-    logs::{LogReceiver, ParsedLogMessage},
-    tf2_rcon::RconController,
-    Error,
-};
+use crate::{logs::LogReceiver, tf2_rcon::RconController, Error};
 use poise::serenity_prelude as serenity;
 
 use sqlx::{MySql, Pool};
 use tokio::io::{self, AsyncBufReadExt, BufReader};
-use tokio::{self, sync::RwLock, time};
+use tokio::{self, sync::RwLock};
 
 mod commands;
+mod log_handler;
+mod player_count;
 
 pub struct PoiseData {
     pub rcon_controller: Arc<RwLock<RconController>>,
+    pub member_role: serenity::RoleId,
+    pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
 }
 pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
-
-/// spawns a thread that uses RCON to count the players on the server and update the corresponding channel name
-fn spawn_player_count_thread(
-    rcon_controller: Arc<RwLock<RconController>>,
-    ctx: Arc<serenity::CacheAndHttp>,
-) {
-    let live_player_channel: Option<serenity::ChannelId> = env::var("LIVE_PLAYER_CHANNEL_ID")
-        .ok()
-        .and_then(|id| id.parse::<u64>().ok().map(serenity::ChannelId));
-
-    println!("LIVE_PLAYER_CHANNEL: {:?}", live_player_channel);
-
-    if let Some(live_player_channel) = live_player_channel {
-        // check player count in this interval
-        let mut interval = time::interval(time::Duration::from_secs(5 * 60));
-        tokio::spawn(async move {
-            loop {
-                interval.tick().await;
-                let player_count = {
-                    let mut rcon = rcon_controller.write().await;
-                    match rcon.player_count().await {
-                        Ok(count) => count,
-                        Err(e) => {
-                            // try to reconnect on error.
-                            println!("Error getting player count: {:?}", e);
-                            let _ = rcon.reconnect().await;
-                            continue;
-                        }
-                    }
-                };
-                // edit channel name to reflect player count
-                live_player_channel
-                    .edit(ctx.as_ref(), |c| {
-                        c.name(format!("📶 {}/24 online", player_count))
-                    })
-                    .await
-                    .expect("Could not edit channel name");
-                println!("Updated player count to {}", player_count);
-            }
-        });
-    }
-}
-
-/// updates the domination score between users
-async fn update_domination_score(pool: &Pool<MySql>, msg: &ParsedLogMessage) -> Result<i32, Error> {
-    let ParsedLogMessage::Domination {
-        from: dominator,
-        to: victim,
-    } = msg
-    else {
-        return Err("Not a domination message".into());
-    };
-
-    let mut sign = 1;
-    let lt_steamid: &String = if dominator.steamid < victim.steamid {
-        sign = -1;
-        &dominator.steamid
-    } else {
-        &victim.steamid
-    };
-    let gt_steamid: &String = if dominator.steamid > victim.steamid {
-        &dominator.steamid
-    } else {
-        sign = -1;
-        &victim.steamid
-    };
-
-    // try to fetch the existing score
-    let results = sqlx::query!(
-        r#"
-        SELECT * FROM `domination`
-        WHERE `lt_steamid` = ? AND `gt_steamid` = ?
-    "#,
-        lt_steamid,
-        gt_steamid
-    )
-    .fetch_all(pool)
-    .await?;
-
-    if results.len() > 2 {
-        unreachable!("More than two rows in the database for a domination relationship")
-    }
-
-    let new_score = if results.len() == 0 {
-        sign
-    } else {
-        results.first().unwrap().score + sign
-    };
-
-    sqlx::query!(
-        r#"
-		INSERT INTO `domination` (`lt_steamid`, `gt_steamid`, `score`)
-		VALUES (?, ?, ?)
-		ON DUPLICATE KEY UPDATE `score` = ? 
-	"#,
-        lt_steamid,
-        gt_steamid,
-        new_score,
-        new_score
-    )
-    .execute(pool)
-    .await?;
-
-    Ok(new_score * sign)
-}
-
-/// receives logs from the tf2 server & posts them in a channel
-fn spawn_log_thread(
-    mut log_receiver: LogReceiver,
-    pool: Pool<MySql>,
-    ctx: Arc<serenity::CacheAndHttp>,
-) {
-    let logs_channel: Option<serenity::ChannelId> = env::var("SRCDS_LOG_CHANNEL_ID")
-        .ok()
-        .and_then(|id| id.parse::<u64>().ok().map(serenity::ChannelId));
-
-    println!("SRCDS_LOG_CHANNEL_ID: {logs_channel:?}");
-
-    if let Some(logs_channel) = logs_channel {
-        let mut interval = time::interval(time::Duration::from_secs(1));
-        tokio::spawn(async move {
-            loop {
-                interval.tick().await;
-                let msgs = log_receiver.drain().await;
-                let mut output = String::new();
-                for msg in msgs {
-                    let parsed = ParsedLogMessage::from_message(&msg);
-
-                    if parsed.is_unknown() {
-                        continue;
-                    }
-
-                    let dom_score: Option<i32> = match update_domination_score(&pool, &parsed).await
-                    {
-                        Ok(score) => Some(score),
-                        Err(e) => {
-                            println!("Could not update dom score: {:?}", e);
-                            None
-                        }
-                    };
-
-                    output += parsed.as_discord_message(dom_score).as_str();
-                    output += "\n";
-                }
-                if output.len() == 0 {
-                    continue;
-                }
-                if let Err(e) = logs_channel
-                    .send_message(ctx.as_ref(), |m| m.content(output))
-                    .await
-                {
-                    println!("Could not send message to logs channel: {:?}", e);
-                }
-            }
-        });
-    }
-}
 
 /// read console stuff
 fn spawn_stdin_thread(log_receiver: LogReceiver) {
@@ -184,6 +28,56 @@ fn spawn_stdin_thread(log_receiver: LogReceiver) {
             log_receiver.spoof_message(&line).await;
         }
     });
+}
+
+/// takes in the messages of every new user, counts them, and returns if they should be let in
+async fn give_new_member_access(msg: &serenity::Message, data: &PoiseData) -> Result<bool, Error> {
+    let mut msg_counts = data.msg_counts.write().await;
+    let count = msg_counts.entry(msg.author.id.0).or_insert(0);
+    *count += 1;
+    if *count >= 5
+        && msg.member.as_ref().is_some_and(|m| {
+            // member joined at least 5 minutes ago
+            m.joined_at
+                .is_some_and(|date| date.timestamp() + 300 <= chrono::Utc::now().timestamp())
+        })
+    {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// handle discord events
+pub async fn event_handler(
+    ctx: &serenity::Context,
+    event: &poise::Event<'_>,
+    _framework: poise::FrameworkContext<'_, PoiseData, Error>,
+    data: &PoiseData,
+) -> Result<(), Error> {
+    use poise::Event;
+    match event {
+        // Event::GuildMemberAddition { new_member: member } => {}
+        Event::Message { new_message: msg } => {
+            if let Some(guild_id) = msg.guild_id {
+                if !msg.author.has_role(ctx, guild_id, data.member_role).await? {
+                    if give_new_member_access(msg, data).await? {
+                        ctx.http
+                            .add_member_role(
+                                guild_id.0,
+                                msg.author.id.0,
+                                data.member_role.0,
+                                Some("Automatically approved"),
+                            )
+                            .await?;
+                        println!("Gave {} the member role", msg.author.name);
+                    }
+                }
+            }
+        }
+        _ => (),
+    };
+    Ok(())
 }
 
 /// initialize the discord bot
@@ -199,6 +93,10 @@ pub async fn start_bot(
         .expect("Could not find env variable GUILD_ID")
         .parse::<u64>()
         .expect("GUILD_ID could not be parsed into u64");
+    let member_role = env::var("MEMBER_ROLE")
+        .expect("Could not find env variable MEMBER_ROLE")
+        .parse::<u64>()
+        .expect("MEMBER_ROLE could not be parsed into u64");
 
     let intents = serenity::GatewayIntents::non_privileged();
 
@@ -220,6 +118,7 @@ pub async fn start_bot(
                     commands::tf2gag(),
                     commands::tf2ungag(),
                 ],
+                event_handler: |a, b, c, d| Box::pin(event_handler(a, b, c, d)),
                 ..Default::default()
             })
             .token(bot_token)
@@ -236,7 +135,11 @@ pub async fn start_bot(
                     ctx.set_activity(serenity::Activity::playing("tf2.fluffycat.gay"))
                         .await;
 
-                    Ok(PoiseData { rcon_controller })
+                    Ok(PoiseData {
+                        rcon_controller,
+                        member_role: serenity::RoleId(member_role),
+                        msg_counts: Arc::new(RwLock::new(HashMap::new())),
+                    })
                 })
             })
             .build()
@@ -247,11 +150,11 @@ pub async fn start_bot(
 
     // launch alt threads
     let ctx = girlpounder.client().cache_and_http.clone();
-    spawn_player_count_thread(rcon_controller.clone(), ctx.clone());
-    spawn_log_thread(log_receiver.clone(), pool.clone(), ctx.clone());
+    player_count::spawn_player_count_thread(rcon_controller.clone(), ctx.clone());
+    log_handler::spawn_log_thread(log_receiver.clone(), pool.clone(), ctx.clone());
     spawn_stdin_thread(log_receiver.clone());
 
     let fut = girlpounder.start();
     println!("Bot started!");
-    fut.await.expect("Bot broke");
+    fut.await.expect("Bot broke"); //
 }
