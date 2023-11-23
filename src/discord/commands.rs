@@ -170,9 +170,10 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
         .collect::<Vec<String>>()
         .join(", ");
     ctx.say(format!(
-        "Currently playing: `{}`\nThere are {}/24 players online.\n`{}`",
+        "Currently playing: `{}`\nThere are {}/{} players online.\n`{}`",
         state.map,
         state.players.len(),
+        state.max_players,
         list
     ))
     .await?;

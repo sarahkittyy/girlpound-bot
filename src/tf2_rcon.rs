@@ -10,6 +10,7 @@ pub struct Player {
 
 pub struct GameState {
     pub players: Vec<Player>,
+    pub max_players: i32,
     pub map: String,
 }
 
@@ -47,19 +48,15 @@ impl RconController {
         self.connection.cmd(cmd).await.map_err(|e| e.into())
     }
 
-    pub async fn player_count(&mut self) -> Result<i32, Error> {
-        let status_msg = self.run("status").await?;
-
-        let re = Regex::new(r"players : (\d+) humans,").unwrap();
-        if let Some(caps) = re.captures(&status_msg) {
-            Ok(caps[1].parse::<i32>().unwrap())
-        } else {
-            Err("Could not parse player count".into())
-        }
-    }
-
     pub async fn status(&mut self) -> Result<GameState, Error> {
         let status_msg = self.run("status").await?;
+        let re = Regex::new(r"players : \d+ humans, \d+ bots \((\d+) max\)").unwrap();
+        let Some(maxplayers) = re
+            .captures(&status_msg)
+            .map(|caps| caps[1].parse::<i32>().unwrap())
+        else {
+            return Err("Could not parse player count".into());
+        };
 
         let players = Self::parse_player_list(&status_msg)?
             .into_iter()
@@ -67,7 +64,11 @@ impl RconController {
             .collect();
         let map = Self::parse_current_map(&status_msg)?;
 
-        Ok(GameState { players, map })
+        Ok(GameState {
+            players,
+            map,
+            max_players: maxplayers - 1,
+        })
     }
 
     fn parse_player_list(status_msg: &str) -> Result<Vec<Player>, Error> {

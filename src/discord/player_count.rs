@@ -22,9 +22,9 @@ pub fn spawn_player_count_thread(
         tokio::spawn(async move {
             loop {
                 interval.tick().await;
-                let player_count = {
+                let status = {
                     let mut rcon = rcon_controller.write().await;
-                    match rcon.player_count().await {
+                    match rcon.status().await {
                         Ok(count) => count,
                         Err(e) => {
                             // try to reconnect on error.
@@ -37,11 +37,15 @@ pub fn spawn_player_count_thread(
                 // edit channel name to reflect player count
                 live_player_channel
                     .edit(ctx.as_ref(), |c| {
-                        c.name(format!("📶 {}/24 online", player_count))
+                        c.name(format!(
+                            "📶 {}/{} online",
+                            status.players.len(),
+                            status.max_players
+                        ))
                     })
                     .await
                     .expect("Could not edit channel name");
-                println!("Updated player count to {}", player_count);
+                println!("Updated player count to {}", status.players.len());
             }
         });
     }

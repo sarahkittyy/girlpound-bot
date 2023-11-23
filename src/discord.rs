@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 
+use regex::{Regex, RegexBuilder};
+
 use crate::{logs::LogReceiver, tf2_rcon::RconController, Error};
 use poise::serenity_prelude as serenity;
 
@@ -56,28 +58,12 @@ pub async fn event_handler(
     data: &PoiseData,
 ) -> Result<(), Error> {
     use poise::Event;
+    let chase_re = RegexBuilder::new(r"meow")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
     match event {
         // Event::GuildMemberAddition { new_member: member } => {}
-        Event::Message { new_message: msg } => {
-            if msg.author.bot {
-                return Ok(());
-            }
-            if let Some(guild_id) = msg.guild_id {
-                if !msg.author.has_role(ctx, guild_id, data.member_role).await? {
-                    if give_new_member_access(msg, data).await? {
-                        ctx.http
-                            .add_member_role(
-                                guild_id.0,
-                                msg.author.id.0,
-                                data.member_role.0,
-                                Some("Automatically approved"),
-                            )
-                            .await?;
-                        println!("Gave {} the member role", msg.author.name);
-                    }
-                }
-            }
-        }
         _ => (),
     };
     Ok(())
