@@ -50,9 +50,10 @@ impl RconController {
 
     pub async fn status(&mut self) -> Result<GameState, Error> {
         let status_msg = self.run("status").await?;
-        let re = Regex::new(r"players : \d+ humans, \d+ bots \((\d+) max\)").unwrap();
-        let Some(maxplayers) = re
-            .captures(&status_msg)
+        let max_player_msg = self.run("sv_visiblemaxplayers").await?;
+        let re = Regex::new(r#""sv_visiblemaxplayers" = "(\d+)""#).unwrap();
+        let Some(max_players) = re
+            .captures(&max_player_msg)
             .map(|caps| caps[1].parse::<i32>().unwrap())
         else {
             return Err("Could not parse player count".into());
@@ -67,7 +68,7 @@ impl RconController {
         Ok(GameState {
             players,
             map,
-            max_players: maxplayers - 1,
+            max_players,
         })
     }
 
