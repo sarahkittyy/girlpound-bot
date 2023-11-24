@@ -316,6 +316,7 @@ pub async fn private_add(ctx: Context<'_>, user: serenity::User) -> Result<(), E
                     .footer(|f| f.text("check pinned for info :3"))
                     .thumbnail(user.avatar_url().unwrap_or(user.default_avatar_url()))
             })
+            .content(format!("<@{}>", user.id))
         })
         .await?;
     Ok(())
