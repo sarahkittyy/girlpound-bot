@@ -266,7 +266,62 @@ pub async fn reacted_users(
     Ok(())
 }
 
-/// Meow (server boosters only)
+/// Add the given user to the secret channels
+#[poise::command(context_menu_command = "Add to priv", slash_command)]
+pub async fn private_add(ctx: Context<'_>, user: serenity::User) -> Result<(), Error> {
+    // add perm
+    let perms = serenity::PermissionOverwrite {
+        allow: serenity::Permissions::VIEW_CHANNEL,
+        deny: serenity::Permissions::empty(),
+        kind: serenity::PermissionOverwriteType::Member(user.id),
+    };
+    let serenity::Channel::Category(cat) =
+        ctx.http().get_channel(ctx.data().private_channel.0).await?
+    else {
+        Err("Could not get private channel".to_owned())?
+    };
+    if cat
+        .permission_overwrites
+        .iter()
+        .any(|p| p.kind == serenity::PermissionOverwriteType::Member(user.id))
+    {
+        ctx.send(|m| {
+            m.content(format!("{} is already added.", user.tag()))
+                .ephemeral(true)
+        })
+        .await?;
+        return Ok(());
+    }
+    cat.create_permission(ctx, &perms).await?;
+
+    // send confirm message
+    ctx.send(|m| {
+        m.content(format!("Added {} to private channels", user.tag()))
+            .ephemeral(true)
+    })
+    .await?;
+
+    // send welcome message
+    let welcome = ctx.data().private_welcome_channel;
+    let name = user
+        .nick_in(ctx, ctx.data().guild_id)
+        .await
+        .unwrap_or(user.tag());
+    welcome
+        .send_message(ctx, |m| {
+            m.embed(|e| {
+                e.color(serenity::Color::MEIBE_PINK)
+                    .title(format!("Added {}", name))
+                    .description("haiiiii ^_^ hi!! hiiiiii <3 haiiiiii hii :3")
+                    .footer(|f| f.text("check pinned for info :3"))
+                    .thumbnail(user.avatar_url().unwrap_or(user.default_avatar_url()))
+            })
+        })
+        .await?;
+    Ok(())
+}
+
+/// Meow (suppawters only)
 #[poise::command(slash_command, channel_cooldown = 4)]
 pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
     let meows = [

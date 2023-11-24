@@ -2,8 +2,6 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 
-use regex::{Regex, RegexBuilder};
-
 use crate::{logs::LogReceiver, tf2_rcon::RconController, Error};
 use poise::serenity_prelude as serenity;
 
@@ -17,7 +15,10 @@ mod player_count;
 
 pub struct PoiseData {
     pub rcon_controller: Arc<RwLock<RconController>>,
+    pub guild_id: serenity::GuildId,
     pub member_role: serenity::RoleId,
+    pub private_channel: serenity::ChannelId,
+    pub private_welcome_channel: serenity::ChannelId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
 }
 pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
@@ -58,12 +59,22 @@ pub async fn event_handler(
     data: &PoiseData,
 ) -> Result<(), Error> {
     use poise::Event;
-    let chase_re = RegexBuilder::new(r"meow")
-        .case_insensitive(true)
-        .build()
-        .unwrap();
     match event {
         // Event::GuildMemberAddition { new_member: member } => {}
+        Event::Message { new_message } => {
+            if let Some(guild_id) = new_message.guild_id {
+                if give_new_member_access(&new_message, data).await? {
+                    ctx.http
+                        .add_member_role(
+                            guild_id.0,
+                            new_message.author.id.0,
+                            data.member_role.0,
+                            Some("New member"),
+                        )
+                        .await?;
+                }
+            }
+        }
         _ => (),
     };
     Ok(())
@@ -86,6 +97,14 @@ pub async fn start_bot(
         .expect("Could not find env variable MEMBER_ROLE")
         .parse::<u64>()
         .expect("MEMBER_ROLE could not be parsed into u64");
+    let private_channel_id = env::var("PRIVATE_CHANNEL_ID")
+        .expect("Could not find env variable PRIVATE_CHANNEL_ID")
+        .parse::<u64>()
+        .expect("PRIVATE_CHANNEL_ID could not be parsed into u64");
+    let private_welcome_channel_id = env::var("PRIVATE_WELCOME_CHANNEL_ID")
+        .expect("Could not find env variable PRIVATE_WELCOME_CHANNEL_ID")
+        .parse::<u64>()
+        .expect("PRIVATE_WELCOME_CHANNEL_ID could not be parsed into u64");
 
     let intents = serenity::GatewayIntents::non_privileged();
 
@@ -95,6 +114,7 @@ pub async fn start_bot(
             .options(poise::FrameworkOptions {
                 commands: vec![
                     commands::rcon(),
+                    commands::private_add(),
                     commands::meow(),
                     commands::status(),
                     commands::reacted_users(),
@@ -127,6 +147,9 @@ pub async fn start_bot(
                     Ok(PoiseData {
                         rcon_controller,
                         member_role: serenity::RoleId(member_role),
+                        guild_id: serenity::GuildId(guild_id),
+                        private_channel: serenity::ChannelId(private_channel_id),
+                        private_welcome_channel: serenity::ChannelId(private_welcome_channel_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
                     })
                 })
