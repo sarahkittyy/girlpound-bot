@@ -41,8 +41,12 @@ pub fn spawn_log_thread(
                         }
                     };
 
-                    output += parsed.as_discord_message(dom_score).as_str();
-                    output += "\n";
+                    let dm = parsed.as_discord_message(dom_score);
+
+                    if let Some(dm) = dm {
+                        output += dm.as_str();
+                        output += "\n";
+                    }
                 }
                 if output.len() == 0 {
                     continue;

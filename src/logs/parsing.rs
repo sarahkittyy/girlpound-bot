@@ -1,3 +1,4 @@
+use chrono::format::Parsed;
 use regex::Regex;
 use std::net::Ipv4Addr;
 
@@ -14,6 +15,7 @@ pub enum ParsedLogMessage {
     ChatMessage { from: User, message: String },
     Connected { user: User, ip: Ipv4Addr, port: u16 },
     Disconnected { user: User, reason: String },
+    JoinedTeam { user: User, team: String },
     StartedMap(String),
     Domination { from: User, to: User },
     Revenge { from: User, to: User },
@@ -39,7 +41,7 @@ impl ParsedLogMessage {
         }
     }
 
-    pub fn as_discord_message(&self, dom_score: Option<i32>) -> String {
+    pub fn as_discord_message(&self, dom_score: Option<i32>) -> Option<String> {
         let dominator_dom_score = dom_score
             .map(|s| format!(" **({})**", s))
             .unwrap_or("".to_owned());
@@ -48,37 +50,42 @@ impl ParsedLogMessage {
             .unwrap_or("".to_owned());
         match self {
             ParsedLogMessage::ChatMessage { from, message } => {
-                format!("`{}: {}`", safe_strip(&from.name), safe_strip(message))
+                format!("`{}: {}`", safe_strip(&from.name), safe_strip(message)).into()
             }
             ParsedLogMessage::Connected { user, .. } => {
-                format!("+ `{} {} connected.`", safe_strip(&user.name), user.steamid)
+                format!("+ `{} {} connected.`", safe_strip(&user.name), user.steamid).into()
             }
-            ParsedLogMessage::Disconnected { user, reason } => {
-                format!(
-                    "\\- `{} {} disconnected: {}`",
-                    safe_strip(&user.name),
-                    user.steamid,
-                    reason
-                )
-            }
-            ParsedLogMessage::StartedMap(map) => format!(":map: Changed map: `{}`", map),
-            ParsedLogMessage::Revenge { from, to } => {
-                format!(
-                    ":crossed_swords: `{}` got REVENGE on `{}!`",
-                    safe_strip(&from.name),
-                    safe_strip(&to.name)
-                )
-            }
-            ParsedLogMessage::Domination { from, to } => {
-                format!(
-                    ":crossed_swords: `{}`{} is DOMINATING `{}!`{}",
-                    safe_strip(&from.name),
-                    dominator_dom_score,
-                    safe_strip(&to.name),
-                    victim_dom_score
-                )
-            }
-            ParsedLogMessage::Unknown => "Unknown message".to_owned(),
+            ParsedLogMessage::Disconnected { user, reason } => format!(
+                "\\- `{} {} disconnected: {}`",
+                safe_strip(&user.name),
+                user.steamid,
+                reason
+            )
+            .into(),
+            /*ParsedLogMessage::JoinedTeam { user, team } => format!(
+                "+ `{} {} joined team {}`",
+                safe_strip(&user.name),
+                user.steamid,
+                team
+            )
+            .into(),*/
+            ParsedLogMessage::StartedMap(map) => format!(":map: Changed map: `{}`", map).into(),
+            ParsedLogMessage::Revenge { from, to } => format!(
+                ":crossed_swords: `{}` got REVENGE on `{}!`",
+                safe_strip(&from.name),
+                safe_strip(&to.name)
+            )
+            .into(),
+            ParsedLogMessage::Domination { from, to } => format!(
+                ":crossed_swords: `{}`{} is DOMINATING `{}!`{}",
+                safe_strip(&from.name),
+                dominator_dom_score,
+                safe_strip(&to.name),
+                victim_dom_score
+            )
+            .into(),
+            ParsedLogMessage::Unknown => "Unknown message".to_owned().into(),
+            _ => None,
         }
     }
 }
@@ -93,6 +100,7 @@ fn parse_log_message(i: &str) -> IResult<&str, ParsedLogMessage> {
         .or(disconnect_message)
         .or(start_map_message)
         .or(vengeance_message)
+        .or(join_team_msg)
         .parse(i)
 }
 
@@ -102,6 +110,19 @@ pub struct User {
     pub uid: u32,
     pub steamid: String,
     pub team: String,
+}
+
+fn join_team_msg(i: &str) -> IResult<&str, ParsedLogMessage> {
+    let (i, user) = user(i)?;
+    let (i, _) = tag(" joined team ")(i)?;
+    let (i, (_, team, _)) = (char('"'), take_until1("\""), char('"')).parse(i)?;
+    Ok((
+        i,
+        ParsedLogMessage::JoinedTeam {
+            user,
+            team: team.to_owned(),
+        },
+    ))
 }
 
 fn vengeance_message(i: &str) -> IResult<&str, ParsedLogMessage> {
