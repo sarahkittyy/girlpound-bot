@@ -1,13 +1,18 @@
+use std::time;
+
 use crate::Error;
 
 use rcon::Connection;
 use regex::Regex;
 use tokio::net::TcpStream;
 
+#[derive(Debug)]
 pub struct Player {
     pub name: String,
+    pub connected: time::Duration,
 }
 
+#[derive(Debug)]
 pub struct GameState {
     pub players: Vec<Player>,
     pub max_players: i32,
@@ -73,11 +78,26 @@ impl RconController {
     }
 
     fn parse_player_list(status_msg: &str) -> Result<Vec<Player>, Error> {
-        let re = Regex::new(r#"\d+\s"(.+)""#).unwrap();
+        let re = Regex::new(r#"\d+\s+"(.+)"\s+\[U:.*\]\s+(\d+):(\d+)(?::(\d+))?"#).unwrap();
         let mut players = Vec::new();
         for caps in re.captures_iter(status_msg) {
+            let h = caps[2].parse::<u64>()?;
+            let m = caps[3].parse::<u64>()?;
+            let s: Option<u64> = caps.get(4).map(|s| {
+                s.as_str()
+                    .parse::<u64>()
+                    .expect("Could not parse status message seconds connected.")
+            });
+
+            let connected = time::Duration::from_secs(if let Some(s) = s {
+                h * 3600 + m * 60 + s
+            } else {
+                h * 60 + m
+            });
+
             players.push(Player {
                 name: caps[1].to_owned(),
+                connected,
             });
         }
 

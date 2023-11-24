@@ -1,4 +1,5 @@
 use std::env;
+use std::time::Duration;
 
 use super::Context;
 use crate::Error;
@@ -155,6 +156,14 @@ pub async fn tf2ungag(
     rcon_and_reply(ctx, format!("sm_gag {} {}", username, reason)).await
 }
 
+fn hhmmss(duration: &Duration) -> String {
+    let secs = duration.as_secs();
+    let hours = secs / 3600;
+    let minutes = (secs % 3600) / 60;
+    let seconds = secs % 60;
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+}
+
 /// Displays current server player count & map.
 #[poise::command(slash_command)]
 pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
@@ -163,18 +172,34 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
 
     use crate::logs::safe_strip;
 
+    println!("state: {:?}", state);
+
     let list = state
         .players
         .iter()
         .map(|p| safe_strip(&p.name))
         .collect::<Vec<String>>()
         .join(", ");
+    let longest_online = state.players.iter().max_by_key(|p| p.connected);
     ctx.say(format!(
-        "Currently playing: `{}`\nThere are {}/{} players online.\n`{}`",
+        "Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
         state.map,
         state.players.len(),
         state.max_players,
-        list
+        if let Some(longest_online) = longest_online {
+            format!(
+                "Oldest player: `{}` for `{}`",
+                safe_strip(&longest_online.name),
+                hhmmss(&longest_online.connected)
+            )
+        } else {
+            "".to_owned()
+        },
+        if !list.is_empty() {
+            format!("`{}`", list)
+        } else {
+            "".to_owned()
+        }
     ))
     .await?;
     Ok(())
