@@ -23,6 +23,7 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
 pub struct ServerBuilder {
     pub name: String,
+    pub emoji: String,
     pub addr: SocketAddr,
     pub rcon_pass: String,
     pub player_count_cid: Option<u64>,
@@ -34,6 +35,7 @@ impl ServerBuilder {
         println!("Connecting to {:?}...", self.addr);
         Ok(Server {
             name: self.name,
+            emoji: self.emoji,
             addr: self.addr,
             controller: Arc::new(RwLock::new(
                 RconController::connect(self.addr, &self.rcon_pass).await?,
@@ -48,6 +50,7 @@ impl ServerBuilder {
 #[derive(Clone)]
 pub struct Server {
     pub name: String,
+    pub emoji: String,
     pub addr: SocketAddr,
     pub controller: Arc<RwLock<RconController>>,
     pub player_count_channel: Option<serenity::ChannelId>,
@@ -78,6 +81,7 @@ async fn main() -> Result<(), Error> {
     // load servers
     let tkgp1 = ServerBuilder {
         name: "#4".to_owned(),
+        emoji: "🅰️".to_owned(),
         addr: "tf2.fluffycat.gay:27015"
             .to_socket_addrs()?
             .next()
@@ -91,6 +95,7 @@ async fn main() -> Result<(), Error> {
     .expect("Could not connect to server tkgp4");
     let tkgp2 = ServerBuilder {
         name: "#5".to_owned(),
+        emoji: "🅱️".to_owned(),
         addr: "tf3.fluffycat.gay:27015"
             .to_socket_addrs()?
             .next()

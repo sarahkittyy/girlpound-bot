@@ -28,10 +28,10 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp
                 player_count_channel
                     .edit(ctx.as_ref(), |c| {
                         c.name(format!(
-                            "📶 {}/{} in {}",
+                            "{} {}/{} online",
+                            server.emoji,
                             status.players.len(),
                             status.max_players,
-                            server.name
                         ))
                     })
                     .await
