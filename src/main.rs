@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
-struct ServerBuilder {
+pub struct ServerBuilder {
     pub name: String,
     pub addr: SocketAddr,
     pub rcon_pass: String,
@@ -46,7 +46,7 @@ impl ServerBuilder {
 
 /// A single tf2 server to keep track of
 #[derive(Clone)]
-struct Server {
+pub struct Server {
     pub name: String,
     pub addr: SocketAddr,
     pub controller: Arc<RwLock<RconController>>,
