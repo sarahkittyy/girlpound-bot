@@ -94,7 +94,7 @@ impl RconController {
             let id = caps[2].to_owned();
             let h = caps[3].parse::<u64>()?;
             let m = caps[4].parse::<u64>()?;
-            let s: Option<u64> = caps.get(4).map(|s| {
+            let s: Option<u64> = caps.get(5).map(|s| {
                 s.as_str()
                     .parse::<u64>()
                     .expect("Could not parse status message seconds connected.")
