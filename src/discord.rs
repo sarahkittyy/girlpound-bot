@@ -117,7 +117,6 @@ pub async fn start_bot(
                     commands::private_add(),
                     commands::meow(),
                     commands::status(),
-                    commands::lookup(),
                     commands::reacted_users(),
                     commands::feedback(),
                     commands::tf2ban(),
