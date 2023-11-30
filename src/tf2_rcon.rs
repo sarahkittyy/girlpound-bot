@@ -6,13 +6,14 @@ use rcon::Connection;
 use regex::Regex;
 use tokio::net::TcpStream;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Player {
     pub name: String,
     pub connected: time::Duration,
+    pub id: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GameState {
     pub players: Vec<Player>,
     pub max_players: i32,
@@ -32,11 +33,12 @@ impl RconController {
             .connect(address, password)
             .await?;
 
-        Ok(RconController {
+        let rc = RconController {
             connection,
             address: address.to_owned(),
             password: password.to_owned(),
-        })
+        };
+        Ok(rc)
     }
 
     /// reconnect to tf2 on failure
@@ -50,9 +52,16 @@ impl RconController {
 
     /// run an rcon command and return the output
     pub async fn run(&mut self, cmd: &str) -> Result<String, Error> {
-        self.connection.cmd(cmd).await.map_err(|e| e.into())
+        match self.connection.cmd(cmd).await {
+            Ok(msg) => Ok(msg),
+            Err(e) => {
+                self.reconnect().await?;
+                Err(e.into())
+            }
+        }
     }
 
+    /// fetch the results of the status command
     pub async fn status(&mut self) -> Result<GameState, Error> {
         let status_msg = self.run("status").await?;
         let max_player_msg = self.run("sv_visiblemaxplayers").await?;
@@ -70,19 +79,21 @@ impl RconController {
             .collect();
         let map = Self::parse_current_map(&status_msg)?;
 
-        Ok(GameState {
+        let gs = GameState {
             players,
             map,
             max_players,
-        })
+        };
+        Ok(gs)
     }
 
     fn parse_player_list(status_msg: &str) -> Result<Vec<Player>, Error> {
-        let re = Regex::new(r#"\d+\s+"(.+)"\s+\[U:.*\]\s+(\d+):(\d+)(?::(\d+))?"#).unwrap();
+        let re = Regex::new(r#"\d+\s+"(.+)"\s+(\[U:.*\])\s+(\d+):(\d+)(?::(\d+))?"#).unwrap();
         let mut players = Vec::new();
         for caps in re.captures_iter(status_msg) {
-            let h = caps[2].parse::<u64>()?;
-            let m = caps[3].parse::<u64>()?;
+            let id = caps[2].to_owned();
+            let h = caps[3].parse::<u64>()?;
+            let m = caps[4].parse::<u64>()?;
             let s: Option<u64> = caps.get(4).map(|s| {
                 s.as_str()
                     .parse::<u64>()
@@ -97,6 +108,7 @@ impl RconController {
 
             players.push(Player {
                 name: caps[1].to_owned(),
+                id,
                 connected,
             });
         }
