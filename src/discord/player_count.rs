@@ -1,31 +1,21 @@
 use poise::serenity_prelude as serenity;
-use std::env;
 use std::sync::Arc;
-use tokio::{sync::RwLock, time};
+use tokio::time;
 
-use crate::tf2_rcon::RconController;
+use crate::Server;
 
 /// spawns a thread that uses RCON to count the players on the server and update the corresponding channel name
-pub fn spawn_player_count_thread(
-    rcon_controller: Arc<RwLock<RconController>>,
-    ctx: Arc<serenity::CacheAndHttp>,
-) {
-    let live_player_channel: Option<serenity::ChannelId> = env::var("LIVE_PLAYER_CHANNEL_ID")
-        .ok()
-        .and_then(|id| id.parse::<u64>().ok().map(serenity::ChannelId));
-
-    println!("LIVE_PLAYER_CHANNEL: {:?}", live_player_channel);
-
-    if let Some(live_player_channel) = live_player_channel {
+pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp>) {
+    if let Some(player_count_channel) = server.player_count_channel {
         // check player count in this interval
         let mut interval = time::interval(time::Duration::from_secs(5 * 60));
         tokio::spawn(async move {
             loop {
                 interval.tick().await;
                 let status = {
-                    let mut rcon = rcon_controller.write().await;
+                    let mut rcon = server.controller.write().await;
                     match rcon.status().await {
-                        Ok(count) => count,
+                        Ok(v) => v,
                         Err(e) => {
                             // try to reconnect on error.
                             println!("Error getting player count: {:?}", e);
@@ -35,12 +25,13 @@ pub fn spawn_player_count_thread(
                     }
                 };
                 // edit channel name to reflect player count
-                live_player_channel
+                player_count_channel
                     .edit(ctx.as_ref(), |c| {
                         c.name(format!(
-                            "📶 {}/{} online",
+                            "📶 {}/{} in {}",
                             status.players.len(),
-                            status.max_players
+                            status.max_players,
+                            server.name
                         ))
                     })
                     .await

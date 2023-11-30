@@ -1,7 +1,11 @@
+use std::collections::HashMap;
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::Arc;
 use std::{env, net::Ipv4Addr};
 
 use dotenv::dotenv;
 
+use poise::serenity_prelude as serenity;
 use tokio;
 
 mod discord;
@@ -13,27 +17,98 @@ use tf2_rcon::RconController;
 
 use sqlx::mysql::MySql;
 use sqlx::Pool;
+use tokio::sync::RwLock;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
+
+struct ServerBuilder {
+    pub name: String,
+    pub addr: SocketAddr,
+    pub rcon_pass: String,
+    pub player_count_cid: Option<u64>,
+    pub log_cid: Option<u64>,
+}
+
+impl ServerBuilder {
+    pub async fn build(self) -> Result<Server, Error> {
+        println!("Connecting to {:?}...", self.addr);
+        Ok(Server {
+            name: self.name,
+            addr: self.addr,
+            controller: Arc::new(RwLock::new(
+                RconController::connect(self.addr, &self.rcon_pass).await?,
+            )),
+            player_count_channel: self.player_count_cid.map(serenity::ChannelId),
+            log_channel: self.log_cid.map(serenity::ChannelId),
+        })
+    }
+}
+
+/// A single tf2 server to keep track of
+#[derive(Clone)]
+struct Server {
+    pub name: String,
+    pub addr: SocketAddr,
+    pub controller: Arc<RwLock<RconController>>,
+    pub player_count_channel: Option<serenity::ChannelId>,
+    pub log_channel: Option<serenity::ChannelId>,
+}
+
+fn env_u64(name: &str) -> u64 {
+    env::var(name)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .expect(&format!("Could not find env variable {}", name))
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenv().ok();
     println!("Starting the girlpound bot...");
 
-    let rcon_addr = env::var("RCON_ADDR").expect("Could not find env variable RCON_ADDR");
-    let rcon_pass = env::var("RCON_PASS").expect("Could not find env variable RCON_PASS");
-
     let db_url = env::var("DATABASE_URL").expect("Could not find env variable DATABASE_URL");
 
     // migrate the db
     let pool = Pool::<MySql>::connect(&db_url).await?;
     sqlx::migrate!().run(&pool).await?;
+    println!("DB Migrated.");
 
-    let controller = RconController::connect(&rcon_addr, &rcon_pass)
-        .await
-        .expect("Could not connect to RCON");
-    println!("Connected to RCON!");
+    let rcon_pass = env::var("RCON_PASS").expect("Could not find env variable RCON_PASS");
+
+    // load servers
+    let tkgp1 = ServerBuilder {
+        name: "#4".to_owned(),
+        addr: "tf2.fluffycat.gay:27015"
+            .to_socket_addrs()?
+            .next()
+            .expect("Could not resolve RCON address."),
+        rcon_pass: rcon_pass.clone(),
+        player_count_cid: Some(env_u64("PLAYER_COUNT_CID_4")),
+        log_cid: Some(env_u64("RELAY_CID_4")),
+    }
+    .build()
+    .await
+    .expect("Could not connect to server tkgp4");
+    let tkgp2 = ServerBuilder {
+        name: "#5".to_owned(),
+        addr: "tf3.fluffycat.gay:27015"
+            .to_socket_addrs()?
+            .next()
+            .expect("Could not resolve RCON address."),
+        rcon_pass: rcon_pass.clone(),
+        player_count_cid: Some(env_u64("PLAYER_COUNT_CID_5")),
+        log_cid: Some(env_u64("RELAY_CID_5")),
+    }
+    .build()
+    .await
+    .expect("Could not connect to server tkgp5");
+
+    let mut servers = HashMap::new();
+    servers.insert(tkgp2.addr, tkgp2);
+    servers.insert(tkgp1.addr, tkgp1);
+
+    println!("{} servers loaded.", servers.len());
+
     println!("Launching UDP log receiver...");
     let logs_addr: Ipv4Addr = env::var("SRCDS_LOG_ADDR")
         .ok()
@@ -46,7 +121,8 @@ async fn main() -> Result<(), Error> {
     let log_receiver = LogReceiver::connect(logs_addr, logs_port)
         .await
         .expect("Could not bind log receiver");
+
     println!("Starting discord bot...");
-    discord::start_bot(controller, log_receiver, pool).await;
+    discord::start_bot(pool, log_receiver, servers).await;
     Ok(())
 }

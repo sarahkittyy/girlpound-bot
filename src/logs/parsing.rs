@@ -26,10 +26,7 @@ impl ParsedLogMessage {
         let i: &str = &msg.message;
         match parse_log_message(i) {
             Ok((_, m)) => m,
-            Err(e) => {
-                println!("error {:?}: {}", e, i);
-                ParsedLogMessage::Unknown
-            }
+            Err(_) => ParsedLogMessage::Unknown,
         }
     }
 

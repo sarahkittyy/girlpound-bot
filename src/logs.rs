@@ -1,4 +1,9 @@
-use std::{collections::VecDeque, fmt::Display, net::Ipv4Addr, sync::Arc};
+use std::{
+    collections::VecDeque,
+    fmt::Display,
+    net::{Ipv4Addr, SocketAddr},
+    sync::Arc,
+};
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use tokio::{net::UdpSocket, sync::RwLock};
@@ -16,6 +21,7 @@ const MAGIC_STRING_END: u8 = 0x4C; // L
 /// a log message received from srcds on our udp socket
 #[derive(Debug)]
 pub struct LogMessage {
+    pub from: SocketAddr,
     pub timestamp: DateTime<chrono::Utc>,
     pub message: String,
     pub password: Option<String>,
@@ -53,15 +59,15 @@ impl LogReceiver {
             tokio::spawn(async move {
                 let mut buf = [0u8; 1024];
                 loop {
-                    let (len, _) = sock.recv_from(&mut buf).await.unwrap();
-                    let message = match try_parse_packet(&buf[..len], expected_password.as_deref())
-                    {
-                        Ok(m) => m,
-                        Err(e) => {
-                            println!("Could not parse packet: {e:?}");
-                            continue;
-                        }
-                    };
+                    let (len, from) = sock.recv_from(&mut buf).await.unwrap();
+                    let message =
+                        match try_parse_packet(from, &buf[..len], expected_password.as_deref()) {
+                            Ok(m) => m,
+                            Err(_) => {
+                                // println!("Could not parse packet: {e:?}");
+                                continue;
+                            }
+                        };
                     messages.write().await.push_back(message);
                 }
             })
@@ -76,11 +82,12 @@ impl LogReceiver {
         messages.drain(..).collect()
     }
 
-    pub async fn spoof_message(&self, msg: &str) {
+    pub async fn _spoof_message(&self, msg: &str) {
         let expected_password: Option<String> = std::env::var("SRCDS_LOG_PASSWORD")
             .ok()
             .and_then(|p| if p.len() > 0 { Some(p) } else { None });
         self.messages.write().await.push_back(LogMessage {
+            from: ([0, 0, 0, 0], 0).into(),
             timestamp: Utc::now(),
             message: msg.to_owned(),
             password: expected_password,
@@ -106,7 +113,11 @@ impl Display for PacketParseError {
 
 impl std::error::Error for PacketParseError {}
 
-fn try_parse_packet(data: &[u8], expect_pass: Option<&str>) -> Result<LogMessage, Error> {
+fn try_parse_packet(
+    from: SocketAddr,
+    data: &[u8],
+    expect_pass: Option<&str>,
+) -> Result<LogMessage, Error> {
     if data.len() < 16 {
         return Err(PacketParseError::TooShort.into());
     }
@@ -143,6 +154,7 @@ fn try_parse_packet(data: &[u8], expect_pass: Option<&str>) -> Result<LogMessage
         .map_err(|_| PacketParseError::BadTimestamp)?;
 
     Ok(LogMessage {
+        from,
         timestamp: timestamp.and_utc(),
         message: rest[0..rest.len() - 2].to_owned(),
         password,

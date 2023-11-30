@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::env;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::{logs::LogReceiver, tf2_rcon::RconController, Error};
+use crate::Server;
+use crate::{logs::LogReceiver, Error};
 use poise::serenity_prelude as serenity;
 
 use sqlx::{MySql, Pool};
-use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tokio::{self, sync::RwLock};
 
 mod commands;
@@ -14,24 +15,31 @@ mod log_handler;
 mod player_count;
 
 pub struct PoiseData {
-    pub rcon_controller: Arc<RwLock<RconController>>,
+    pub servers: HashMap<SocketAddr, Server>,
     pub guild_id: serenity::GuildId,
     pub member_role: serenity::RoleId,
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
 }
+impl PoiseData {
+    pub fn server(&self, server_addr: SocketAddr) -> Result<&Server, Error> {
+        self.servers
+            .get(&server_addr)
+            .ok_or("Server not found".into())
+    }
+}
 pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
 
 /// read console stuff
-fn spawn_stdin_thread(log_receiver: LogReceiver) {
+/*fn spawn_stdin_thread(log_receiver: LogReceiver) {
     tokio::spawn(async move {
         let mut stdin = BufReader::new(io::stdin()).lines();
         while let Ok(Some(line)) = stdin.next_line().await {
             log_receiver.spoof_message(&line).await;
         }
     });
-}
+}*/
 
 /// takes in the messages of every new user, counts them, and returns if they should be let in
 async fn give_new_member_access(msg: &serenity::Message, data: &PoiseData) -> Result<bool, Error> {
@@ -82,12 +90,10 @@ pub async fn event_handler(
 
 /// initialize the discord bot
 pub async fn start_bot(
-    rcon_controller: RconController,
-    log_receiver: LogReceiver,
     pool: Pool<MySql>,
+    log_receiver: LogReceiver,
+    servers: HashMap<SocketAddr, crate::Server>,
 ) {
-    let rcon_controller = Arc::new(RwLock::new(rcon_controller));
-
     let bot_token = env::var("BOT_TOKEN").expect("Could not find env variable BOT_TOKEN");
     let guild_id = env::var("GUILD_ID")
         .expect("Could not find env variable GUILD_ID")
@@ -109,7 +115,7 @@ pub async fn start_bot(
     let intents = serenity::GatewayIntents::non_privileged();
 
     let girlpounder = {
-        let rcon_controller = rcon_controller.clone();
+        let servers = servers.clone();
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
                 commands: vec![
@@ -146,7 +152,7 @@ pub async fn start_bot(
                         .await;
 
                     Ok(PoiseData {
-                        rcon_controller,
+                        servers,
                         member_role: serenity::RoleId(member_role),
                         guild_id: serenity::GuildId(guild_id),
                         private_channel: serenity::ChannelId(private_channel_id),
@@ -159,13 +165,14 @@ pub async fn start_bot(
             .await
             .expect("Failed to build girlpounder bot.")
     };
-    // stdin thread
-
     // launch alt threads
+
     let ctx = girlpounder.client().cache_and_http.clone();
-    player_count::spawn_player_count_thread(rcon_controller.clone(), ctx.clone());
-    log_handler::spawn_log_thread(log_receiver.clone(), pool.clone(), ctx.clone());
-    spawn_stdin_thread(log_receiver.clone());
+    for (_addr, server) in servers.iter() {
+        player_count::spawn_player_count_thread(server.clone(), ctx.clone());
+    }
+
+    log_handler::spawn_log_thread(log_receiver.clone(), servers, pool.clone(), ctx.clone());
 
     let fut = girlpounder.start();
     println!("Bot started!");

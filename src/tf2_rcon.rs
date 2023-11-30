@@ -1,4 +1,4 @@
-use std::time;
+use std::{net::SocketAddr, time};
 
 use crate::Error;
 
@@ -22,20 +22,20 @@ pub struct GameState {
 
 pub struct RconController {
     pub connection: Connection<TcpStream>,
-    pub address: String,
+    pub address: SocketAddr,
     pub password: String,
 }
 
 impl RconController {
     /// initialize the controller
-    pub async fn connect(address: &str, password: &str) -> Result<Self, Error> {
+    pub async fn connect(address: SocketAddr, password: &str) -> Result<Self, Error> {
         let connection = <Connection<TcpStream>>::builder()
             .connect(address, password)
             .await?;
 
         let rc = RconController {
             connection,
-            address: address.to_owned(),
+            address,
             password: password.to_owned(),
         };
         Ok(rc)
@@ -65,7 +65,7 @@ impl RconController {
     pub async fn status(&mut self) -> Result<GameState, Error> {
         let status_msg = self.run("status").await?;
         let max_player_msg = self.run("sv_visiblemaxplayers").await?;
-        let re = Regex::new(r#""sv_visiblemaxplayers" = "(\d+)""#).unwrap();
+        let re = Regex::new(r#""sv_visiblemaxplayers" = "(-?\d+)""#).unwrap();
         let Some(max_players) = re
             .captures(&max_player_msg)
             .map(|caps| caps[1].parse::<i32>().unwrap())

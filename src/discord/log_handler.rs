@@ -1,65 +1,72 @@
 use crate::logs::{LogReceiver, ParsedLogMessage};
-use crate::Error;
+use crate::{Error, Server};
 use poise::serenity_prelude as serenity;
 use sqlx::{MySql, Pool};
-use std::env;
+use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::time;
 
 /// receives logs from the tf2 server & posts them in a channel
 pub fn spawn_log_thread(
     mut log_receiver: LogReceiver,
+    servers: HashMap<SocketAddr, Server>,
     pool: Pool<MySql>,
     ctx: Arc<serenity::CacheAndHttp>,
 ) {
-    let logs_channel: Option<serenity::ChannelId> = env::var("SRCDS_LOG_CHANNEL_ID")
-        .ok()
-        .and_then(|id| id.parse::<u64>().ok().map(serenity::ChannelId));
+    let mut interval = time::interval(time::Duration::from_secs(1));
+    tokio::spawn(async move {
+        loop {
+            interval.tick().await;
+            // drain all received log messages
+            let msgs = log_receiver.drain().await;
+            let mut output = HashMap::<SocketAddr, String>::new();
+            for msg in msgs {
+                let from = msg.from;
+                let parsed = ParsedLogMessage::from_message(&msg);
 
-    println!("SRCDS_LOG_CHANNEL_ID: {logs_channel:?}");
-
-    if let Some(logs_channel) = logs_channel {
-        let mut interval = time::interval(time::Duration::from_secs(1));
-        tokio::spawn(async move {
-            loop {
-                interval.tick().await;
-                let msgs = log_receiver.drain().await;
-                let mut output = String::new();
-                for msg in msgs {
-                    let parsed = ParsedLogMessage::from_message(&msg);
-
-                    if parsed.is_unknown() {
-                        continue;
-                    }
-
-                    let dom_score: Option<i32> = match update_domination_score(&pool, &parsed).await
-                    {
-                        Ok(score) => Some(score),
-                        Err(e) => {
-                            println!("Could not update dom score: {:?}", e);
-                            None
-                        }
-                    };
-
-                    let dm = parsed.as_discord_message(dom_score);
-
-                    if let Some(dm) = dm {
-                        output += dm.as_str();
-                        output += "\n";
-                    }
-                }
-                if output.len() == 0 {
+                if parsed.is_unknown() {
                     continue;
                 }
-                if let Err(e) = logs_channel
-                    .send_message(ctx.as_ref(), |m| m.content(output))
-                    .await
-                {
-                    println!("Could not send message to logs channel: {:?}", e);
+
+                let dom_score: Option<i32> = match update_domination_score(&pool, &parsed).await {
+                    Ok(score) => Some(score),
+                    Err(_) => {
+                        // println!("Could not update dom score: {:?}", e);
+                        None
+                    }
+                };
+
+                let dm = parsed.as_discord_message(dom_score);
+
+                if let Some(dm) = dm {
+                    let v = output.entry(from).or_insert_with(|| "".to_owned());
+                    *v += dm.as_str();
+                    *v += "\n";
                 }
             }
-        });
-    }
+            // for every server...
+            for (addr, server) in &servers {
+                // ...that has a log channel...
+                let Some(logs_channel) = server.log_channel else {
+                    continue;
+                };
+                // ...and has logs to post...
+                if let Some(msg) = output.get(&addr) {
+                    if msg.len() == 0 {
+                        continue;
+                    }
+                    // ...post them
+                    if let Err(e) = logs_channel
+                        .send_message(ctx.as_ref(), |m| m.content(msg))
+                        .await
+                    {
+                        println!("Could not send message to logs channel: {:?}", e);
+                    }
+                }
+            }
+        }
+    });
 }
 
 /// updates the domination score between users
