@@ -120,6 +120,7 @@ pub async fn start_bot(
                     commands::reacted_users(),
                     commands::feedback(),
                     commands::tf2ban(),
+                    commands::tf2banid(),
                     commands::tf2unban(),
                     commands::tf2kick(),
                     commands::tf2mute(),

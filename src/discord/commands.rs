@@ -117,6 +117,18 @@ pub async fn tf2ban(
     .await
 }
 
+/// Ban a steam id from the tf2 server
+#[poise::command(slash_command)]
+pub async fn tf2banid(
+    ctx: Context<'_>,
+    #[description = "The steam id to ban"] id: String,
+    #[description = "Time to ban them for, in minutes"] minutes: u32,
+    #[description = "The reason for the ban"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("undesirable".to_owned());
+    rcon_and_reply(ctx, format!("sm_addban {} {} {} ", minutes, id, reason)).await
+}
+
 /// Unban a user from the tf2 server
 #[poise::command(slash_command)]
 pub async fn tf2unban(
