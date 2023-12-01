@@ -36,7 +36,11 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp
                     })
                     .await
                     .expect("Could not edit channel name");
-                println!("Updated player count to {}", status.players.len());
+                println!(
+                    "Updated {} player count to {}",
+                    server.name,
+                    status.players.len()
+                );
             }
         });
     }

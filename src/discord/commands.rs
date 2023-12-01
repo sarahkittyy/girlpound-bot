@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use super::Context;
+use crate::logs::safe_strip;
 use crate::Error;
 
 use poise::serenity_prelude::{self as serenity};
@@ -279,6 +280,31 @@ fn hhmmss(duration: &Duration) -> String {
     let minutes = (secs % 3600) / 60;
     let seconds = secs % 60;
     format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+}
+
+/// Displays all stats for modding easily
+#[poise::command(slash_command)]
+pub async fn info(ctx: Context<'_>) -> Result<(), Error> {
+    let mut msg = String::new();
+
+    let servers = &ctx.data().servers;
+    for (_addr, server) in servers.iter() {
+        let mut rcon = server.controller.write().await;
+        let state = rcon.status().await?;
+        msg += &format!(
+            "{} (`{}`) {}/{} on `{}`\n",
+            server.emoji,
+            server.addr,
+            state.players.len(),
+            state.max_players,
+            state.map
+        );
+        for player in &state.players {
+            msg += &format!("`{} {}`\n", safe_strip(&player.name), player.id);
+        }
+    }
+    ctx.send(|m| m.content(msg).ephemeral(true)).await?;
+    Ok(())
 }
 
 /// Displays current server player count & map.
