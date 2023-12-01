@@ -331,8 +331,8 @@ pub async fn status(
         .join(", ");
     let longest_online = state.players.iter().max_by_key(|p| p.connected);
     ctx.say(format!(
-        "`{}` Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
-        server.name,
+        "{} Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
+        server.emoji,
         state.map,
         state.players.len(),
         state.max_players,
