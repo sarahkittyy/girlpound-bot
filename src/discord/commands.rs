@@ -282,10 +282,12 @@ fn hhmmss(duration: &Duration) -> String {
     format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
+/// SteamID.uk discord command.
 #[poise::command(slash_command, global_cooldown = 10)]
 pub async fn lookup(
     ctx: Context<'_>,
-    #[description = "SteamID, Steam2, Steam3, or vanity URL"] query: String,
+    #[description = "SteamID, Steam2, Steam3, or vanity URL. Separate multiple by commas."]
+    query: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;
     let client = &ctx.data().client;
