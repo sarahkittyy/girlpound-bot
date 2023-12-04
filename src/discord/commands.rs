@@ -282,6 +282,28 @@ fn hhmmss(duration: &Duration) -> String {
     format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
+#[poise::command(slash_command, global_cooldown = 10)]
+pub async fn lookup(
+    ctx: Context<'_>,
+    #[description = "SteamID, Steam2, Steam3, or vanity URL"] query: String,
+) -> Result<(), Error> {
+    ctx.defer().await?;
+    let client = &ctx.data().client;
+    let data = client.lookup(&query).await?;
+    // fetch important info
+
+    ctx.send(|m| {
+        m.content(format!("Results for query: `{}`", query));
+        for user in &data {
+            m.embed(|e| user.populate_embed(e));
+        }
+        m
+    })
+    .await?;
+
+    Ok(())
+}
+
 /// Displays current server player count & map.
 #[poise::command(slash_command)]
 pub async fn status(

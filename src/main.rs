@@ -13,6 +13,7 @@ use ftp::FtpStream;
 
 mod discord;
 mod logs;
+mod steamid;
 mod tf2_rcon;
 
 use logs::LogReceiver;
@@ -39,6 +40,7 @@ impl ServerBuilder {
         let ftp_url: SocketAddr = (self.addr.ip(), 21).into();
         let mut ftp = FtpStream::connect(ftp_url)?;
         ftp.login(&self.ftp_credentials.0, &self.ftp_credentials.1)?;
+        println!("Connected to FTP server at {}{}", ftp_url, ftp.pwd()?);
 
         println!("Connecting to {:?}...", self.addr);
         Ok(Server {

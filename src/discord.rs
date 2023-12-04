@@ -3,9 +3,10 @@ use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::Server;
+use crate::steamid::SteamIDClient;
 use crate::{logs::LogReceiver, Error};
-use poise::serenity_prelude as serenity;
+use crate::{parse_env, Server};
+use poise::serenity_prelude::{self as serenity};
 
 use sqlx::{MySql, Pool};
 use tokio::{self, sync::RwLock};
@@ -21,6 +22,7 @@ pub struct PoiseData {
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
+    pub client: SteamIDClient,
 }
 impl PoiseData {
     pub fn server(&self, server_addr: SocketAddr) -> Result<&Server, Error> {
@@ -123,6 +125,7 @@ pub async fn start_bot(
                     commands::private_add(),
                     commands::meow(),
                     commands::status(),
+                    commands::lookup(),
                     commands::reacted_users(),
                     commands::feedback(),
                     commands::tf2ban(),
@@ -158,6 +161,10 @@ pub async fn start_bot(
                         private_channel: serenity::ChannelId(private_channel_id),
                         private_welcome_channel: serenity::ChannelId(private_welcome_channel_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
+                        client: SteamIDClient::new(
+                            parse_env("STEAMID_MYID"),
+                            parse_env("STEAMID_API_KEY"),
+                        ),
                     })
                 })
             })
