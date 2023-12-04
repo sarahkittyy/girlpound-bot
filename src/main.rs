@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::{env, net::Ipv4Addr};
 
@@ -7,6 +8,8 @@ use dotenv::dotenv;
 
 use poise::serenity_prelude as serenity;
 use tokio;
+
+use ftp::FtpStream;
 
 mod discord;
 mod logs;
@@ -28,10 +31,15 @@ pub struct ServerBuilder {
     pub rcon_pass: String,
     pub player_count_cid: Option<u64>,
     pub log_cid: Option<u64>,
+    pub ftp_credentials: (String, String),
 }
 
 impl ServerBuilder {
     pub async fn build(self) -> Result<Server, Error> {
+        let ftp_url: SocketAddr = (self.addr.ip(), 21).into();
+        let mut ftp = FtpStream::connect(ftp_url)?;
+        ftp.login(&self.ftp_credentials.0, &self.ftp_credentials.1)?;
+
         println!("Connecting to {:?}...", self.addr);
         Ok(Server {
             name: self.name,
@@ -42,6 +50,7 @@ impl ServerBuilder {
             )),
             player_count_channel: self.player_count_cid.map(serenity::ChannelId),
             log_channel: self.log_cid.map(serenity::ChannelId),
+            ftp: Arc::new(ftp),
         })
     }
 }
@@ -55,9 +64,10 @@ pub struct Server {
     pub controller: Arc<RwLock<RconController>>,
     pub player_count_channel: Option<serenity::ChannelId>,
     pub log_channel: Option<serenity::ChannelId>,
+    pub ftp: Arc<FtpStream>,
 }
 
-fn env_u64(name: &str) -> u64 {
+fn parse_env<T: FromStr>(name: &str) -> T {
     env::var(name)
         .ok()
         .and_then(|v| v.parse().ok())
@@ -87,8 +97,9 @@ async fn main() -> Result<(), Error> {
             .next()
             .expect("Could not resolve RCON address."),
         rcon_pass: rcon_pass.clone(),
-        player_count_cid: Some(env_u64("PLAYER_COUNT_CID_4")),
-        log_cid: Some(env_u64("RELAY_CID_4")),
+        player_count_cid: Some(parse_env("PLAYER_COUNT_CID_4")),
+        log_cid: Some(parse_env("RELAY_CID_4")),
+        ftp_credentials: (parse_env("FTP_USER_4"), parse_env("FTP_PASS_4")),
     }
     .build()
     .await
@@ -101,8 +112,9 @@ async fn main() -> Result<(), Error> {
             .next()
             .expect("Could not resolve RCON address."),
         rcon_pass: rcon_pass.clone(),
-        player_count_cid: Some(env_u64("PLAYER_COUNT_CID_5")),
-        log_cid: Some(env_u64("RELAY_CID_5")),
+        player_count_cid: Some(parse_env("PLAYER_COUNT_CID_5")),
+        log_cid: Some(parse_env("RELAY_CID_5")),
+        ftp_credentials: (parse_env("FTP_USER_5"), parse_env("FTP_PASS_5")),
     }
     .build()
     .await

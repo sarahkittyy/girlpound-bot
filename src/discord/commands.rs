@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use super::Context;
 use crate::logs::safe_strip;
-use crate::Error;
+use crate::{Error, Server};
 
 use poise::serenity_prelude::{self as serenity};
 use poise::{self, AutocompleteChoice};
@@ -282,76 +282,69 @@ fn hhmmss(duration: &Duration) -> String {
     format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
-/// Displays all stats for modding easily
-#[poise::command(slash_command)]
-pub async fn info(ctx: Context<'_>) -> Result<(), Error> {
-    let mut msg = String::new();
-
-    let servers = &ctx.data().servers;
-    for (_addr, server) in servers.iter() {
-        let mut rcon = server.controller.write().await;
-        let state = rcon.status().await?;
-        msg += &format!(
-            "{} (`{}`) {}/{} on `{}`\n",
-            server.emoji,
-            server.addr,
-            state.players.len(),
-            state.max_players,
-            state.map
-        );
-        for player in &state.players {
-            msg += &format!("`{} {}`\n", safe_strip(&player.name), player.id);
-        }
-    }
-    ctx.send(|m| m.content(msg).ephemeral(true)).await?;
-    Ok(())
-}
-
 /// Displays current server player count & map.
 #[poise::command(slash_command)]
 pub async fn status(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
+    #[description = "Display user IDs?"] show_uids: Option<bool>,
 ) -> Result<(), Error> {
-    let server = ctx.data().server(server)?;
-    let mut rcon = server.controller.write().await;
-    let state = rcon.status().await?;
+    // get all the servers to include in the result
+    let mut servers = if let Some(server) = server {
+        vec![ctx.data().server(server)?]
+    } else {
+        ctx.data().servers.values().collect::<Vec<&Server>>()
+    };
+    servers.sort_by_key(|s| &s.name);
 
-    use crate::logs::safe_strip;
+    let show_uids = show_uids.unwrap_or(false);
 
-    println!("state: {:?}", state);
+    let mut output = String::new();
+    for server in servers {
+        let mut rcon = server.controller.write().await;
+        let state = rcon.status().await?;
 
-    let list = state
-        .players
-        .iter()
-        .map(|p| safe_strip(&p.name))
-        .collect::<Vec<String>>()
-        .join(", ");
-    let longest_online = state.players.iter().max_by_key(|p| p.connected);
-    ctx.say(format!(
-        "{} Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
-        server.emoji,
-        state.map,
-        state.players.len(),
-        state.max_players,
-        if let Some(longest_online) = longest_online {
-            format!(
-                "Oldest player: `{}` for `{}`",
-                safe_strip(&longest_online.name),
-                hhmmss(&longest_online.connected)
-            )
-        } else {
-            "".to_owned()
-        },
-        if !list.is_empty() {
-            format!("`{}`", list)
-        } else {
-            "".to_owned()
-        }
-    ))
-    .await?;
+        let list = state
+            .players
+            .iter()
+            .map(|p| {
+                format!(
+                    "{}{}",
+                    p.name,
+                    &if show_uids {
+                        " ".to_owned() + &p.id
+                    } else {
+                        "".to_owned()
+                    }
+                )
+            })
+            .collect::<Vec<String>>();
+        let longest_online = state.players.iter().max_by_key(|p| p.connected);
+        output += &format!(
+            "{} Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
+            server.emoji,
+            state.map,
+            state.players.len(),
+            state.max_players,
+            if let Some(longest_online) = longest_online {
+                format!(
+                    "Oldest player: `{}` for `{}`",
+                    safe_strip(&longest_online.name),
+                    hhmmss(&longest_online.connected)
+                )
+            } else {
+                "".to_owned()
+            },
+            if !list.is_empty() {
+                format!("`{}`\n", list.join(if show_uids { "\n" } else { ", " }))
+            } else {
+                "".to_owned()
+            }
+        );
+    }
+    ctx.send(|m| m.content(output).ephemeral(show_uids)).await?;
     Ok(())
 }
 
