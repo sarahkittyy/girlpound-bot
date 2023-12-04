@@ -103,6 +103,26 @@ async fn users_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<Autocomplete
     res
 }
 
+/// Returns the list of online users
+async fn steam_id_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<AutocompleteChoice<String>> {
+    let mut res = vec![];
+    for (_addr, server) in &ctx.data().servers {
+        if let Some(state) = server.controller.write().await.status().await.ok() {
+            res.extend(
+                state
+                    .players
+                    .iter()
+                    .filter(|p| p.name.to_lowercase().contains(&partial.to_lowercase()))
+                    .map(|p| AutocompleteChoice {
+                        name: format!("{} {}", &p.name, &p.id),
+                        value: p.id.clone(),
+                    }),
+            );
+        }
+    }
+    res
+}
+
 /// Returns the list of connected servers
 async fn servers_autocomplete(
     ctx: Context<'_>,
@@ -287,6 +307,7 @@ fn hhmmss(duration: &Duration) -> String {
 pub async fn lookup(
     ctx: Context<'_>,
     #[description = "SteamID, Steam2, Steam3, or vanity URL. Separate multiple by commas."]
+    #[autocomplete = "steam_id_autocomplete"]
     query: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;
