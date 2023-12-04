@@ -323,6 +323,28 @@ pub async fn status(
 
     println!("state: {:?}", state);
 
+    /// testing; count number of players with the string 'cat' or 'kitty' in their name
+    let mut cat_counter = 0;
+    /// slow implementation
+    for player in &state.players {
+        if player.name.to_lowercase().contains("cat")
+            || player.name.to_lowercase().contains("kitty")
+        {
+            cat_counter += 1;
+        }
+    }
+    /// fast implementation (idk if this works? not sure how to test)
+    // let cat_counter = state
+    //     .players
+    //     .iter()
+    //     .filter(|p| p.name.to_lowercase().contains("cat") || p.name.to_lowercase().contains("kitty"))
+    //     .count();
+
+    // should this be here? should it be part of the display function?
+    
+    // ctx.say(format!("there are {} cat players on the server", cat_counter))
+    //     .await?;
+
     let list = state
         .players
         .iter()
@@ -457,6 +479,49 @@ pub async fn private_add(ctx: Context<'_>, user: serenity::User) -> Result<(), E
             .content(format!("<@{}>", user.id))
         })
         .await?;
+    Ok(())
+}
+
+/// Bark (suppawters only)
+#[poise::command(slash_command, channel_cooldown = 4)]
+pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
+    let barks = [
+        "bark!! :revolving_hearts:",
+        "arf >w<",
+        "woof",
+        "mrp",
+        "woof!! arf... bark !!! :D",
+        "hehe, woof !!",
+        "arf",
+        "woof",
+        "woof. >:(",
+        "woof >:3",
+        "WOOF!!!",
+        "ᵐᵉᵒʷ",
+        "woof >w<",
+        "arf~! >//<",
+        "arf arf arf... woof mrp arf..",
+        "mrp....... <3",
+        "mp <333333",
+        "*opens mouth, but doesn't actually bark*",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "mrp",
+        "mrp",
+        "mrp",
+        "mrp",
+        "puppygirls? in my kitty pound? its more likely than u think UwU",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+    ];
+    let r = (random::<f32>() * barks.len() as f32).floor() as usize;
+
+    poise::send_reply(ctx, |message| message.content(barks[r])).await?;
     Ok(())
 }
 
