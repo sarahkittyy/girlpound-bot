@@ -383,7 +383,7 @@ pub async fn status(
                 "".to_owned()
             },
             if !list.is_empty() {
-                format!("`{}`\n", list.join(if show_uids { "\n" } else { ", " }))
+                format!("`{}`\n", list.join(if show_uids { "\n" } else { " | " }))
             } else {
                 "".to_owned()
             }
