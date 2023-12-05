@@ -549,6 +549,7 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
 		"https://media.discordapp.net/attachments/716323693877395537/883757436434018355/tumblr_beb1f92611396501e6370766e57257dc_05f5405f_250.gif",
 		"https://media.discordapp.net/attachments/901299978817925131/1126298371410366494/JMvRJlHy.gif",
 		"https://media.discordapp.net/attachments/779900906665017405/1061512722228981860/attachment-19.gif",
+		"https://media.discordapp.net/attachments/984367821901402153/1043398180722720848/kat.gif"
 		"meow",
         "meow",
         "meow",
