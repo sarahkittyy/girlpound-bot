@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -96,23 +95,11 @@ pub async fn start_bot(
     log_receiver: LogReceiver,
     servers: HashMap<SocketAddr, crate::Server>,
 ) {
-    let bot_token = env::var("BOT_TOKEN").expect("Could not find env variable BOT_TOKEN");
-    let guild_id = env::var("GUILD_ID")
-        .expect("Could not find env variable GUILD_ID")
-        .parse::<u64>()
-        .expect("GUILD_ID could not be parsed into u64");
-    let member_role = env::var("MEMBER_ROLE")
-        .expect("Could not find env variable MEMBER_ROLE")
-        .parse::<u64>()
-        .expect("MEMBER_ROLE could not be parsed into u64");
-    let private_channel_id = env::var("PRIVATE_CHANNEL_ID")
-        .expect("Could not find env variable PRIVATE_CHANNEL_ID")
-        .parse::<u64>()
-        .expect("PRIVATE_CHANNEL_ID could not be parsed into u64");
-    let private_welcome_channel_id = env::var("PRIVATE_WELCOME_CHANNEL_ID")
-        .expect("Could not find env variable PRIVATE_WELCOME_CHANNEL_ID")
-        .parse::<u64>()
-        .expect("PRIVATE_WELCOME_CHANNEL_ID could not be parsed into u64");
+    let bot_token: String = parse_env("BOT_TOKEN");
+    let guild_id: u64 = parse_env("GUILD_ID");
+    let member_role: u64 = parse_env("MEMBER_ROLE");
+    let private_channel_id: u64 = parse_env("PRIVATE_CHANNEL_ID");
+    let private_welcome_channel_id: u64 = parse_env("PRIVATE_WELCOME_CHANNEL_ID");
 
     let intents = serenity::GatewayIntents::non_privileged();
 
@@ -179,7 +166,12 @@ pub async fn start_bot(
         player_count::spawn_player_count_thread(server.clone(), ctx.clone());
     }
 
-    log_handler::spawn_log_thread(log_receiver.clone(), servers, pool.clone(), ctx.clone());
+    log_handler::spawn_log_thread(
+        log_receiver.clone(),
+        servers.clone(),
+        pool.clone(),
+        ctx.clone(),
+    );
 
     let fut = girlpounder.start();
     println!("Bot started!");

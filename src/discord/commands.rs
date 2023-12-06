@@ -320,7 +320,7 @@ pub async fn lookup(
         for user in &data {
             m.embed(|e| user.populate_embed(e));
         }
-        m
+        m.ephemeral(true)
     })
     .await?;
 
