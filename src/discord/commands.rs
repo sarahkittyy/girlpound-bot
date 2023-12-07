@@ -385,45 +385,57 @@ pub async fn status(
         let mut rcon = server.controller.write().await;
         let state = rcon.status().await?;
 
-        let list = state
-            .players
-            .iter()
-            .map(|p| {
-                format!(
-                    "{}{}",
-                    p.name,
-                    &if show_uids {
-                        " ".to_owned() + &p.id
-                    } else {
-                        "".to_owned()
-                    }
-                )
-            })
-            .collect::<Vec<String>>();
-        let longest_online = state.players.iter().max_by_key(|p| p.connected);
-        output += &format!(
-            "{} Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
-            server.emoji,
-            state.map,
-            state.players.len(),
-            state.max_players,
-            if let Some(longest_online) = longest_online {
-                format!(
-                    "Oldest player: `{}` for `{}`",
-                    safe_strip(&longest_online.name),
-                    hhmmss(&longest_online.connected)
-                )
-            } else {
-                "".to_owned()
-            },
-            if !list.is_empty() {
-                format!("`{}`\n", list.join(if show_uids { "\n" } else { " | " }))
-            } else {
-                "".to_owned()
-            }
-        );
+    /// testing; count number of players with the string 'cat' or 'kitty' in their name
+    let mut cat_counter = 0;
+    /// slow implementation
+    for player in &state.players {
+        if player.name.to_lowercase().contains("cat")
+            || player.name.to_lowercase().contains("kitty")
+        {
+            cat_counter += 1;
+        }
     }
-    ctx.send(|m| m.content(output).ephemeral(show_uids)).await?;
+    /// fast implementation (idk if this works? not sure how to test)
+    // let cat_counter = state
+    //     .players
+    //     .iter()
+    //     .filter(|p| p.name.to_lowercase().contains("cat") || p.name.to_lowercase().contains("kitty"))
+    //     .count();
+
+    // should this be here? should it be part of the display function?
+    
+    // ctx.say(format!("there are {} cat players on the server", cat_counter))
+    //     .await?;
+
+    let list = state
+        .players
+        .iter()
+        .map(|p| safe_strip(&p.name))
+        .collect::<Vec<String>>()
+        .join(", ");
+    let longest_online = state.players.iter().max_by_key(|p| p.connected);
+    ctx.say(format!(
+        "{} Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
+        server.emoji,
+        state.map,
+        state.players.len(),
+        state.max_players,
+        if let Some(longest_online) = longest_online {
+            format!(
+                "Oldest player: `{}` for `{}`",
+                safe_strip(&longest_online.name),
+                hhmmss(&longest_online.connected)
+            )
+        } else {
+            "".to_owned()
+        },
+        if !list.is_empty() {
+            format!("`{}`", list)
+        } else {
+            "".to_owned()
+        }
+    ))
+    .await?;
     Ok(())
 }
 
@@ -529,6 +541,49 @@ pub async fn private_add(ctx: Context<'_>, user: serenity::User) -> Result<(), E
             .content(format!("<@{}>", user.id))
         })
         .await?;
+    Ok(())
+}
+
+/// Bark (suppawters only)
+#[poise::command(slash_command, channel_cooldown = 4)]
+pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
+    let barks = [
+        "bark!! :revolving_hearts:",
+        "arf >w<",
+        "woof",
+        "mrp",
+        "woof!! arf... bark !!! :D",
+        "hehe, woof !!",
+        "arf",
+        "woof",
+        "woof. >:(",
+        "woof >:3",
+        "WOOF!!!",
+        "ᵐᵉᵒʷ",
+        "woof >w<",
+        "arf~! >//<",
+        "arf arf arf... woof mrp arf..",
+        "mrp....... <3",
+        "mp <333333",
+        "*opens mouth, but doesn't actually bark*",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "mrp",
+        "mrp",
+        "mrp",
+        "mrp",
+        "puppygirls? in my kitty pound? its more likely than u think UwU",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+        "arf",
+    ];
+    let r = (random::<f32>() * barks.len() as f32).floor() as usize;
+
+    poise::send_reply(ctx, |message| message.content(barks[r])).await?;
     Ok(())
 }
 
