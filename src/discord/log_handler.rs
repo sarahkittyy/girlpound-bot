@@ -29,13 +29,6 @@ pub fn spawn_log_thread(
                     continue;
                 }
 
-                // send event to server
-                if let Some(server) = servers.get(&from) {
-                    if let Some(callback) = &server.on_parsed_log {
-                        callback(server, parsed.clone());
-                    }
-                }
-
                 let dom_score: Option<i32> = match update_domination_score(&pool, &parsed).await {
                     Ok(score) => Some(score),
                     Err(_) => {

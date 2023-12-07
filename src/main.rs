@@ -16,7 +16,7 @@ mod logs;
 mod steamid;
 mod tf2_rcon;
 
-use logs::{LogReceiver, ParsedLogMessage};
+use logs::LogReceiver;
 use tf2_rcon::RconController;
 
 use sqlx::mysql::MySql;
@@ -33,7 +33,6 @@ pub struct ServerBuilder {
     pub player_count_cid: Option<u64>,
     pub log_cid: Option<u64>,
     pub ftp_credentials: (String, String),
-    pub on_parsed_log: Option<Arc<dyn Fn(&Server, ParsedLogMessage) + Send + Sync + 'static>>,
 }
 
 impl ServerBuilder {
@@ -54,7 +53,6 @@ impl ServerBuilder {
             player_count_channel: self.player_count_cid.map(serenity::ChannelId),
             log_channel: self.log_cid.map(serenity::ChannelId),
             ftp: Arc::new(ftp),
-            on_parsed_log: self.on_parsed_log,
         })
     }
 }
@@ -69,7 +67,6 @@ pub struct Server {
     pub player_count_channel: Option<serenity::ChannelId>,
     pub log_channel: Option<serenity::ChannelId>,
     pub ftp: Arc<FtpStream>,
-    pub on_parsed_log: Option<Arc<dyn Fn(&Self, ParsedLogMessage) + Send + Sync + 'static>>,
 }
 
 fn parse_env<T: FromStr>(name: &str) -> T {
@@ -105,7 +102,6 @@ async fn main() -> Result<(), Error> {
         player_count_cid: Some(parse_env("PLAYER_COUNT_CID_4")),
         log_cid: Some(parse_env("RELAY_CID_4")),
         ftp_credentials: (parse_env("FTP_USER_4"), parse_env("FTP_PASS_4")),
-        on_parsed_log: None,
     }
     .build()
     .await
@@ -121,7 +117,6 @@ async fn main() -> Result<(), Error> {
         player_count_cid: Some(parse_env("PLAYER_COUNT_CID_5")),
         log_cid: Some(parse_env("RELAY_CID_5")),
         ftp_credentials: (parse_env("FTP_USER_5"), parse_env("FTP_PASS_5")),
-        on_parsed_log: Some(Arc::new(tkgp2_event_handler)),
     }
     .build()
     .await
@@ -143,41 +138,4 @@ async fn main() -> Result<(), Error> {
     println!("Starting discord bot...");
     discord::start_bot(pool, log_receiver, servers).await;
     Ok(())
-}
-
-async fn set_arena_maps(controller: &mut RconController, enabled: bool) -> Result<(), Error> {
-    if enabled {
-        controller.run("mapcyclefile \"mapcycle-arena.txt\"")
-    } else {
-        controller.run("mapcyclefile \"mapcycle.txt\"")
-    }
-    .await?;
-    controller
-        .run("sm plugins reload nominations; sm plugins reload nativevotes_mapchooser")
-        .await?;
-    println!(
-        "arena maps {}",
-        if enabled { "enabled" } else { "disabled" }
-    );
-
-    Ok(())
-}
-
-fn tkgp2_event_handler(server: &Server, log: ParsedLogMessage) {
-    match log {
-        ParsedLogMessage::StartedMap(_) => {
-            let server = server.clone();
-            tokio::spawn(async move {
-                let mut rcon = server.controller.write().await;
-                let Ok(state) = rcon.status().await else {
-                    return;
-                };
-                match set_arena_maps(&mut rcon, state.players.len() <= 10).await {
-                    Ok(_) => (),
-                    Err(e) => println!("Could not set arena mapcycle: {:?}", e),
-                }
-            });
-        }
-        _ => (),
-    }
 }
