@@ -327,6 +327,40 @@ pub async fn lookup(
     Ok(())
 }
 
+/// SteamID.uk discord command to fetch a user's current username and avatar (or return 'private' for both if they are set to private).
+#[poise::command(slash_command, global_cooldown = 10)]
+pub async fn lookup_v2_better_getowned_noob(
+    ctx: Context<'_>,
+    #[description = "SteamID, Steam2, Steam3, or vanity URL. Separate multiple by commas."]
+    #[autocomplete = "steam_id_autocomplete"]
+    query: String,
+) -> Result<(), Error> {
+    ctx.defer().await?;
+    let client = &ctx.data().client;
+    let data = client.lookup(&query).await?;
+
+    // i think this works? meow :3
+    ctx.send(|m| {
+        m.content(format!("Results for query: `{}`", query));
+        for user in &data {
+            let username = user.username.clone().unwrap_or_else(|| "private".to_owned());
+            let avatar = user.avatar.clone().unwrap_or_else(|| "private".to_owned());
+            m.embed(|e| {
+                e.title(username);
+                e.image(avatar);
+                e
+            });
+        }
+        m.ephemeral(true)
+    })
+    .await?;
+
+    Ok(())
+}
+
+
+
+
 /// Displays current server player count & map.
 #[poise::command(slash_command)]
 pub async fn status(
