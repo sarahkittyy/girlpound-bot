@@ -30,7 +30,11 @@ async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) ->
         .map(|v| String::from_utf8_lossy(v).trim().to_owned())
         .collect();
     maps.push(map.clone());
-    maps.sort();
+    maps.sort_by(|a, b| {
+        let a = a.strip_prefix("workshop/").unwrap_or(a);
+        let b = b.strip_prefix("workshop/").unwrap_or(b);
+        a.cmp(b)
+    });
     maps.dedup();
 
     for (_addr, server) in &ctx.data().servers {
