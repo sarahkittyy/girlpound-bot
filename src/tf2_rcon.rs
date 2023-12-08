@@ -50,13 +50,24 @@ impl RconController {
         Ok(())
     }
 
+    /// fetch the value of a convar
+    pub async fn convar(&mut self, convar: &str) -> Result<String, Error> {
+        let result = self.run(convar).await?;
+        let re = Regex::new(r#"^".*" = "(.*)""#).unwrap();
+        if let Some(caps) = re.captures(&result) {
+            Ok(caps[1].to_owned())
+        } else {
+            Err("Could not parse convar result".into())
+        }
+    }
+
     /// run an rcon command and return the output
     pub async fn run(&mut self, cmd: &str) -> Result<String, Error> {
         match self.connection.cmd(cmd).await {
             Ok(msg) => Ok(msg),
             Err(e) => {
                 self.reconnect().await?;
-                Err(e.into())
+                Err(format!("Failed to connect, retrying. Error {}", e))?
             }
         }
     }

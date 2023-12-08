@@ -6,6 +6,9 @@ use super::Context;
 use crate::logs::safe_strip;
 use crate::{Error, Server};
 
+mod map;
+pub use map::map;
+
 use poise::serenity_prelude::{self as serenity};
 use poise::{self, AutocompleteChoice};
 use rand::prelude::*;
@@ -47,7 +50,7 @@ pub async fn rcon(
         rcon_user_output(ctx.data().server(addr)?, cmd).await?
     } else {
         let mut output = String::new();
-        for (addr, server) in &ctx.data().servers {
+        for (_addr, server) in &ctx.data().servers {
             let res = rcon_user_output(server, cmd.clone()).await;
             output += &format!(
                 "{}\n{}",

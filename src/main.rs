@@ -9,9 +9,10 @@ use dotenv::dotenv;
 use poise::serenity_prelude as serenity;
 use tokio;
 
-use ftp::FtpStream;
+use ::ftp::FtpStream;
 
 mod discord;
+mod ftp;
 mod logs;
 mod steamid;
 mod tf2_rcon;
@@ -52,7 +53,7 @@ impl ServerBuilder {
             )),
             player_count_channel: self.player_count_cid.map(serenity::ChannelId),
             log_channel: self.log_cid.map(serenity::ChannelId),
-            ftp: Arc::new(ftp),
+            ftp: Arc::new(RwLock::new(ftp)),
         })
     }
 }
@@ -66,7 +67,7 @@ pub struct Server {
     pub controller: Arc<RwLock<RconController>>,
     pub player_count_channel: Option<serenity::ChannelId>,
     pub log_channel: Option<serenity::ChannelId>,
-    pub ftp: Arc<FtpStream>,
+    pub ftp: Arc<RwLock<FtpStream>>,
 }
 
 fn parse_env<T: FromStr>(name: &str) -> T {
