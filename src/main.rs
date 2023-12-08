@@ -17,6 +17,8 @@ mod logs;
 mod steamid;
 mod tf2_rcon;
 
+use ftp::ServerFtp;
+
 use logs::LogReceiver;
 use tf2_rcon::RconController;
 
@@ -53,7 +55,7 @@ impl ServerBuilder {
             )),
             player_count_channel: self.player_count_cid.map(serenity::ChannelId),
             log_channel: self.log_cid.map(serenity::ChannelId),
-            ftp: Arc::new(RwLock::new(ftp)),
+            ftp: ServerFtp::new(ftp_url, self.ftp_credentials),
         })
     }
 }
@@ -67,7 +69,7 @@ pub struct Server {
     pub controller: Arc<RwLock<RconController>>,
     pub player_count_channel: Option<serenity::ChannelId>,
     pub log_channel: Option<serenity::ChannelId>,
-    pub ftp: Arc<RwLock<FtpStream>>,
+    pub ftp: ServerFtp,
 }
 
 fn parse_env<T: FromStr>(name: &str) -> T {
