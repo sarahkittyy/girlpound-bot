@@ -83,7 +83,10 @@ async fn rm(
 
 /// lists all maps in the mapcycle.txt
 #[poise::command(slash_command)]
-async fn list(ctx: Context<'_>) -> Result<(), Error> {
+async fn list(
+    ctx: Context<'_>,
+    #[description = "Match specific maps"] filter: Option<String>,
+) -> Result<(), Error> {
     let server = ctx.data().servers.values().next().ok_or("No servers")?;
     let mapcyclefile = server
         .controller
@@ -91,15 +94,18 @@ async fn list(ctx: Context<'_>) -> Result<(), Error> {
         .await
         .convar("mapcyclefile")
         .await?;
-    let data = server.ftp.exec(|ftp| {
-        Ok(ftp
-            .simple_retr(&format!("tf/cfg/{}", mapcyclefile))?
-            .into_inner())
-    })?;
-    let file = Cow::Borrowed(data.as_slice());
+    let maps: Vec<String> = server
+        .ftp
+        .fetch_file(&format!("tf/cfg/{}", mapcyclefile))
+        .await?
+        .split(|&c| c == b'\n')
+        .map(|v| String::from_utf8_lossy(v).trim().to_owned())
+        .filter(|s| filter.as_ref().map(|f| s.contains(f)).unwrap_or(true))
+        .collect();
+    let data = Cow::Owned(maps.join("\n").as_bytes().to_vec());
     ctx.send(|f| {
         f.attachment(serenity::AttachmentType::Bytes {
-            data: file,
+            data,
             filename: "message.txt".to_owned(),
         })
     })
