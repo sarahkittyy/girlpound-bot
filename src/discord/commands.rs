@@ -10,23 +10,58 @@ use poise::serenity_prelude::{self as serenity};
 use poise::{self, AutocompleteChoice};
 use rand::prelude::*;
 
+pub async fn rcon_user_output(server: &Server, cmd: String) -> Result<String, Error> {
+    let mut rcon = server.controller.write().await;
+    let reply = rcon.run(&cmd).await;
+    match reply {
+        Ok(output) => Ok(if output.len() == 0 {
+            ":white_check_mark:".to_owned()
+        } else {
+            format!("```\n{}\n```", output)
+        }),
+        Err(e) => Err(e.into()),
+    }
+}
+
 pub async fn rcon_and_reply(
     ctx: Context<'_>,
     server: SocketAddr,
     cmd: String,
 ) -> Result<(), Error> {
-    let mut rcon = ctx.data().server(server)?.controller.write().await;
-    let reply = rcon.run(&cmd).await;
-    match reply {
-        Ok(output) => {
-            if output.len() == 0 {
-                ctx.say(":white_check_mark:").await
-            } else {
-                ctx.say(format!("```\n{}\n```", output)).await
-            }
+    let server = ctx.data().server(server)?;
+    ctx.say(rcon_user_output(&server, cmd).await?).await?;
+    Ok(())
+}
+
+/// Sends an RCON command to the server.
+#[poise::command(slash_command)]
+pub async fn rcon(
+    ctx: Context<'_>,
+    #[description = "The server to query"]
+    #[autocomplete = "servers_autocomplete"]
+    server: Option<SocketAddr>,
+    #[description = "The command to send."] cmd: String,
+    #[description = "Hide the reply?"] hide_reply: Option<bool>,
+) -> Result<(), Error> {
+    let reply = if let Some(addr) = server {
+        rcon_user_output(ctx.data().server(addr)?, cmd).await?
+    } else {
+        let mut output = String::new();
+        for (addr, server) in &ctx.data().servers {
+            let res = rcon_user_output(server, cmd.clone()).await;
+            output += &format!(
+                "{}\n{}",
+                server.emoji,
+                match res {
+                    Ok(res) => res,
+                    Err(e) => format!("Error: {}", e),
+                }
+            );
         }
-        Err(e) => ctx.say(format!("RCON error: {:?}", e)).await,
-    }?;
+        output
+    };
+    let hide_reply = hide_reply.unwrap_or(false);
+    ctx.send(|m| m.ephemeral(hide_reply).content(reply)).await?;
     Ok(())
 }
 
@@ -69,18 +104,6 @@ pub async fn feedback(
     })
     .await?;
     Ok(())
-}
-
-/// Sends an RCON command to the server.
-#[poise::command(slash_command)]
-pub async fn rcon(
-    ctx: Context<'_>,
-    #[description = "The server to query"]
-    #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
-    #[description = "The command to send."] cmd: String,
-) -> Result<(), Error> {
-    rcon_and_reply(ctx, server, cmd).await
 }
 
 /// Returns the list of online users
