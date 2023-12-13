@@ -8,8 +8,8 @@ use crate::{Error, Server};
 
 mod map;
 pub use map::map;
-mod girlgift;
-pub use girlgift::girlgift;
+mod catsmas;
+pub use catsmas::catsmas;
 
 use poise::serenity_prelude::{self as serenity};
 use poise::{self, AutocompleteChoice};

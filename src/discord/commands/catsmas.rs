@@ -10,7 +10,7 @@ use crate::Error;
     subcommands("join", "leave", "who"),
     subcommand_required
 )]
-pub async fn girlgift(_: Context<'_>) -> Result<(), Error> {
+pub async fn catsmas(_: Context<'_>) -> Result<(), Error> {
     Ok(()) // never runs
 }
 
@@ -20,7 +20,7 @@ async fn join(ctx: Context<'_>) -> Result<(), Error> {
     let serenity::UserId(uid) = ctx.author().id;
     sqlx::query!(
         r#"
-		INSERT IGNORE INTO `girlgift_users`
+		INSERT IGNORE INTO `catsmas_users`
 		VALUES (?)
 	"#,
         uid.to_string()
@@ -31,7 +31,7 @@ async fn join(ctx: Context<'_>) -> Result<(), Error> {
         m.embed(|e| {
             e.color(serenity::Color::DARK_GREEN)
                 .title("*hacker voice* ur in...")
-                .footer(|f| f.text("/girlgift who for updates <3"))
+                .footer(|f| f.text("/catsmas who for updates <3"))
         })
     })
     .await?;
@@ -45,7 +45,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
     let serenity::UserId(uid) = ctx.author().id;
     sqlx::query!(
         r#"
-		DELETE FROM `girlgift_users`
+		DELETE FROM `catsmas_users`
 		WHERE `user_id` = ? 
 	"#,
         uid.to_string()
@@ -55,8 +55,8 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
     ctx.send(|m| {
         m.embed(|e| {
             e.color(serenity::Color::DARK_GREEN)
-                .title("nyo more girlgift for u...")
-                .footer(|f| f.text("/girlgift who for updates <3"))
+                .title("nyo more catsmas for u...")
+                .footer(|f| f.text("/catsmas who for updates <3"))
         })
     })
     .await?;
@@ -71,7 +71,7 @@ async fn who(ctx: Context<'_>) -> Result<(), Error> {
     // fetch how many entries there are
     let ct = sqlx::query!(
         r#"
-		SELECT COUNT(*) AS `ct`
+		SELECT COUNT(user_id) AS `ct` FROM `catsmas_users`
 		"#
     )
     .fetch_one(&ctx.data().pool)
@@ -80,7 +80,7 @@ async fn who(ctx: Context<'_>) -> Result<(), Error> {
     let me = sqlx::query!(
         r#"
 		SELECT *
-		FROM `girlgift_users`
+		FROM `catsmas_users`
 		WHERE `user_id` = ?
 		"#,
         uid.to_string()
@@ -95,7 +95,7 @@ async fn who(ctx: Context<'_>) -> Result<(), Error> {
                 "ur nyot in"
             })
             .description(format!("thewe r {} users ready 2 gift...", ct.ct))
-            .footer(|f| f.text("/girlgift join  |  /girlgift leave"))
+            .footer(|f| f.text("/catsmas join  |  /catsmas leave"))
         })
     })
     .await?;

@@ -111,7 +111,7 @@ pub async fn start_bot(
             .options(poise::FrameworkOptions {
                 commands: vec![
                     commands::rcon(),
-                    commands::girlgift(),
+                    commands::catsmas(),
                     commands::private_add(),
                     commands::meow(),
                     commands::map(),
