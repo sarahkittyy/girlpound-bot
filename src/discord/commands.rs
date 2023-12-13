@@ -8,6 +8,8 @@ use crate::{Error, Server};
 
 mod map;
 pub use map::map;
+mod girlgift;
+pub use girlgift::girlgift;
 
 use poise::serenity_prelude::{self as serenity};
 use poise::{self, AutocompleteChoice};
@@ -336,7 +338,7 @@ pub async fn lookup(
     #[autocomplete = "steam_id_autocomplete"]
     query: String,
 ) -> Result<(), Error> {
-    ctx.defer().await?;
+    ctx.defer_ephemeral().await?;
     let client = &ctx.data().client;
     let data = client.lookup(&query).await?;
     // fetch important info

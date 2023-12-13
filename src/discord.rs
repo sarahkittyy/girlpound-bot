@@ -21,6 +21,7 @@ pub struct PoiseData {
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
+    pub pool: Pool<MySql>,
     pub client: SteamIDClient,
 }
 impl PoiseData {
@@ -105,10 +106,12 @@ pub async fn start_bot(
 
     let girlpounder = {
         let servers = servers.clone();
+        let pool = pool.clone();
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
                 commands: vec![
                     commands::rcon(),
+                    commands::girlgift(),
                     commands::private_add(),
                     commands::meow(),
                     commands::map(),
@@ -149,6 +152,7 @@ pub async fn start_bot(
                         private_channel: serenity::ChannelId(private_channel_id),
                         private_welcome_channel: serenity::ChannelId(private_welcome_channel_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
+                        pool,
                         client: SteamIDClient::new(
                             parse_env("STEAMID_MYID"),
                             parse_env("STEAMID_API_KEY"),
