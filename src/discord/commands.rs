@@ -14,6 +14,7 @@ pub use catsmas::catsmas;
 use poise::serenity_prelude::{self as serenity};
 use poise::{self, AutocompleteChoice};
 use rand::prelude::*;
+use regex::Regex;
 
 pub async fn rcon_user_output(server: &Server, cmd: String) -> Result<String, Error> {
     let mut rcon = server.controller.write().await;
@@ -36,6 +37,41 @@ pub async fn rcon_and_reply(
     let server = ctx.data().server(server)?;
     ctx.say(rcon_user_output(&server, cmd).await?).await?;
     Ok(())
+}
+
+/// Sets the server player limit
+#[poise::command(slash_command)]
+pub async fn playercap(
+    ctx: Context<'_>,
+    #[description = "The server to query"]
+    #[autocomplete = "servers_autocomplete"]
+    server: SocketAddr,
+    #[description = "The player cap 24 <= p <= 32"] count: u8,
+) -> Result<(), Error> {
+    let re = Regex::new(r#""maxplayers" is "(\d+)""#).unwrap();
+
+    let min = 24;
+    let max = ctx
+        .data()
+        .server(server)?
+        .controller
+        .write()
+        .await
+        .run("maxplayers")
+        .await?;
+    let max = re
+        .captures(&max)
+        .and_then(|caps| caps[1].parse::<u8>().ok())
+        .unwrap_or(25)
+        - 1;
+
+    let visible = count.max(min).min(max);
+    let reserved = max - visible;
+    let cmd = format!(
+        "sv_visiblemaxplayers {}; sm_reserved_slots {};",
+        visible, reserved
+    );
+    rcon_and_reply(ctx, server, cmd).await
 }
 
 /// Sends an RCON command to the server.
