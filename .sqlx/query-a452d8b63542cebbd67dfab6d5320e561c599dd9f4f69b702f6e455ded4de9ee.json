@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tINSERT IGNORE INTO `catsmas_users`\n\t\tVALUES (?)\n\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "a452d8b63542cebbd67dfab6d5320e561c599dd9f4f69b702f6e455ded4de9ee"
+}

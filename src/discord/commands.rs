@@ -70,6 +70,44 @@ pub async fn rcon(
     Ok(())
 }
 
+/// Set the sniper limit on the server
+#[poise::command(slash_command)]
+pub async fn snipers(
+    ctx: Context<'_>,
+    #[description = "The server to query"]
+    #[autocomplete = "servers_autocomplete"]
+    server: Option<SocketAddr>,
+    #[description = "The sniper limit (-1 for enable)"] limit: i8,
+    #[description = "Hide the reply?"] hide_reply: Option<bool>,
+) -> Result<(), Error> {
+    let cmd = format!(
+        "sm_classrestrict_blu_snipers {0}; sm_classrestrict_red_snipers {0}",
+        limit
+    );
+    println!("cmd: {}", cmd);
+    let reply = if let Some(addr) = server {
+        rcon_user_output(ctx.data().server(addr)?, cmd).await?
+    } else {
+        let mut output = String::new();
+        for (_addr, server) in &ctx.data().servers {
+            let res = rcon_user_output(server, cmd.clone()).await;
+            output += &format!(
+                "{}\n{}",
+                server.emoji,
+                match res {
+                    Ok(res) => res,
+                    Err(e) => format!("Error: {}", e),
+                }
+            );
+        }
+        output
+    };
+    let hide_reply = hide_reply.unwrap_or(false);
+    ctx.send(|m| m.ephemeral(hide_reply).content(reply)).await?;
+
+    Ok(())
+}
+
 /// Sends anonymous feedback to the server owner.
 #[poise::command(slash_command)]
 pub async fn feedback(

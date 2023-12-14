@@ -1,0 +1,47 @@
+{
+  "db_name": "MySQL",
+  "query": "\n        SELECT * FROM `domination`\n        WHERE `lt_steamid` = ? AND `gt_steamid` = ?\n    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lt_steamid",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | PRIMARY_KEY | NO_DEFAULT_VALUE",
+          "char_set": 224,
+          "max_size": 128
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "gt_steamid",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | PRIMARY_KEY | NO_DEFAULT_VALUE",
+          "char_set": 224,
+          "max_size": 128
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "score",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL",
+          "char_set": 63,
+          "max_size": 11
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a276358f53a226d4b135123b17c0dc9a989f7fee720977cad1db0c6b035ad3fb"
+}

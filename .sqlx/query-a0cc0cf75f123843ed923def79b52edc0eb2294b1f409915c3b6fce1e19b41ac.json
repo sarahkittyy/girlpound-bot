@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tINSERT INTO `domination` (`lt_steamid`, `gt_steamid`, `score`)\n\t\tVALUES (?, ?, ?)\n\t\tON DUPLICATE KEY UPDATE `score` = ? \n\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a0cc0cf75f123843ed923def79b52edc0eb2294b1f409915c3b6fce1e19b41ac"
+}

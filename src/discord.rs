@@ -112,6 +112,7 @@ pub async fn start_bot(
                 commands: vec![
                     commands::rcon(),
                     commands::catsmas(),
+                    commands::snipers(),
                     commands::private_add(),
                     commands::meow(),
                     commands::map(),

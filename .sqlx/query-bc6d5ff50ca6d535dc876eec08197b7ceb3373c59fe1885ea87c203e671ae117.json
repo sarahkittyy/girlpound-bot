@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tDELETE FROM `catsmas_users`\n\t\tWHERE `user_id` = ? \n\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "bc6d5ff50ca6d535dc876eec08197b7ceb3373c59fe1885ea87c203e671ae117"
+}
