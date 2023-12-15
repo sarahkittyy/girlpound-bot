@@ -67,7 +67,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 /// fetch info on who ur secret santa is
 #[poise::command(slash_command)]
 async fn who(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.defer_ephemeral().await?;
+    ctx.defer().await?;
     let uid = ctx.author().id;
     // fetch users
     let user_ids: Vec<serenity::UserId> = sqlx::query!("SELECT * FROM `catsmas_users`")
