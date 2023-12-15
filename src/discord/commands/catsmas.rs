@@ -5,62 +5,29 @@ use crate::discord::Context;
 use crate::Error;
 
 /// secret santa stuff
-#[poise::command(
-    slash_command,
-    subcommands("join", "leave", "who"),
-    subcommand_required
-)]
-pub async fn catsmas(_: Context<'_>) -> Result<(), Error> {
-    Ok(()) // never runs
-}
-
-/// join the secret santa
 #[poise::command(slash_command, ephemeral)]
-async fn join(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn catsmas(ctx: Context<'_>) -> Result<(), Error> {
     let serenity::UserId(uid) = ctx.author().id;
-    sqlx::query!(
+    let pairing = sqlx::query!(
         r#"
-		INSERT IGNORE INTO `catsmas_users`
-		VALUES (?)
+		SELECT * FROM `catsmas_users`
+		WHERE `user_id` = ?
 	"#,
         uid.to_string()
     )
-    .execute(&ctx.data().pool)
+    .fetch_optional(&ctx.data().pool)
     .await?;
-    ctx.send(|m| {
-        m.embed(|e| {
-            e.color(serenity::Color::DARK_GREEN)
-                .title("*hacker voice* ur in...")
-                .footer(|f| f.text("/catsmas who for updates <3"))
-        })
-    })
-    .await?;
-
-    Ok(())
-}
-
-/// leave the secret santa
-#[poise::command(slash_command, ephemeral)]
-async fn leave(ctx: Context<'_>) -> Result<(), Error> {
-    let serenity::UserId(uid) = ctx.author().id;
-    sqlx::query!(
-        r#"
-		DELETE FROM `catsmas_users`
-		WHERE `user_id` = ? 
-	"#,
-        uid.to_string()
-    )
-    .execute(&ctx.data().pool)
-    .await?;
-    ctx.send(|m| {
-        m.embed(|e| {
-            e.color(serenity::Color::DARK_GREEN)
-                .title("nyo more catsmas for u...")
-                .footer(|f| f.text("/catsmas who for updates <3"))
-        })
-    })
-    .await?;
-
+    let Some(pairing) = pairing else {
+        ctx.send(|m| m.content("ur not in catsmas... >_<")).await?;
+        return Ok(());
+    };
+    let Some(partner) = pairing.partner else {
+        ctx.send(|m| m.content("catsmas pairings not generated yet... >_<"))
+            .await?;
+        return Ok(());
+    };
+    ctx.send(|m| m.embed(|e| e.title("click here for ur secret santa...").url(partner)))
+        .await?;
     Ok(())
 }
 
