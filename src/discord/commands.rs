@@ -68,8 +68,8 @@ pub async fn playercap(
     let visible = count.max(min).min(max);
     let reserved = max - visible;
     let cmd = format!(
-        "sv_visiblemaxplayers {}; sm_reserved_slots {};",
-        visible, reserved
+        "sm_reserved_slots {}; sv_visiblemaxplayers {};",
+        reserved, visible
     );
     rcon_and_reply(ctx, server, cmd).await
 }
