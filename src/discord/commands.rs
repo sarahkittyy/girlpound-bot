@@ -120,7 +120,6 @@ pub async fn snipers(
         "sm_classrestrict_blu_snipers {0}; sm_classrestrict_red_snipers {0}",
         limit
     );
-    println!("cmd: {}", cmd);
     let reply = if let Some(addr) = server {
         rcon_user_output(ctx.data().server(addr)?, cmd).await?
     } else {
@@ -269,18 +268,33 @@ pub async fn tf2banid(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The steam id to ban"] id: String,
     #[description = "Time to ban them for, in minutes"] minutes: u32,
     #[description = "The reason for the ban"] reason: Option<String>,
 ) -> Result<(), Error> {
     let reason = reason.unwrap_or("undesirable".to_owned());
-    rcon_and_reply(
-        ctx,
-        server,
-        format!("sm_addban {} {} {} ", minutes, id, reason),
-    )
-    .await
+    let cmd = format!("sm_addban {} {} {}", minutes, id, reason);
+    let reply = if let Some(addr) = server {
+        rcon_user_output(ctx.data().server(addr)?, cmd).await?
+    } else {
+        let mut output = String::new();
+        for (_addr, server) in &ctx.data().servers {
+            let res = rcon_user_output(server, cmd.clone()).await;
+            output += &format!(
+                "{}\n{}",
+                server.emoji,
+                match res {
+                    Ok(res) => res,
+                    Err(e) => format!("Error: {}", e),
+                }
+            );
+        }
+        output
+    };
+    ctx.send(|m| m.content(reply)).await?;
+
+    Ok(())
 }
 
 /// Unban a user from the tf2 server
