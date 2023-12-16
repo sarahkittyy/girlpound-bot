@@ -29,28 +29,6 @@ pub async fn rcon_user_output(server: &Server, cmd: String) -> Result<String, Er
     }
 }
 
-/// pop catsmas
-#[poise::command(slash_command, ephemeral)]
-pub async fn catsmas_pop(
-    ctx: Context<'_>,
-    #[description = "the user"] user: serenity::User,
-    #[description = "the url"] url: String,
-) -> Result<(), Error> {
-    sqlx::query!(
-        r#"
-		UPDATE `catsmas_users` SET `partner` = ?
-		WHERE `user_id` = ?
-	"#,
-        url,
-        user.id.0.to_string()
-    )
-    .execute(&ctx.data().pool)
-    .await?;
-    ctx.send(|m| m.content(format!("added {} to catsmas", user.tag())))
-        .await?;
-    Ok(())
-}
-
 pub async fn rcon_and_reply(
     ctx: Context<'_>,
     server: SocketAddr,
