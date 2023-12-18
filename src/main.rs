@@ -9,8 +9,6 @@ use dotenv::dotenv;
 use poise::serenity_prelude as serenity;
 use tokio;
 
-use ::ftp::FtpStream;
-
 mod discord;
 mod ftp;
 mod logs;
@@ -41,10 +39,6 @@ pub struct ServerBuilder {
 impl ServerBuilder {
     pub async fn build(self) -> Result<Server, Error> {
         let ftp_url: SocketAddr = (self.addr.ip(), 21).into();
-        let mut ftp = FtpStream::connect(ftp_url)?;
-        ftp.login(&self.ftp_credentials.0, &self.ftp_credentials.1)?;
-        println!("Connected to FTP server at {}{}", ftp_url, ftp.pwd()?);
-
         println!("Connecting to {:?}...", self.addr);
         Ok(Server {
             name: self.name,

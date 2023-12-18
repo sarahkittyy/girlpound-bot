@@ -5,19 +5,26 @@ use std::sync::Arc;
 use crate::steamid::SteamIDClient;
 use crate::{logs::LogReceiver, Error};
 use crate::{parse_env, Server};
+use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity};
 
 use sqlx::{MySql, Pool};
+use tokio::sync::mpsc::error::TryRecvError;
+use tokio::sync::mpsc::Sender;
+use tokio::sync::OnceCell;
 use tokio::{self, sync::RwLock};
 
 mod commands;
 mod log_handler;
+mod media_cooldown;
 mod player_count;
 
 pub struct PoiseData {
     pub servers: HashMap<SocketAddr, Server>,
     pub guild_id: serenity::GuildId,
     pub member_role: serenity::RoleId,
+    pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
+    media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
@@ -61,6 +68,65 @@ async fn give_new_member_access(msg: &serenity::Message, data: &PoiseData) -> Re
     }
 }
 
+struct Cooldown {
+    user: serenity::UserId,
+    channel: serenity::ChannelId,
+    delete_at: DateTime<Utc>,
+}
+
+fn spawn_cooldown_manager(ctx: serenity::Context) -> Sender<Cooldown> {
+    let (cooldown_sender, mut cooldown_receiver) = tokio::sync::mpsc::channel::<Cooldown>(64);
+
+    tokio::spawn(async move {
+        let mut queue: Vec<(Cooldown, serenity::Message)> = vec![];
+        loop {
+            match cooldown_receiver.try_recv() {
+                Err(TryRecvError::Disconnected) => break,
+                Err(_) => (),
+                // when a cooldown request is received...
+                Ok(
+                    cooldown @ Cooldown {
+                        user,
+                        channel,
+                        delete_at,
+                    },
+                ) if !queue
+                    .iter()
+                    .any(|(cd, _)| cd.user == user && cd.channel == channel) =>
+                {
+                    let msg_string = format!(
+                        "<@{}> guh!! >_<... post again <t:{}:R>",
+                        user.0,
+                        delete_at.timestamp()
+                    );
+                    if let Ok(msg) = ctx
+                        .http
+                        .send_message(channel.0, &serenity::json::json!({ "content": msg_string }))
+                        .await
+                    {
+                        queue.push((cooldown, msg));
+                    }
+                }
+                Ok(_) => (),
+            }
+            queue.retain(|(cooldown, msg)| {
+                let http = ctx.http.clone();
+                // if it should be deleted by now
+                let delete = Utc::now() - cooldown.delete_at > Duration::zero();
+                if delete {
+                    let mid = msg.id.0;
+                    let cid = msg.channel_id.0;
+                    tokio::task::spawn(async move { http.delete_message(cid, mid).await });
+                }
+                !delete
+            });
+            tokio::task::yield_now().await;
+        }
+    });
+
+    cooldown_sender
+}
+
 /// handle discord events
 pub async fn event_handler(
     ctx: &serenity::Context,
@@ -69,10 +135,18 @@ pub async fn event_handler(
     data: &PoiseData,
 ) -> Result<(), Error> {
     use poise::Event;
+
+    let cooldown_handler = {
+        let ctx = ctx.clone();
+        data.media_cooldown_thread
+            .get_or_init(|| async { spawn_cooldown_manager(ctx) })
+            .await
+    };
     match event {
         // Event::GuildMemberAddition { new_member: member } => {}
         Event::Message { new_message } => {
             if let Some(guild_id) = new_message.guild_id {
+                // member role assignment (for users who are active)
                 if give_new_member_access(&new_message, data).await? {
                     ctx.http
                         .add_member_role(
@@ -82,6 +156,21 @@ pub async fn event_handler(
                             Some("New member"),
                         )
                         .await?;
+                }
+                // media channel spam limit
+                let mut media_cooldown = data.media_cooldown.write().await;
+                // if we have to wait before posting an image...
+                if let Err(time_left) = media_cooldown.try_allow_one(new_message) {
+                    // delete the image
+                    new_message.delete(ctx).await?;
+                    // send da cooldown msg
+                    let _ = cooldown_handler
+                        .send(Cooldown {
+                            channel: new_message.channel_id,
+                            user: new_message.author.id,
+                            delete_at: Utc::now() + time_left,
+                        })
+                        .await;
                 }
             }
         }
@@ -101,8 +190,8 @@ pub async fn start_bot(
     let member_role: u64 = parse_env("MEMBER_ROLE");
     let private_channel_id: u64 = parse_env("PRIVATE_CHANNEL_ID");
     let private_welcome_channel_id: u64 = parse_env("PRIVATE_WELCOME_CHANNEL_ID");
-
-    let intents = serenity::GatewayIntents::non_privileged();
+    let intents =
+        serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     let girlpounder = {
         let servers = servers.clone();
@@ -150,10 +239,14 @@ pub async fn start_bot(
                     Ok(PoiseData {
                         servers,
                         member_role: serenity::RoleId(member_role),
+                        media_cooldown: Arc::new(RwLock::new(
+                            media_cooldown::MediaCooldown::from_env(),
+                        )),
                         guild_id: serenity::GuildId(guild_id),
                         private_channel: serenity::ChannelId(private_channel_id),
                         private_welcome_channel: serenity::ChannelId(private_welcome_channel_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
+                        media_cooldown_thread: OnceCell::new(),
                         pool,
                         client: SteamIDClient::new(
                             parse_env("STEAMID_MYID"),
