@@ -14,7 +14,7 @@ pub fn spawn_log_thread(
     pool: Pool<MySql>,
     ctx: Arc<serenity::CacheAndHttp>,
 ) {
-    let mut interval = time::interval(time::Duration::from_secs(5));
+    let mut interval = time::interval(time::Duration::from_secs(3));
     tokio::spawn(async move {
         loop {
             interval.tick().await;
