@@ -8,7 +8,7 @@ use crate::Server;
 pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp>) {
     if let Some(player_count_channel) = server.player_count_channel {
         // check player count in this interval
-        let mut interval = time::interval(time::Duration::from_secs(5 * 60));
+        let mut interval = time::interval(time::Duration::from_secs(5 * 61));
         tokio::spawn(async move {
             loop {
                 interval.tick().await;
