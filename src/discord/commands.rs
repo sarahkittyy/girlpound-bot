@@ -473,7 +473,7 @@ pub async fn status(
             .map(|p| {
                 format!(
                     "{}{}",
-                    p.name,
+                    safe_strip(&p.name),
                     &if show_uids {
                         " ".to_owned() + &p.id
                     } else {
