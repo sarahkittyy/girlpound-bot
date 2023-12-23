@@ -88,7 +88,7 @@ async fn main() -> Result<(), Error> {
     let rcon_pass: String = parse_env("RCON_PASS");
 
     // load servers
-    let tkgp1 = ServerBuilder {
+    let tkgp4 = ServerBuilder {
         name: "#4".to_owned(),
         emoji: "🅰️".to_owned(),
         addr: "tf2.fluffycat.gay:27015"
@@ -103,7 +103,7 @@ async fn main() -> Result<(), Error> {
     .build()
     .await
     .expect("Could not connect to server tkgp4");
-    let tkgp2 = ServerBuilder {
+    let tkgp5 = ServerBuilder {
         name: "#5".to_owned(),
         emoji: "🅱️".to_owned(),
         addr: "tf3.fluffycat.gay:27015"
@@ -120,8 +120,8 @@ async fn main() -> Result<(), Error> {
     .expect("Could not connect to server tkgp5");
 
     let mut servers = HashMap::new();
-    servers.insert(tkgp2.addr, tkgp2);
-    servers.insert(tkgp1.addr, tkgp1);
+    servers.insert(tkgp5.addr, tkgp5);
+    servers.insert(tkgp4.addr, tkgp4);
 
     println!("{} servers loaded.", servers.len());
 

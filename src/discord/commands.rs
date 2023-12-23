@@ -11,10 +11,11 @@ pub use map::map;
 mod catsmas;
 pub use catsmas::catsmas;
 
-use poise::serenity_prelude::{self as serenity};
+use poise::serenity_prelude as serenity;
 use poise::{self, AutocompleteChoice};
 use rand::prelude::*;
 use regex::Regex;
+use serenity::builder::GetMessages;
 
 pub async fn rcon_user_output(server: &Server, cmd: String) -> Result<String, Error> {
     let mut rcon = server.controller.write().await;
@@ -505,6 +506,19 @@ pub async fn status(
             }
         );
     }
+    // delete last status msg
+    let msgs = ctx
+        .channel_id()
+        .messages(ctx.http(), |gm| gm.limit(15))
+        .await?;
+    let bid = ctx.cache().current_user_id();
+    for msg in &msgs {
+        if msg.author.id == bid && msg.content.starts_with("🅰️ Currently playing:") {
+            msg.delete(ctx.http()).await?;
+            break;
+        }
+    }
+    // send status msg
     ctx.send(|m| m.content(output).ephemeral(show_uids)).await?;
     Ok(())
 }
