@@ -97,7 +97,7 @@ impl MediaCooldown {
     /// Checks the message's channel & author & cooldowns and returns if the msg should go through
     pub fn try_allow_one(&mut self, msg: &serenity::Message) -> Result<(), Duration> {
         // only care about msgs with attachments
-        if msg.attachments.is_empty() {
+        if msg.attachments.is_empty() && msg.embeds.is_empty() {
             return Ok(());
         }
         // only care about msgs in the media channels
