@@ -22,7 +22,6 @@ mod player_count;
 pub struct PoiseData {
     pub servers: HashMap<SocketAddr, Server>,
     pub guild_id: serenity::GuildId,
-    pub member_role: serenity::RoleId,
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     pub private_channel: serenity::ChannelId,
@@ -39,34 +38,6 @@ impl PoiseData {
     }
 }
 pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
-
-/// read console stuff
-/*fn spawn_stdin_thread(log_receiver: LogReceiver) {
-    tokio::spawn(async move {
-        let mut stdin = BufReader::new(io::stdin()).lines();
-        while let Ok(Some(line)) = stdin.next_line().await {
-            log_receiver.spoof_message(&line).await;
-        }
-    });
-}*/
-
-/// takes in the messages of every new user, counts them, and returns if they should be let in
-async fn give_new_member_access(msg: &serenity::Message, data: &PoiseData) -> Result<bool, Error> {
-    let mut msg_counts = data.msg_counts.write().await;
-    let count = msg_counts.entry(msg.author.id.0).or_insert(0);
-    *count += 1;
-    if *count >= 5
-        && msg.member.as_ref().is_some_and(|m| {
-            // member joined at least 5 minutes ago
-            m.joined_at
-                .is_some_and(|date| date.timestamp() + 300 <= chrono::Utc::now().timestamp())
-        })
-    {
-        Ok(true)
-    } else {
-        Ok(false)
-    }
-}
 
 struct Cooldown {
     user: serenity::UserId,
@@ -145,18 +116,7 @@ pub async fn event_handler(
     match event {
         // Event::GuildMemberAddition { new_member: member } => {}
         Event::Message { new_message } => {
-            if let Some(guild_id) = new_message.guild_id {
-                // member role assignment (for users who are active)
-                if give_new_member_access(&new_message, data).await? {
-                    ctx.http
-                        .add_member_role(
-                            guild_id.0,
-                            new_message.author.id.0,
-                            data.member_role.0,
-                            Some("New member"),
-                        )
-                        .await?;
-                }
+            if let Some(_guild_id) = new_message.guild_id {
                 // media channel spam limit
                 let mut media_cooldown = data.media_cooldown.write().await;
                 // if we have to wait before posting an image...
@@ -187,7 +147,6 @@ pub async fn start_bot(
 ) {
     let bot_token: String = parse_env("BOT_TOKEN");
     let guild_id: u64 = parse_env("GUILD_ID");
-    let member_role: u64 = parse_env("MEMBER_ROLE");
     let private_channel_id: u64 = parse_env("PRIVATE_CHANNEL_ID");
     let private_welcome_channel_id: u64 = parse_env("PRIVATE_WELCOME_CHANNEL_ID");
     let intents =
@@ -200,7 +159,6 @@ pub async fn start_bot(
             .options(poise::FrameworkOptions {
                 commands: vec![
                     commands::rcon(),
-                    commands::catsmas(),
                     commands::snipers(),
                     commands::playercap(),
                     commands::private_add(),
@@ -238,7 +196,6 @@ pub async fn start_bot(
 
                     Ok(PoiseData {
                         servers,
-                        member_role: serenity::RoleId(member_role),
                         media_cooldown: Arc::new(RwLock::new(
                             media_cooldown::MediaCooldown::from_env(),
                         )),

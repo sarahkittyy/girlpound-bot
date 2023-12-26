@@ -8,14 +8,10 @@ use crate::{Error, Server};
 
 mod map;
 pub use map::map;
-mod catsmas;
-pub use catsmas::catsmas;
-
 use poise::serenity_prelude as serenity;
 use poise::{self, AutocompleteChoice};
 use rand::prelude::*;
 use regex::Regex;
-use serenity::builder::GetMessages;
 
 pub async fn rcon_user_output(server: &Server, cmd: String) -> Result<String, Error> {
     let mut rcon = server.controller.write().await;
