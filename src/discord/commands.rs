@@ -505,7 +505,7 @@ pub async fn status(
     // delete last status msg
     let msgs = ctx
         .channel_id()
-        .messages(ctx.http(), |gm| gm.limit(15))
+        .messages(ctx.http(), |gm| gm.limit(45))
         .await?;
     let bid = ctx.cache().current_user_id();
     for msg in &msgs {
