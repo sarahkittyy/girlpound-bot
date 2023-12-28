@@ -60,6 +60,7 @@ impl LogReceiver {
                 let mut buf = [0u8; 1024];
                 loop {
                     let (len, from) = sock.recv_from(&mut buf).await.unwrap();
+					println!("{} from {:?}", len, from);
                     let message =
                         match try_parse_packet(from, &buf[..len], expected_password.as_deref()) {
                             Ok(m) => m,
