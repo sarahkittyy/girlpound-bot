@@ -13,26 +13,41 @@ use poise::{self, AutocompleteChoice};
 use rand::prelude::*;
 use regex::Regex;
 
-pub async fn rcon_user_output(server: &Server, cmd: String) -> Result<String, Error> {
-    let mut rcon = server.controller.write().await;
-    let reply = rcon.run(&cmd).await;
-    match reply {
-        Ok(output) => Ok(if output.len() == 0 {
-            ":white_check_mark:".to_owned()
-        } else {
-            format!("```\n{}\n```", output)
-        }),
-        Err(e) => Err(e.into()),
+pub async fn rcon_user_output(servers: &[&Server], cmd: String) -> String {
+    let mut outputs: Vec<String> = vec![];
+    for server in servers {
+        let mut rcon = server.controller.write().await;
+        let output = match rcon.run(&cmd).await {
+            Ok(output) => {
+                if output.is_empty() {
+                    ":white_check_mark:".to_owned()
+                } else {
+                    output
+                }
+            }
+            Err(e) => e.to_string(),
+        };
+        outputs.push(format!("{}\n```{}```", server.emoji, output))
     }
+    outputs.sort();
+    outputs.join("\n")
+}
+
+fn output_servers(ctx: Context<'_>, addr: Option<SocketAddr>) -> Result<Vec<&Server>, Error> {
+    Ok(if let Some(addr) = addr {
+        vec![ctx.data().server(addr)?]
+    } else {
+        ctx.data().servers.values().collect()
+    })
 }
 
 pub async fn rcon_and_reply(
     ctx: Context<'_>,
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     cmd: String,
 ) -> Result<(), Error> {
-    let server = ctx.data().server(server)?;
-    ctx.say(rcon_user_output(&server, cmd).await?).await?;
+    ctx.say(rcon_user_output(&output_servers(ctx, server)?, cmd).await)
+        .await?;
     Ok(())
 }
 
@@ -68,7 +83,7 @@ pub async fn playercap(
         "sm_reserved_slots {}; sv_visiblemaxplayers {};",
         reserved, visible
     );
-    rcon_and_reply(ctx, server, cmd).await
+    rcon_and_reply(ctx, Some(server), cmd).await
 }
 
 /// Sends an RCON command to the server.
@@ -81,23 +96,7 @@ pub async fn rcon(
     #[description = "The command to send."] cmd: String,
     #[description = "Hide the reply?"] hide_reply: Option<bool>,
 ) -> Result<(), Error> {
-    let reply = if let Some(addr) = server {
-        rcon_user_output(ctx.data().server(addr)?, cmd).await?
-    } else {
-        let mut output = String::new();
-        for (_addr, server) in &ctx.data().servers {
-            let res = rcon_user_output(server, cmd.clone()).await;
-            output += &format!(
-                "{}\n{}",
-                server.emoji,
-                match res {
-                    Ok(res) => res,
-                    Err(e) => format!("Error: {}", e),
-                }
-            );
-        }
-        output
-    };
+    let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
     let hide_reply = hide_reply.unwrap_or(false);
     ctx.send(|m| m.ephemeral(hide_reply).content(reply)).await?;
     Ok(())
@@ -117,23 +116,7 @@ pub async fn snipers(
         "sm_classrestrict_blu_snipers {0}; sm_classrestrict_red_snipers {0}",
         limit
     );
-    let reply = if let Some(addr) = server {
-        rcon_user_output(ctx.data().server(addr)?, cmd).await?
-    } else {
-        let mut output = String::new();
-        for (_addr, server) in &ctx.data().servers {
-            let res = rcon_user_output(server, cmd.clone()).await;
-            output += &format!(
-                "{}\n{}",
-                server.emoji,
-                match res {
-                    Ok(res) => res,
-                    Err(e) => format!("Error: {}", e),
-                }
-            );
-        }
-        output
-    };
+    let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
     let hide_reply = hide_reply.unwrap_or(false);
     ctx.send(|m| m.ephemeral(hide_reply).content(reply)).await?;
 
@@ -243,7 +226,7 @@ pub async fn tf2ban(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The username to ban."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -251,12 +234,8 @@ pub async fn tf2ban(
     #[description = "The reason for the ban"] reason: Option<String>,
 ) -> Result<(), Error> {
     let reason = reason.unwrap_or("undesirable".to_owned());
-    rcon_and_reply(
-        ctx,
-        server,
-        format!("sm_ban \"{}\" {} {}", username, minutes, reason),
-    )
-    .await
+    let cmd = format!("sm_ban \"{}\" {} {}", username, minutes, reason);
+    rcon_and_reply(ctx, server, cmd).await
 }
 
 /// Ban a steam id from the tf2 server
@@ -272,23 +251,7 @@ pub async fn tf2banid(
 ) -> Result<(), Error> {
     let reason = reason.unwrap_or("undesirable".to_owned());
     let cmd = format!("sm_addban {} {} {}", minutes, id, reason);
-    let reply = if let Some(addr) = server {
-        rcon_user_output(ctx.data().server(addr)?, cmd).await?
-    } else {
-        let mut output = String::new();
-        for (_addr, server) in &ctx.data().servers {
-            let res = rcon_user_output(server, cmd.clone()).await;
-            output += &format!(
-                "{}\n{}",
-                server.emoji,
-                match res {
-                    Ok(res) => res,
-                    Err(e) => format!("Error: {}", e),
-                }
-            );
-        }
-        output
-    };
+    let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
     ctx.send(|m| m.content(reply)).await?;
 
     Ok(())
@@ -300,7 +263,7 @@ pub async fn tf2unban(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The steamid / ip to unban."] steamid: String,
     #[description = "The reason for the unban"] reason: Option<String>,
 ) -> Result<(), Error> {
@@ -314,7 +277,7 @@ pub async fn tf2kick(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The username to kick."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -330,7 +293,7 @@ pub async fn tf2mute(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The username to mute."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -353,7 +316,7 @@ pub async fn tf2unmute(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The username to unmute."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -374,7 +337,7 @@ pub async fn tf2gag(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The username to gag."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -397,7 +360,7 @@ pub async fn tf2ungag(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: Option<SocketAddr>,
     #[description = "The username to gag."]
     #[autocomplete = "users_autocomplete"]
     username: String,
