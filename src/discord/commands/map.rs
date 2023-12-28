@@ -16,12 +16,7 @@ pub async fn map(_: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command)]
 async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) -> Result<(), Error> {
     let server = ctx.data().servers.values().next().ok_or("No servers")?;
-    let mapcyclefile = server
-        .controller
-        .write()
-        .await
-        .convar("mapcyclefile")
-        .await?;
+    let mapcyclefile = "mapcycle.txt";
     let mut maps: Vec<String> = server
         .ftp
         .fetch_file(&format!("tf/cfg/{}", mapcyclefile))
@@ -57,12 +52,7 @@ async fn rm(
     #[description = "The map to remove"] map: String,
 ) -> Result<(), Error> {
     let server = ctx.data().servers.values().next().ok_or("No servers")?;
-    let mapcyclefile = server
-        .controller
-        .write()
-        .await
-        .convar("mapcyclefile")
-        .await?;
+    let mapcyclefile = "mapcycle.txt";
     let maps: Vec<String> = server
         .ftp
         .fetch_file(&format!("tf/cfg/{}", mapcyclefile))
@@ -92,12 +82,7 @@ async fn list(
     #[description = "Match specific maps"] filter: Option<String>,
 ) -> Result<(), Error> {
     let server = ctx.data().servers.values().next().ok_or("No servers")?;
-    let mapcyclefile = server
-        .controller
-        .write()
-        .await
-        .convar("mapcyclefile")
-        .await?;
+    let mapcyclefile = "mapcycle.txt";
     let maps: Vec<String> = server
         .ftp
         .fetch_file(&format!("tf/cfg/{}", mapcyclefile))
