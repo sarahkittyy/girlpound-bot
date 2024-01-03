@@ -25,7 +25,7 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp
                     }
                 };
                 // edit channel name to reflect player count
-                player_count_channel
+                let _ = player_count_channel
                     .edit(ctx.as_ref(), |c| {
                         c.name(format!(
                             "{} {}/{} online",
@@ -34,8 +34,7 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp
                             status.max_players,
                         ))
                     })
-                    .await
-                    .expect("Could not edit channel name");
+                    .await;
                 println!(
                     "Updated {} player count to {}",
                     server.name,

@@ -15,7 +15,7 @@ struct LeakyBucket {
 
 impl Default for LeakyBucket {
     fn default() -> Self {
-        Self::new(20., 2., 5.)
+        Self::new(15., 1., 4.)
     }
 }
 
