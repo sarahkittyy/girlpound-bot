@@ -22,12 +22,12 @@ pub async fn rcon_user_output(servers: &[&Server], cmd: String) -> String {
                 if output.is_empty() {
                     ":white_check_mark:\n".to_owned()
                 } else {
-                    format!("```{output}```")
+                    format!("\n```{output}```")
                 }
             }
             Err(e) => e.to_string(),
         };
-        outputs.push(format!("{}\n{}", server.emoji, output))
+        outputs.push(format!("{}{}", server.emoji, output))
     }
     outputs.sort();
     outputs.join("\n")
