@@ -160,6 +160,7 @@ pub async fn start_bot(
                 commands: vec![
                     commands::rcon(),
                     commands::snipers(),
+                    commands::respawntimes(),
                     commands::playercap(),
                     commands::private_add(),
                     commands::meow(),

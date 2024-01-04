@@ -20,14 +20,14 @@ pub async fn rcon_user_output(servers: &[&Server], cmd: String) -> String {
         let output = match rcon.run(&cmd).await {
             Ok(output) => {
                 if output.is_empty() {
-                    ":white_check_mark:".to_owned()
+                    ":white_check_mark:\n".to_owned()
                 } else {
-                    output
+                    format!("```{output}```")
                 }
             }
             Err(e) => e.to_string(),
         };
-        outputs.push(format!("{}\n```{}```", server.emoji, output))
+        outputs.push(format!("{}\n{}", server.emoji, output))
     }
     outputs.sort();
     outputs.join("\n")
@@ -236,6 +236,28 @@ pub async fn tf2ban(
     let reason = reason.unwrap_or("undesirable".to_owned());
     let cmd = format!("sm_ban \"{}\" {} {}", username, minutes, reason);
     rcon_and_reply(ctx, server, cmd).await
+}
+
+/// Set / Get the status of the respawn timers ( resets on map change )
+#[poise::command(slash_command)]
+pub async fn respawntimes(
+    ctx: Context<'_>,
+    #[description = "The server to query"]
+    #[autocomplete = "servers_autocomplete"]
+    server: Option<SocketAddr>,
+    #[description = "Set to instant respawn"] instant: Option<bool>,
+) -> Result<(), Error> {
+    let cmd: String = match instant {
+        None => format!("mp_disable_respawn_times"),
+        Some(instant) => format!(
+            "mp_disable_respawn_times {}",
+            if instant { "1" } else { "0" }
+        ),
+    };
+    let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
+    ctx.send(|m| m.content(reply)).await?;
+
+    Ok(())
 }
 
 /// Ban a steam id from the tf2 server
