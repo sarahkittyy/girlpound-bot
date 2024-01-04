@@ -63,8 +63,11 @@ impl LogReceiver {
                     let message =
                         match try_parse_packet(from, &buf[..len], expected_password.as_deref()) {
                             Ok(m) => m,
-                            Err(_) => {
-                                // println!("Could not parse packet: {e:?}");
+                            Err(e) => {
+                                println!(
+                                    "Could not parse packet from {:?} len {}: {e:?}",
+                                    from, len
+                                );
                                 continue;
                             }
                         };
