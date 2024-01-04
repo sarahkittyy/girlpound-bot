@@ -45,24 +45,27 @@ pub fn spawn_log_thread(
                     *v += "\n";
                 }
             }
-            // for every server...
-            for (addr, server) in &servers {
-                // ...that has a log channel...
+            // for every output msg...
+            for (addr, msg) in &output {
+                // get the server its from
+                let Some(server) = servers.get(addr) else {
+                    println!("addr {:?} has no associated server", addr);
+                    continue;
+                };
+                // get the log channel
                 let Some(logs_channel) = server.log_channel else {
                     continue;
                 };
-                // ...and has logs to post...
-                if let Some(msg) = output.get(&addr) {
-                    if msg.len() == 0 {
-                        continue;
-                    }
-                    // ...post them
-                    if let Err(e) = logs_channel
-                        .send_message(ctx.as_ref(), |m| m.content(msg))
-                        .await
-                    {
-                        println!("Could not send message to logs channel: {:?}", e);
-                    }
+                // do not send empty messages
+                if msg.len() == 0 {
+                    continue;
+                }
+                // post it
+                if let Err(e) = logs_channel
+                    .send_message(ctx.as_ref(), |m| m.content(msg))
+                    .await
+                {
+                    println!("Could not send message to logs channel: {:?}", e);
                 }
             }
         }
