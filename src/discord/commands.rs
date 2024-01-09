@@ -265,6 +265,7 @@ pub async fn seeder(
     #[description = "The server to seed"]
     #[autocomplete = "servers_autocomplete"]
     server: SocketAddr,
+    #[description = "Optional message to attach"] message: Option<String>,
 ) -> Result<(), Error> {
     // check cooldown
     match ctx.data().can_seed(server).await {
@@ -311,7 +312,12 @@ pub async fn seeder(
     // send seed
     ctx.send(|m| {
         m.content(format!(
-            "<@&{}> come fwag on {} :3\nraowquested by: <@{}>\n{}",
+            "{}<@&{}> come fwag on {} :3\nraowquested by: <@{}>\n{}",
+            if let Some(msg) = message {
+                msg + "\n"
+            } else {
+                "".to_owned()
+            },
             seeder_role.0,
             server.emoji,
             ctx.author().id,
