@@ -26,15 +26,45 @@ pub struct PoiseData {
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
+    pub seeder_role: serenity::RoleId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
+    pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
     pub pool: Pool<MySql>,
     pub client: SteamIDClient,
 }
 impl PoiseData {
+    /// fetch the server with the given socket address
     pub fn server(&self, server_addr: SocketAddr) -> Result<&Server, Error> {
         self.servers
             .get(&server_addr)
             .ok_or("Server not found".into())
+    }
+
+    /// checks if a seeder ping is allowed. if on cooldown, returns time until usable
+    pub async fn can_seed(&self, server_addr: SocketAddr) -> Result<(), Duration> {
+        // 4 hrs
+        const SEED_COOLDOWN: Duration = Duration::milliseconds(4 * 60 * 60 * 1000);
+
+        let mut map = self.seeder_cooldown.write().await;
+        let last_used = map.entry(server_addr).or_insert(DateTime::<Utc>::MIN_UTC);
+        let now = chrono::Utc::now();
+
+        let allowed_at = *last_used + SEED_COOLDOWN;
+
+        if allowed_at < now {
+            // allowed
+            Ok(())
+        } else {
+            Err(allowed_at - now)
+        }
+    }
+
+    /// marks the server as just seeded, resetting the cooldown
+    pub async fn reset_seed_cooldown(&self, server_addr: SocketAddr) {
+        let mut map = self.seeder_cooldown.write().await;
+        let last_used = map.entry(server_addr).or_insert(DateTime::<Utc>::MIN_UTC);
+
+        *last_used = chrono::Utc::now();
     }
 }
 pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
@@ -149,6 +179,7 @@ pub async fn start_bot(
     let guild_id: u64 = parse_env("GUILD_ID");
     let private_channel_id: u64 = parse_env("PRIVATE_CHANNEL_ID");
     let private_welcome_channel_id: u64 = parse_env("PRIVATE_WELCOME_CHANNEL_ID");
+    let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
     let intents =
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
@@ -160,6 +191,7 @@ pub async fn start_bot(
                 commands: vec![
                     commands::rcon(),
                     commands::snipers(),
+                    commands::seeder(),
                     commands::respawntimes(),
                     commands::playercap(),
                     commands::private_add(),
@@ -203,8 +235,10 @@ pub async fn start_bot(
                         guild_id: serenity::GuildId(guild_id),
                         private_channel: serenity::ChannelId(private_channel_id),
                         private_welcome_channel: serenity::ChannelId(private_welcome_channel_id),
+                        seeder_role: serenity::RoleId(seeder_role_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
                         media_cooldown_thread: OnceCell::new(),
+                        seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
                         pool,
                         client: SteamIDClient::new(
                             parse_env("STEAMID_MYID"),

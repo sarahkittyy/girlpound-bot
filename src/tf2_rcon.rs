@@ -1,6 +1,9 @@
-use std::{net::SocketAddr, time};
+use std::{
+    net::SocketAddr,
+    time::{self, Duration},
+};
 
-use crate::Error;
+use crate::{logs::safe_strip, Error, Server};
 
 use rcon::Connection;
 use regex::Regex;
@@ -18,6 +21,56 @@ pub struct GameState {
     pub players: Vec<Player>,
     pub max_players: i32,
     pub map: String,
+}
+
+fn hhmmss(duration: &Duration) -> String {
+    let secs = duration.as_secs();
+    let hours = secs / 3600;
+    let minutes = (secs % 3600) / 60;
+    let seconds = secs % 60;
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+}
+
+impl GameState {
+    pub fn as_discord_output(&self, server: &Server, show_uids: bool) -> String {
+        let list = self
+            .players
+            .iter()
+            .map(|p| {
+                format!(
+                    "{}{}",
+                    safe_strip(&p.name),
+                    &if show_uids {
+                        " ".to_owned() + &p.id
+                    } else {
+                        "".to_owned()
+                    }
+                )
+            })
+            .collect::<Vec<String>>();
+        let longest_online = self.players.iter().max_by_key(|p| p.connected);
+        format!(
+            "{} Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
+            server.emoji,
+            self.map,
+            self.players.len(),
+            self.max_players,
+            if let Some(longest_online) = longest_online {
+                format!(
+                    "Oldest player: `{}` for `{}`",
+                    safe_strip(&longest_online.name),
+                    hhmmss(&longest_online.connected)
+                )
+            } else {
+                "".to_owned()
+            },
+            if !list.is_empty() {
+                format!("`{}`\n", list.join(if show_uids { "\n" } else { " | " }))
+            } else {
+                "".to_owned()
+            }
+        )
+    }
 }
 
 pub struct RconController {

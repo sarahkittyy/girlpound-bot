@@ -1,9 +1,7 @@
 use std::env;
 use std::net::SocketAddr;
-use std::time::Duration;
 
 use super::Context;
-use crate::logs::safe_strip;
 use crate::{Error, Server};
 
 mod map;
@@ -260,6 +258,73 @@ pub async fn respawntimes(
     Ok(())
 }
 
+/// Request that people join you in a server
+#[poise::command(slash_command)]
+pub async fn seeder(
+    ctx: Context<'_>,
+    #[description = "The server to seed"]
+    #[autocomplete = "servers_autocomplete"]
+    server: SocketAddr,
+) -> Result<(), Error> {
+    // check cooldown
+    match ctx.data().can_seed(server).await {
+        Ok(()) => (),
+        Err(time_left) => {
+            let now = chrono::Utc::now();
+            ctx.send(|m| {
+                m.ephemeral(true).content(format!(
+                    "Server was seeded too recently. Try again <t:{}:R>",
+                    (now + time_left).timestamp()
+                ))
+            })
+            .await?;
+            return Ok(());
+        }
+    };
+
+    let server_addr = server;
+    let server = ctx.data().server(server)?;
+
+    let mut rcon = server.controller.write().await;
+    let status = rcon.status().await?;
+    let player_count = status.players.len();
+
+    if player_count < 2 {
+        ctx.send(|m| {
+            m.ephemeral(true)
+                .content("Server must have >2 players to ping.")
+        })
+        .await?;
+        return Ok(());
+    }
+    if player_count >= 16 {
+        ctx.send(|m| {
+            m.ephemeral(true)
+                .content("Server must have <16 players to ping.")
+        })
+        .await?;
+        return Ok(());
+    }
+
+    let seeder_role = ctx.data().seeder_role;
+
+    // send seed
+    ctx.send(|m| {
+        m.content(format!(
+            "<@&{}> come fwag on {} :3\nraowquested by: <@{}>\n{}",
+            seeder_role.0,
+            server.emoji,
+            ctx.author().id,
+            status.as_discord_output(server, false),
+        ))
+    })
+    .await?;
+    // reset cooldown
+    ctx.data().reset_seed_cooldown(server_addr).await;
+
+    Ok(())
+}
+
 /// Ban a steam id from the tf2 server
 #[poise::command(slash_command)]
 pub async fn tf2banid(
@@ -392,14 +457,6 @@ pub async fn tf2ungag(
     rcon_and_reply(ctx, server, format!("sm_ungag \"{}\" {}", username, reason)).await
 }
 
-fn hhmmss(duration: &Duration) -> String {
-    let secs = duration.as_secs();
-    let hours = secs / 3600;
-    let minutes = (secs % 3600) / 60;
-    let seconds = secs % 60;
-    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-}
-
 /// SteamID.uk discord command.
 #[poise::command(slash_command, global_cooldown = 10)]
 pub async fn lookup(
@@ -449,43 +506,7 @@ pub async fn status(
         let mut rcon = server.controller.write().await;
         let state = rcon.status().await?;
 
-        let list = state
-            .players
-            .iter()
-            .map(|p| {
-                format!(
-                    "{}{}",
-                    safe_strip(&p.name),
-                    &if show_uids {
-                        " ".to_owned() + &p.id
-                    } else {
-                        "".to_owned()
-                    }
-                )
-            })
-            .collect::<Vec<String>>();
-        let longest_online = state.players.iter().max_by_key(|p| p.connected);
-        output += &format!(
-            "{} Currently playing: `{}`\nThere are `{}/{}` players fwagging :3.\n{}\n{}",
-            server.emoji,
-            state.map,
-            state.players.len(),
-            state.max_players,
-            if let Some(longest_online) = longest_online {
-                format!(
-                    "Oldest player: `{}` for `{}`",
-                    safe_strip(&longest_online.name),
-                    hhmmss(&longest_online.connected)
-                )
-            } else {
-                "".to_owned()
-            },
-            if !list.is_empty() {
-                format!("`{}`\n", list.join(if show_uids { "\n" } else { " | " }))
-            } else {
-                "".to_owned()
-            }
-        );
+        output += &state.as_discord_output(server, show_uids);
     }
     // delete last status msg
     let msgs = ctx
