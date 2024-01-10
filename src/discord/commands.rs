@@ -168,7 +168,7 @@ pub async fn seeder(
         Err(time_left) => {
             let now = chrono::Utc::now();
             ctx.send(|m| {
-                m.ephemeral(true).content(format!(
+                m.content(format!(
                     "Server was seeded too recently. Try again <t:{}:R>",
                     (now + time_left).timestamp()
                 ))
@@ -186,19 +186,13 @@ pub async fn seeder(
     let player_count = status.players.len();
 
     if player_count < 2 {
-        ctx.send(|m| {
-            m.ephemeral(true)
-                .content("Server must have >2 players to ping.")
-        })
-        .await?;
+        ctx.send(|m| m.content("Server must have >2 players to ping."))
+            .await?;
         return Ok(());
     }
     if player_count >= 16 {
-        ctx.send(|m| {
-            m.ephemeral(true)
-                .content("Server must have <16 players to ping.")
-        })
-        .await?;
+        ctx.send(|m| m.content("Server must have <16 players to ping."))
+            .await?;
         return Ok(());
     }
 

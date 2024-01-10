@@ -21,8 +21,11 @@ mod player_count;
 
 pub struct PoiseData {
     pub servers: HashMap<SocketAddr, Server>,
+    /// all tf2 servers known by the bot
     pub guild_id: serenity::GuildId,
+    /// guild the bot operates in
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
+    ///
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
