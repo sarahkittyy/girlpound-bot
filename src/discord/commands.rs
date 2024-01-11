@@ -212,6 +212,7 @@ pub async fn seeder(
             ctx.author().id,
             status.as_discord_output(server, false),
         ))
+        .allowed_mentions(|am| am.roles(vec![seeder_role.0]))
     })
     .await?;
     // reset cooldown
