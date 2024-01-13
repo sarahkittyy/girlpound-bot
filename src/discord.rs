@@ -25,8 +25,8 @@ pub struct PoiseData {
     pub guild_id: serenity::GuildId,
     /// guild the bot operates in
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
-    ///
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
+    deleted_message_log_channel: serenity::ChannelId,
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
     pub seeder_role: serenity::RoleId,
@@ -167,6 +167,31 @@ pub async fn event_handler(
                 }
             }
         }
+        Event::MessageDelete {
+            channel_id,
+            deleted_message_id,
+            ..
+        } => {
+            let Some(message) = ctx.cache.message(channel_id, deleted_message_id) else {
+                return Err("Message not found in cache")?;
+            };
+            let Some(channel) = channel_id.to_channel(ctx).await?.guild() else {
+                return Err("Channel not found.")?;
+            };
+            let _ = data
+                .deleted_message_log_channel
+                .send_message(&ctx, |m| {
+                    m.embed(|e| {
+                        e.title("Deleted Message");
+                        e.field("Author", message.author.tag(), true);
+                        e.field("Channel", channel.name(), true);
+                        e.field("Content", message.content, false);
+                        e
+                    });
+                    m
+                })
+                .await;
+        }
         _ => (),
     };
     Ok(())
@@ -182,9 +207,11 @@ pub async fn start_bot(
     let guild_id: u64 = parse_env("GUILD_ID");
     let private_channel_id: u64 = parse_env("PRIVATE_CHANNEL_ID");
     let private_welcome_channel_id: u64 = parse_env("PRIVATE_WELCOME_CHANNEL_ID");
+    let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
     let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
-    let intents =
-        serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
+    let intents = serenity::GatewayIntents::non_privileged()
+        | serenity::GatewayIntents::MESSAGE_CONTENT
+        | serenity::GatewayIntents::GUILD_MESSAGES;
 
     let girlpounder = {
         let servers = servers.clone();
@@ -220,6 +247,7 @@ pub async fn start_bot(
             .intents(intents)
             .setup(move |ctx, _ready, framework| {
                 Box::pin(async move {
+                    ctx.cache.set_max_messages(500);
                     poise::builtins::register_in_guild(
                         ctx,
                         &framework.options().commands,
@@ -240,6 +268,9 @@ pub async fn start_bot(
                         private_welcome_channel: serenity::ChannelId(private_welcome_channel_id),
                         seeder_role: serenity::RoleId(seeder_role_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
+                        deleted_message_log_channel: serenity::ChannelId(
+                            deleted_messages_log_channel_id,
+                        ),
                         media_cooldown_thread: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
                         pool,
