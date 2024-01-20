@@ -8,6 +8,7 @@ use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity};
 
+use rand::random;
 use sqlx::{MySql, Pool};
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::Sender;
@@ -30,6 +31,7 @@ pub struct PoiseData {
     pub private_channel: serenity::ChannelId,
     pub private_welcome_channel: serenity::ChannelId,
     pub seeder_role: serenity::RoleId,
+    pub trial_mod_channel: serenity::ChannelId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
     pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
     pub pool: Pool<MySql>,
@@ -147,9 +149,21 @@ pub async fn event_handler(
             .await
     };
     match event {
-        // Event::GuildMemberAddition { new_member: member } => {}
         Event::Message { new_message } => {
             if let Some(_guild_id) = new_message.guild_id {
+                // trial mod channel positivity quota
+                if new_message.channel_id == data.trial_mod_channel {
+                    let r: f32 = random();
+                    if r < 0.1 {
+                        new_message
+                            .channel_id
+                            .send_message(ctx, |m| {
+                                m.content("keep up the good work :white_check_mark:")
+                            })
+                            .await?;
+                    }
+                }
+
                 // media channel spam limit
                 let mut media_cooldown = data.media_cooldown.write().await;
                 // if we have to wait before posting an image...
@@ -209,6 +223,7 @@ pub async fn start_bot(
     let private_welcome_channel_id: u64 = parse_env("PRIVATE_WELCOME_CHANNEL_ID");
     let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
     let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
+    let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
         | serenity::GatewayIntents::GUILD_MESSAGES;
@@ -271,6 +286,7 @@ pub async fn start_bot(
                         deleted_message_log_channel: serenity::ChannelId(
                             deleted_messages_log_channel_id,
                         ),
+                        trial_mod_channel: serenity::ChannelId(trial_mod_channel_id),
                         media_cooldown_thread: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
                         pool,
