@@ -166,7 +166,7 @@ pub async fn event_handler(
                     let _ = sid
                         .send_message(ctx, |m| {
                             m.embed(|e| {
-                                e.color(serenity::Color::MEIBE_PINK)
+                                e.color(serenity::Color::from_rgb(random(), random(), random()))
                                     .author(|a| {
                                         a.name(new_member.display_name()).icon_url(
                                             new_member
