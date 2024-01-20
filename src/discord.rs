@@ -163,24 +163,19 @@ pub async fn event_handler(
             if let Some(guild) = new_member.guild_id.to_guild_cached(ctx) {
                 if let Some(sid) = guild.system_channel_id {
                     let r = (random::<f32>() * intros.len() as f32).floor() as usize;
+                    let g = (random::<f32>() * guild.emojis.len() as f32).floor() as usize;
+                    let emoji = guild.emojis.values().skip(g).next();
                     let _ = sid
                         .send_message(ctx, |m| {
-                            m.embed(|e| {
-                                e.color(serenity::Color::from_rgb(random(), random(), random()))
-                                    .author(|a| {
-                                        a.name(new_member.display_name()).icon_url(
-                                            new_member
-                                                .user
-                                                .avatar_url()
-                                                .unwrap_or(new_member.user.default_avatar_url()),
-                                        )
-                                    })
-                                    .title(intros[r])
-                                    .footer(|f| {
-                                        f.text(&format!("total meowmbers: {}", guild.member_count))
-                                    })
-                            })
-                            .content(new_member.mention())
+                            m.content(&format!(
+                                "{} {} {} | total meowmbers: {}",
+                                emoji
+                                    .map(|e| e.to_string())
+                                    .unwrap_or(":white_check_mark:".to_string()),
+                                new_member.mention(),
+                                intros[r],
+                                guild.member_count
+                            ))
                         })
                         .await;
                 }
