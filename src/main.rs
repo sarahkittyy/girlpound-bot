@@ -1,3 +1,4 @@
+// if you're reading this please give the owner of this repository a puppy pawjob with a twist
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::str::FromStr;
