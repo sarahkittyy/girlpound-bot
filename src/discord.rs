@@ -6,7 +6,7 @@ use crate::steamid::SteamIDClient;
 use crate::{logs::LogReceiver, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
-use poise::serenity_prelude::{self as serenity};
+use poise::serenity_prelude::{self as serenity, Mentionable};
 
 use rand::random;
 use sqlx::{MySql, Pool};
@@ -149,6 +149,43 @@ pub async fn event_handler(
             .await
     };
     match event {
+        Event::GuildMemberAddition { new_member } => {
+            let intros = [
+                "welcome to tiny kitty's girl pound",
+                "haiiiii ^_^ hi!! hiiiiii <3 haiiiiii hii :3",
+                "gweetings fwom tiny kitty's girl pound",
+                "o-omg hii.. >///<",
+                "welcome to da girl pound <3",
+                "hello girl pounder",
+                "hii lol >w<",
+            ];
+
+            if let Some(guild) = new_member.guild_id.to_guild_cached(ctx) {
+                if let Some(sid) = guild.system_channel_id {
+                    let r = (random::<f32>() * intros.len() as f32).floor() as usize;
+                    let _ = sid
+                        .send_message(ctx, |m| {
+                            m.embed(|e| {
+                                e.color(serenity::Color::MEIBE_PINK)
+                                    .author(|a| {
+                                        a.name(new_member.display_name()).icon_url(
+                                            new_member
+                                                .user
+                                                .avatar_url()
+                                                .unwrap_or(new_member.user.default_avatar_url()),
+                                        )
+                                    })
+                                    .title(intros[r])
+                                    .footer(|f| {
+                                        f.text(&format!("total meowmbers: {}", guild.member_count))
+                                    })
+                            })
+                            .content(new_member.mention())
+                        })
+                        .await;
+                }
+            }
+        }
         Event::Message { new_message } => {
             if let Some(_guild_id) = new_message.guild_id {
                 // trial mod channel positivity quota
@@ -226,7 +263,8 @@ pub async fn start_bot(
     let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
-        | serenity::GatewayIntents::GUILD_MESSAGES;
+        | serenity::GatewayIntents::GUILD_MESSAGES
+        | serenity::GatewayIntents::GUILD_MEMBERS;
 
     let girlpounder = {
         let servers = servers.clone();
