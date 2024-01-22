@@ -150,7 +150,7 @@ pub async fn event_handler(
     };
     match event {
         Event::GuildMemberAddition { new_member } => {
-            let intros = [
+            const INTROS: [&str; 8] = [
                 "welcome to tiny kitty's girl pound",
                 "haiiiii ^_^ hi!! hiiiiii <3 haiiiiii hii :3",
                 "gweetings fwom tiny kitty's girl pound",
@@ -158,11 +158,12 @@ pub async fn event_handler(
                 "welcome to da girl pound <3",
                 "hello girl pounder",
                 "hii lol >w<",
+                "whale cum to the girl pound",
             ];
 
             if let Some(guild) = new_member.guild_id.to_guild_cached(ctx) {
                 if let Some(sid) = guild.system_channel_id {
-                    let r = (random::<f32>() * intros.len() as f32).floor() as usize;
+                    let r = (random::<f32>() * INTROS.len() as f32).floor() as usize;
                     let g = (random::<f32>() * guild.emojis.len() as f32).floor() as usize;
                     let emoji = guild.emojis.values().skip(g).next();
                     let _ = sid
@@ -173,7 +174,7 @@ pub async fn event_handler(
                                     .map(|e| e.to_string())
                                     .unwrap_or(":white_check_mark:".to_string()),
                                 new_member.mention(),
-                                intros[r],
+                                INTROS[r],
                                 guild.member_count
                             ))
                         })
@@ -182,16 +183,20 @@ pub async fn event_handler(
             }
         }
         Event::Message { new_message } => {
+            const HELPFUL_REMINDERS: [&str; 2] = [
+                "keep up the good work :white_check_mark:",
+                "Please be respectful to all players on the server :thumbs_up:",
+            ];
+
             if let Some(_guild_id) = new_message.guild_id {
                 // trial mod channel positivity quota
                 if new_message.channel_id == data.trial_mod_channel {
                     let r: f32 = random();
                     if r < 0.1 {
+                        let g = (random::<f32>() * HELPFUL_REMINDERS.len() as f32).floor() as usize;
                         new_message
                             .channel_id
-                            .send_message(ctx, |m| {
-                                m.content("keep up the good work :white_check_mark:")
-                            })
+                            .send_message(ctx, |m| m.content(HELPFUL_REMINDERS[g]))
                             .await?;
                     }
                 }
