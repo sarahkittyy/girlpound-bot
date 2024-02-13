@@ -2148,7 +2148,7 @@ dependencies = [
 [[package]]
 name = "srcds_log_parser"
 version = "0.1.0"
-source = "git+https://github.com/sarahkittyy/srcds-log-parser?branch=main#2bdb9383ad98bd293698a7a91738293978e0f845"
+source = "git+https://github.com/sarahkittyy/srcds-log-parser?branch=main#7d174b77cf2ab690c2fbc2875fa08ba101818bb2"
 dependencies = [
  "chrono 0.4.34",
  "nom",
