@@ -1,11 +1,13 @@
-use crate::logs::{LogReceiver, ParsedLogMessage};
+use crate::logs::{as_discord_message, LogReceiver};
 use crate::{Error, Server};
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity};
 use sqlx::{MySql, Pool};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::time;
+
+use srcds_log_parser::MessageType;
 
 /// receives logs from the tf2 server & posts them in a channel
 pub fn spawn_log_thread(
@@ -21,9 +23,8 @@ pub fn spawn_log_thread(
             // drain all received log messages
             let msgs = log_receiver.drain().await;
             let mut output = HashMap::<SocketAddr, String>::new();
-            for msg in msgs {
-                let from = msg.from;
-                let parsed = ParsedLogMessage::from_message(&msg);
+            for (from, msg) in msgs {
+                let parsed = MessageType::from_message(msg.message.as_str());
 
                 if parsed.is_unknown() {
                     continue;
@@ -37,7 +38,7 @@ pub fn spawn_log_thread(
                     }
                 };
 
-                let dm = parsed.as_discord_message(dom_score);
+                let dm = as_discord_message(&parsed, dom_score);
 
                 if let Some(dm) = dm {
                     let v = output.entry(from).or_insert_with(|| "".to_owned());
@@ -73,14 +74,18 @@ pub fn spawn_log_thread(
 }
 
 /// updates the domination score between users
-async fn update_domination_score(pool: &Pool<MySql>, msg: &ParsedLogMessage) -> Result<i32, Error> {
-    let ParsedLogMessage::Domination {
+async fn update_domination_score(pool: &Pool<MySql>, msg: &MessageType) -> Result<i32, Error> {
+    let MessageType::InterPlayerAction {
         from: dominator,
-        to: victim,
+        against: victim,
+        action,
     } = msg
     else {
         return Err("Not a domination message".into());
     };
+    if action != "domination" {
+        return Err("Not a domination message".into());
+    }
 
     let mut sign = 1;
     let lt_steamid: &String = if dominator.steamid < victim.steamid {
