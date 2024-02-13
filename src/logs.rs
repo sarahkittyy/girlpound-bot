@@ -14,11 +14,6 @@ pub use util::{as_discord_message, safe_strip};
 
 use crate::Error;
 
-const PACKET_HEADER: [u8; 4] = [0xFF, 0xFF, 0xFF, 0xFF];
-const MAGIC_NOPASSWORD_BYTE: u8 = 0x52; // R
-const MAGIC_PASSWORD_BYTE: u8 = 0x53; // S
-const MAGIC_STRING_END: u8 = 0x4C; // L
-
 #[derive(Clone)]
 pub struct LogReceiver {
     messages: Arc<RwLock<VecDeque<(SocketAddr, LogMessage)>>>,
