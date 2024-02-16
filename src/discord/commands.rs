@@ -409,7 +409,7 @@ pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
         r#"
 		INSERT INTO `barkers` (`uid`, `last_nickname`)
 		VALUES (?, ?)
-		ON DUPLICATE KEY UPDATE `last_nickname` = ?
+		ON DUPLICATE KEY UPDATE `last_nickname` = ?, `updated_at` = CURRENT_TIMESTAMP
 	"#,
         uid,
         nickname,
