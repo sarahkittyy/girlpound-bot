@@ -395,6 +395,53 @@ pub async fn private_add(ctx: Context<'_>, user: serenity::User) -> Result<(), E
     Ok(())
 }
 
+/// Bark
+#[poise::command(slash_command, channel_cooldown = 4)]
+pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
+    let uid: String = ctx.author().id.to_string();
+    let nickname: String = match ctx.author_member().await {
+        Some(member) => member.display_name().to_string(),
+        _ => ctx.author().name.to_owned(),
+    };
+
+    // log the barker
+    sqlx::query!(
+        r#"
+		INSERT INTO `barkers` (`uid`, `last_nickname`)
+		VALUES (?, ?)
+		ON DUPLICATE KEY UPDATE `last_nickname` = ?
+	"#,
+        uid,
+        nickname,
+        nickname
+    )
+    .execute(&ctx.data().pool)
+    .await?;
+
+    // fetch recent barkers
+    let results = sqlx::query!(
+        r#"
+		SELECT `last_nickname` from `barkers`
+		ORDER BY `updated_at` DESC
+		LIMIT 15
+	"#
+    )
+    .fetch_all(&ctx.data().pool)
+    .await?;
+
+    let user_list = results
+        .iter()
+        .map(|n| &n.last_nickname)
+        .fold(String::new(), |acc, s| acc + s + "\n");
+
+    let response =
+        format!("Barking is strictly prohibited. Your ID has been logged.\nLast 15 victims:```{user_list}```");
+
+    ctx.send(|c| c.ephemeral(true).content(response)).await?;
+
+    Ok(())
+}
+
 /// Meow (suppawters only)
 #[poise::command(slash_command, channel_cooldown = 4)]
 pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
@@ -440,7 +487,6 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
 		"any kitty girls in chat???? :3",
 		"FWICK!!! *pukes on the carpet*",
 		"mooooooooooods my food bowl is empty >_<",
-		"https://tenor.com/view/cat-kitten-spilling-milk-milk-spilling-gif-25553835",
 		"https://media.discordapp.net/attachments/923967765302378496/1092546578859950190/meow.gif",
 		"https://media.discordapp.net/attachments/716323693877395537/883757436434018355/tumblr_beb1f92611396501e6370766e57257dc_05f5405f_250.gif",
 		"https://media.discordapp.net/attachments/901299978817925131/1126298371410366494/JMvRJlHy.gif",

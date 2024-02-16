@@ -272,6 +272,7 @@ pub async fn start_bot(
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
                 commands: vec![
+                    commands::bark(),
                     commands::rcon(),
                     commands::snipers(),
                     commands::seeder(),
