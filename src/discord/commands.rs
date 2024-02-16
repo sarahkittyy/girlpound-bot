@@ -435,7 +435,7 @@ pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
         .fold(String::new(), |acc, s| acc + s + "\n");
 
     let response =
-        format!("Barking is strictly prohibited. Your ID has been logged.\nLast 15 infractions:```{user_list}```");
+        format!("Barking is strictly prohibited. Your ID has been logged.\nLast 15 infractions:```\n{user_list}```");
 
     ctx.send(|c| c.ephemeral(true).content(response)).await?;
 
