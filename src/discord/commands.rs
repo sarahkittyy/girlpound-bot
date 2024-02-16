@@ -279,7 +279,8 @@ pub async fn status(
         .await?;
     let bid = ctx.cache().current_user_id();
     for msg in &msgs {
-        if msg.author.id == bid && msg.content.starts_with("🅰️ Currently playing:") {
+        if msg.author.id == bid && (msg.content.starts_with("🅰️") || msg.content.starts_with("🅱️"))
+        {
             msg.delete(ctx.http()).await?;
             break;
         }
