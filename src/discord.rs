@@ -28,8 +28,6 @@ pub struct PoiseData {
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     deleted_message_log_channel: serenity::ChannelId,
-    pub private_channel: serenity::ChannelId,
-    pub private_welcome_channel: serenity::ChannelId,
     pub seeder_role: serenity::RoleId,
     pub trial_mod_channel: serenity::ChannelId,
     pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
@@ -256,8 +254,6 @@ pub async fn start_bot(
 ) {
     let bot_token: String = parse_env("BOT_TOKEN");
     let guild_id: u64 = parse_env("GUILD_ID");
-    let private_channel_id: u64 = parse_env("PRIVATE_CHANNEL_ID");
-    let private_welcome_channel_id: u64 = parse_env("PRIVATE_WELCOME_CHANNEL_ID");
     let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
     let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
     let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
@@ -278,7 +274,6 @@ pub async fn start_bot(
                     commands::seeder(),
                     commands::respawntimes(),
                     commands::playercap(),
-                    commands::private_add(),
                     commands::meow(),
                     commands::map(),
                     commands::status(),
@@ -318,8 +313,6 @@ pub async fn start_bot(
                             media_cooldown::MediaCooldown::from_env(),
                         )),
                         guild_id: serenity::GuildId(guild_id),
-                        private_channel: serenity::ChannelId(private_channel_id),
-                        private_welcome_channel: serenity::ChannelId(private_welcome_channel_id),
                         seeder_role: serenity::RoleId(seeder_role_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
                         deleted_message_log_channel: serenity::ChannelId(
