@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::steamid::SteamIDClient;
 use crate::{logs::LogReceiver, Error};
 use crate::{parse_env, Server};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, TimeDelta, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
 
 use rand::random;
@@ -26,6 +26,8 @@ pub struct PoiseData {
     pub guild_id: serenity::GuildId,
     /// guild the bot operates in
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
+    pub horny_role: serenity::RoleId,
+    pub general_channel: serenity::ChannelId,
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     deleted_message_log_channel: serenity::ChannelId,
     pub seeder_role: serenity::RoleId,
@@ -147,6 +149,33 @@ pub async fn event_handler(
             .await
     };
     match event {
+        Event::GuildMemberUpdate {
+            old_if_available,
+            new,
+        } => {
+            if let Some(old) = old_if_available {
+                if let Some(joined_at) = new.joined_at {
+                    let since_join: Duration = joined_at.signed_duration_since(Utc::now()).abs();
+                    if !old.roles.contains(&data.horny_role)
+                        && new.roles.contains(&data.horny_role)
+                        && since_join <= TimeDelta::hours(1)
+                    {
+                        let total_s = since_join.num_seconds();
+                        let s = total_s % 60;
+                        let m = (total_s / 60) % 60;
+                        let h = (total_s / 60) / 60;
+                        let resp = format!(
+                            "{} has assigned themselves the NSFW role. Time since joining: `{:0>2}:{:0>2}:{:0>2}`",
+                            new.mention(),
+                            h, m, s
+                        );
+                        data.general_channel
+                            .send_message(&ctx, |m| m.content(resp))
+                            .await?;
+                    }
+                }
+            }
+        }
         Event::GuildMemberAddition { new_member } => {
             const INTROS: [&str; 8] = [
                 "welcome to tiny kitty's girl pound",
@@ -256,6 +285,8 @@ pub async fn start_bot(
     let guild_id: u64 = parse_env("GUILD_ID");
     let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
     let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
+    let horny_role_id: u64 = parse_env("HORNY_ROLE");
+    let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
     let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
@@ -315,6 +346,8 @@ pub async fn start_bot(
                         guild_id: serenity::GuildId(guild_id),
                         seeder_role: serenity::RoleId(seeder_role_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
+                        horny_role: serenity::RoleId(horny_role_id),
+                        general_channel: serenity::ChannelId(general_channel_id),
                         deleted_message_log_channel: serenity::ChannelId(
                             deleted_messages_log_channel_id,
                         ),
