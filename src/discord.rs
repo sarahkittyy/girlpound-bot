@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -28,6 +28,7 @@ pub struct PoiseData {
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
     pub horny_role: serenity::RoleId,
     pub general_channel: serenity::ChannelId,
+    pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     deleted_message_log_channel: serenity::ChannelId,
     pub seeder_role: serenity::RoleId,
@@ -159,6 +160,7 @@ pub async fn event_handler(
                     if !old.roles.contains(&data.horny_role)
                         && new.roles.contains(&data.horny_role)
                         && since_join <= TimeDelta::hours(1)
+                        && data.horny_callouts.write().await.insert(new.user.id.0)
                     {
                         let total_s = since_join.num_seconds();
                         let s = total_s % 60;
@@ -347,6 +349,7 @@ pub async fn start_bot(
                         seeder_role: serenity::RoleId(seeder_role_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
                         horny_role: serenity::RoleId(horny_role_id),
+                        horny_callouts: Arc::new(RwLock::new(HashSet::new())),
                         general_channel: serenity::ChannelId(general_channel_id),
                         deleted_message_log_channel: serenity::ChannelId(
                             deleted_messages_log_channel_id,
