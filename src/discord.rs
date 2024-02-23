@@ -337,7 +337,7 @@ pub async fn start_bot(
                     )
                     .await?;
 
-                    ctx.set_activity(serenity::Activity::playing("tf2.fluffycat.gay"))
+                    ctx.set_activity(serenity::Activity::playing("connect ultracide.net"))
                         .await;
 
                     Ok(PoiseData {
