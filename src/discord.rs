@@ -337,7 +337,7 @@ pub async fn start_bot(
                     )
                     .await?;
 
-                    ctx.set_activity(serenity::Activity::playing("connect ultracide.net"))
+                    ctx.set_activity(serenity::Activity::playing("!add 5 ultracide.net"))
                         .await;
 
                     Ok(PoiseData {
