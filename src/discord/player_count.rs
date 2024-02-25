@@ -25,7 +25,7 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp
                     }
                 };
                 // edit channel name to reflect player count
-                let _ = player_count_channel
+                let r = player_count_channel
                     .edit(ctx.as_ref(), |c| {
                         c.name(format!(
                             "{} {}/{} online",
@@ -35,11 +35,15 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp
                         ))
                     })
                     .await;
-                println!(
-                    "Updated {} player count to {}",
-                    server.name,
-                    status.players.len()
-                );
+                if let Err(e) = r {
+                    println!("Could not update player count channel: {e}");
+                } else {
+                    println!(
+                        "Updated {} player count to {}",
+                        server.name,
+                        status.players.len()
+                    );
+                }
             }
         });
     }
