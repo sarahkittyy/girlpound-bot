@@ -45,7 +45,7 @@ pub async fn playercap(
         - 1;
 
     let visible = count.max(min).min(max);
-    let reserved = max - visible;
+    let reserved = (max - visible - 1).min(0);
     let cmd = format!(
         "sm_reserved_slots {}; sv_visiblemaxplayers {};",
         reserved, visible
@@ -180,6 +180,11 @@ pub async fn seeder(
 
     let server_addr = server;
     let server = ctx.data().server(server)?;
+    if !server.allow_seed {
+        ctx.send(|m| m.content("This server is not seedable."))
+            .await?;
+        return Ok(());
+    }
 
     let mut rcon = server.controller.write().await;
     let status = rcon.status().await?;
@@ -259,7 +264,11 @@ pub async fn status(
     let mut servers = if let Some(server) = server {
         vec![ctx.data().server(server)?]
     } else {
-        ctx.data().servers.values().collect::<Vec<&Server>>()
+        ctx.data()
+            .servers
+            .values()
+            .filter(|s| s.show_status)
+            .collect::<Vec<&Server>>()
     };
     servers.sort_by_key(|s| &s.name);
 

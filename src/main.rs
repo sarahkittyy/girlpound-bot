@@ -35,6 +35,8 @@ pub struct ServerBuilder {
     pub player_count_cid: Option<u64>,
     pub log_cid: Option<u64>,
     pub ftp_credentials: (String, String),
+    pub allow_seed: bool,
+    pub show_status: bool,
 }
 
 impl ServerBuilder {
@@ -51,6 +53,8 @@ impl ServerBuilder {
             player_count_channel: self.player_count_cid.map(serenity::ChannelId),
             log_channel: self.log_cid.map(serenity::ChannelId),
             ftp: ServerFtp::new(ftp_url, self.ftp_credentials),
+            allow_seed: self.allow_seed,
+            show_status: self.show_status,
         })
     }
 }
@@ -65,6 +69,8 @@ pub struct Server {
     pub player_count_channel: Option<serenity::ChannelId>,
     pub log_channel: Option<serenity::ChannelId>,
     pub ftp: ServerFtp,
+    pub allow_seed: bool,
+    pub show_status: bool,
 }
 
 fn parse_env<T: FromStr>(name: &str) -> T {
@@ -100,6 +106,8 @@ async fn main() -> Result<(), Error> {
         player_count_cid: Some(parse_env("PLAYER_COUNT_CID_4")),
         log_cid: Some(parse_env("RELAY_CID_4")),
         ftp_credentials: (parse_env("FTP_USER_4"), parse_env("FTP_PASS_4")),
+        show_status: true,
+        allow_seed: true,
     }
     .build()
     .await
@@ -115,14 +123,34 @@ async fn main() -> Result<(), Error> {
         player_count_cid: Some(parse_env("PLAYER_COUNT_CID_5")),
         log_cid: Some(parse_env("RELAY_CID_5")),
         ftp_credentials: (parse_env("FTP_USER_5"), parse_env("FTP_PASS_5")),
+        show_status: true,
+        allow_seed: true,
     }
     .build()
     .await
     .expect("Could not connect to server tkgp5");
+    let tkgp6 = ServerBuilder {
+        name: "#6".to_owned(),
+        emoji: "️💀".to_owned(),
+        addr: "pug.fluffycat.gay:27015"
+            .to_socket_addrs()?
+            .next()
+            .expect("Could not resolve RCON address."),
+        rcon_pass: rcon_pass.clone(),
+        player_count_cid: Some(parse_env("PLAYER_COUNT_CID_6")),
+        log_cid: Some(parse_env("RELAY_CID_6")),
+        ftp_credentials: (parse_env("FTP_USER_6"), parse_env("FTP_PASS_6")),
+        show_status: false,
+        allow_seed: false,
+    }
+    .build()
+    .await
+    .expect("Could not connect to server tkgp6");
 
     let mut servers = HashMap::new();
-    servers.insert(tkgp5.addr, tkgp5);
     servers.insert(tkgp4.addr, tkgp4);
+    servers.insert(tkgp5.addr, tkgp5);
+    servers.insert(tkgp6.addr, tkgp6);
 
     println!("{} servers loaded.", servers.len());
 
