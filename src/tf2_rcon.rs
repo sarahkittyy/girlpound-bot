@@ -67,7 +67,7 @@ impl GameState {
             .collect::<Vec<String>>();
         let longest_online = self.players.iter().max_by_key(|p| p.connected);
         let timeleft = match &self.timeleft {
-            Some(TimeLeft::LastRound) => "This is the last round!".to_owned(),
+            Some(TimeLeft::LastRound) => "This is the last round!\n".to_owned(),
             Some(TimeLeft::Time { remaining, rounds }) => {
                 if let Some(rounds_left) = rounds {
                     format!("Time left: `{remaining}`, or {rounds_left} more round(s).\n")
