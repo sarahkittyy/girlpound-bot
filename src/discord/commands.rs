@@ -75,7 +75,7 @@ pub async fn snipers(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: SocketAddr,
     #[description = "The sniper limit (-1 for enable)"] limit: i8,
     #[description = "Hide the reply?"] hide_reply: Option<bool>,
 ) -> Result<(), Error> {
@@ -83,7 +83,7 @@ pub async fn snipers(
         "sm_classrestrict_blu_snipers {0}; sm_classrestrict_red_snipers {0}",
         limit
     );
-    let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
+    let reply = rcon_user_output(&output_servers(ctx, Some(server))?, cmd).await;
     let hide_reply = hide_reply.unwrap_or(false);
     ctx.send(|m| m.ephemeral(hide_reply).content(reply)).await?;
 
