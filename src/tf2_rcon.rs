@@ -36,7 +36,7 @@ pub struct GameState {
     pub players: Vec<Player>,
     pub max_players: i32,
     pub map: String,
-    pub timeleft: TimeLeft,
+    pub timeleft: Option<TimeLeft>,
     pub nextmap: NextMap,
 }
 
@@ -67,30 +67,34 @@ impl GameState {
             .collect::<Vec<String>>();
         let longest_online = self.players.iter().max_by_key(|p| p.connected);
         let timeleft = match &self.timeleft {
-            TimeLeft::LastRound => "This is the last round!".to_owned(),
-            TimeLeft::Time { remaining, rounds } => {
+            Some(TimeLeft::LastRound) => "This is the last round!".to_owned(),
+            Some(TimeLeft::Time { remaining, rounds }) => {
                 if let Some(rounds_left) = rounds {
-                    format!("Time left: `{remaining}`, or {rounds_left} more round(s).")
+                    format!("Time left: `{remaining}`, or {rounds_left} more round(s).\n")
                 } else {
-                    format!("Time left: `{remaining}`")
+                    format!("Time left: `{remaining}`\n")
                 }
             }
+            None => "".to_owned(),
+        };
+        let nextmap = if let NextMap::Map(map) = &self.nextmap {
+            format!("Next map: `{map}`\n")
+        } else {
+            "".to_owned()
         };
         format!(
-            "{0} `{1}/{2}` on `{3}`\n{4}\n{5}{6}\n{7}",
+            "{0} `{1}/{2}` on `{3}`\n{4}{5}{6}{7}",
             server.emoji,
             self.players.len(),
             self.max_players,
             self.map,
+            // 4
             timeleft,
-            if let NextMap::Map(map) = &self.nextmap {
-                format!("Next map: `{map}`\n")
-            } else {
-                "".to_owned()
-            },
+            nextmap,
+            // 6
             if let Some(longest_online) = longest_online {
                 format!(
-                    "Oldest player: `{}` for `{}`",
+                    "Oldest player: `{}` for `{}`\n",
                     safe_strip(&longest_online.name),
                     hhmmss(&longest_online.connected)
                 )
@@ -182,7 +186,7 @@ impl RconController {
     }
 
     /// fetch the time remaining & next map
-    pub async fn timeleft_nextmap(&mut self) -> Result<(TimeLeft, NextMap), Error> {
+    pub async fn timeleft_nextmap(&mut self) -> Result<(Option<TimeLeft>, NextMap), Error> {
         let response_str = self.run("timeleft; nextmap").await?;
         let mut response = response_str.split('\n');
         let tl_response = response.next().ok_or("Invalid tlnm response")?;
@@ -190,21 +194,20 @@ impl RconController {
         let timeleft_re =
             Regex::new(r#"\[SM\] (?:This is the (last round)|Time remaining for map:\s+(\d+:\d+)(?:, or change map after (\d))?)"#)
                 .unwrap();
-        let timeleft_caps = timeleft_re
-            .captures(&tl_response)
-            .ok_or("Could not match timeleft")?;
-        let timeleft = if let Some(_) = timeleft_caps.get(1) {
-            TimeLeft::LastRound
-        } else if let Some(remaining) = timeleft_caps.get(2) {
+        let timeleft_caps = timeleft_re.captures(&tl_response);
+        let timeleft = if let Some(_) = timeleft_caps.as_ref().and_then(|caps| caps.get(1)) {
+            Some(TimeLeft::LastRound)
+        } else if let Some(remaining) = timeleft_caps.as_ref().and_then(|caps| caps.get(2)) {
             let rounds: Option<i32> = timeleft_caps
-                .get(3)
+                .as_ref()
+                .and_then(|caps| caps.get(3))
                 .and_then(|s| s.as_str().parse::<i32>().ok());
-            TimeLeft::Time {
+            Some(TimeLeft::Time {
                 remaining: remaining.as_str().to_owned(),
                 rounds,
-            }
+            })
         } else {
-            return Err("Could not get time left".into());
+            None
         };
 
         let nextmap_re = Regex::new(r#"\[SM\] (?:(Pending Vote)|Next Map: (.*))"#).unwrap();
