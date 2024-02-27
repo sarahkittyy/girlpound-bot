@@ -12,9 +12,9 @@ pub async fn rcon_user_output(servers: &[&Server], cmd: String) -> String {
         let output = match rcon.run(&cmd).await {
             Ok(output) => {
                 if output.is_empty() {
-                    ":white_check_mark:\n".to_owned()
+                    ":white_check_mark:".to_owned()
                 } else {
-                    format!("\n```{output}```")
+                    format!(" `{}`", output.trim())
                 }
             }
             Err(e) => e.to_string(),

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::discord::Context;
-use crate::Error;
+use crate::{Error, Server};
 
 use poise;
 use poise::serenity_prelude as serenity;
@@ -15,7 +15,14 @@ pub async fn map(_: Context<'_>) -> Result<(), Error> {
 /// adds a map to the mapcycle.txt of all servers
 #[poise::command(slash_command)]
 async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) -> Result<(), Error> {
-    let server = ctx.data().servers.values().next().ok_or("No servers")?;
+    let servers: Vec<Server> = ctx
+        .data()
+        .servers
+        .values()
+        .filter(|s| s.control_mapfile)
+        .cloned()
+        .collect();
+    let server = servers.first().ok_or("No servers")?;
     let mapcyclefile = "mapcycle.txt";
     let mut maps: Vec<String> = server
         .ftp
@@ -32,7 +39,7 @@ async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) ->
     });
     maps.dedup();
 
-    for (_addr, server) in &ctx.data().servers {
+    for server in servers {
         server
             .ftp
             .upload_file(
@@ -51,7 +58,14 @@ async fn rm(
     ctx: Context<'_>,
     #[description = "The map to remove"] map: String,
 ) -> Result<(), Error> {
-    let server = ctx.data().servers.values().next().ok_or("No servers")?;
+    let servers: Vec<Server> = ctx
+        .data()
+        .servers
+        .values()
+        .filter(|s| s.control_mapfile)
+        .cloned()
+        .collect();
+    let server = servers.first().ok_or("No servers")?;
     let mapcyclefile = "mapcycle.txt";
     let maps: Vec<String> = server
         .ftp
@@ -62,7 +76,7 @@ async fn rm(
         .filter(|s| s != &map)
         .collect();
 
-    for (_addr, server) in &ctx.data().servers {
+    for server in servers {
         server
             .ftp
             .upload_file(
@@ -81,7 +95,13 @@ async fn list(
     ctx: Context<'_>,
     #[description = "Match specific maps"] filter: Option<String>,
 ) -> Result<(), Error> {
-    let server = ctx.data().servers.values().next().ok_or("No servers")?;
+    let server = ctx
+        .data()
+        .servers
+        .values()
+        .filter(|s| s.control_mapfile)
+        .next()
+        .ok_or("No servers")?;
     let mapcyclefile = "mapcycle.txt";
     let maps: Vec<String> = server
         .ftp

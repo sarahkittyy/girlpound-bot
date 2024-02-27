@@ -37,6 +37,7 @@ pub struct ServerBuilder {
     pub ftp_credentials: (String, String),
     pub allow_seed: bool,
     pub show_status: bool,
+    pub control_mapfile: bool,
 }
 
 impl ServerBuilder {
@@ -55,6 +56,7 @@ impl ServerBuilder {
             ftp: ServerFtp::new(ftp_url, self.ftp_credentials),
             allow_seed: self.allow_seed,
             show_status: self.show_status,
+            control_mapfile: self.control_mapfile,
         })
     }
 }
@@ -71,6 +73,7 @@ pub struct Server {
     pub ftp: ServerFtp,
     pub allow_seed: bool,
     pub show_status: bool,
+    pub control_mapfile: bool,
 }
 
 fn parse_env<T: FromStr>(name: &str) -> T {
@@ -108,6 +111,7 @@ async fn main() -> Result<(), Error> {
         ftp_credentials: (parse_env("FTP_USER_4"), parse_env("FTP_PASS_4")),
         show_status: true,
         allow_seed: true,
+        control_mapfile: true,
     }
     .build()
     .await
@@ -125,6 +129,7 @@ async fn main() -> Result<(), Error> {
         ftp_credentials: (parse_env("FTP_USER_5"), parse_env("FTP_PASS_5")),
         show_status: true,
         allow_seed: true,
+        control_mapfile: true,
     }
     .build()
     .await
@@ -142,6 +147,7 @@ async fn main() -> Result<(), Error> {
         ftp_credentials: (parse_env("FTP_USER_6"), parse_env("FTP_PASS_6")),
         show_status: false,
         allow_seed: false,
+        control_mapfile: false,
     }
     .build()
     .await
