@@ -37,7 +37,7 @@ pub struct GameState {
     pub max_players: i32,
     pub map: String,
     pub timeleft: Option<TimeLeft>,
-    pub nextmap: NextMap,
+    pub nextmap: Option<NextMap>,
 }
 
 fn hhmmss(duration: &Duration) -> String {
@@ -77,10 +77,9 @@ impl GameState {
             }
             None => "".to_owned(),
         };
-        let nextmap = if let NextMap::Map(map) = &self.nextmap {
-            format!("Next map: `{map}`\n")
-        } else {
-            "".to_owned()
+        let nextmap = match &self.nextmap {
+            Some(NextMap::Map(map)) => format!("Next map: `{map}`\n"),
+            _ => "".to_owned(),
         };
         format!(
             "{0} `{1}/{2}` on `{3}`\n{4}{5}{6}{7}",
@@ -186,7 +185,7 @@ impl RconController {
     }
 
     /// fetch the time remaining & next map
-    pub async fn timeleft_nextmap(&mut self) -> Result<(Option<TimeLeft>, NextMap), Error> {
+    pub async fn timeleft_nextmap(&mut self) -> Result<(Option<TimeLeft>, Option<NextMap>), Error> {
         let response_str = self.run("timeleft; nextmap").await?;
         let mut response = response_str.split('\n');
         let tl_response = response.next().ok_or("Invalid tlnm response")?;
@@ -211,15 +210,13 @@ impl RconController {
         };
 
         let nextmap_re = Regex::new(r#"\[SM\] (?:(Pending Vote)|Next Map: (.*))"#).unwrap();
-        let nextmap_caps = nextmap_re
-            .captures(&nm_response)
-            .ok_or("Could not match nextmap")?;
-        let nextmap = if let Some(_) = nextmap_caps.get(1) {
-            NextMap::PendingVote
-        } else if let Some(map) = nextmap_caps.get(2) {
-            NextMap::Map(map.as_str().to_owned())
+        let nextmap_caps = nextmap_re.captures(&nm_response);
+        let nextmap = if let Some(_) = nextmap_caps.as_ref().and_then(|caps| caps.get(1)) {
+            Some(NextMap::PendingVote)
+        } else if let Some(map) = nextmap_caps.as_ref().and_then(|caps| caps.get(2)) {
+            Some(NextMap::Map(map.as_str().to_owned()))
         } else {
-            return Err("Could not get next map".into());
+            None
         };
 
         Ok((timeleft, nextmap))
