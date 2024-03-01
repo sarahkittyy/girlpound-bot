@@ -5,10 +5,9 @@ use std::sync::Arc;
 use crate::steamid::SteamIDClient;
 use crate::{logs::LogReceiver, Error};
 use crate::{parse_env, Server};
-use chrono::{DateTime, Duration, TimeDelta, Utc};
-use poise::serenity_prelude::{self as serenity, Mentionable};
+use chrono::{DateTime, Duration, Utc};
+use poise::serenity_prelude as serenity;
 
-use rand::random;
 use sqlx::{MySql, Pool};
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::Sender;
@@ -18,6 +17,10 @@ use tokio::{self, sync::RwLock};
 mod commands;
 mod log_handler;
 mod media_cooldown;
+mod new_user;
+mod nsfw_callout;
+mod on_delete;
+mod on_message;
 mod player_count;
 
 pub struct PoiseData {
@@ -29,17 +32,26 @@ pub struct PoiseData {
     pub pug_server: SocketAddr,
     /// list of pug cfgs available for use
     pub pug_cfgs: Vec<String>,
+    /// image spam prevention
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
-    pub horny_role: serenity::RoleId,
-    pub general_channel: serenity::ChannelId,
-    pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
+    /// NSFW role
+    pub horny_role: serenity::RoleId,
+    /// #general
+    pub general_channel: serenity::ChannelId,
+    /// Users that have already been called out for going into NSFW <1 hr after joining
+    pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
+    /// channel where deleted messages are logged
     deleted_message_log_channel: serenity::ChannelId,
+    /// role to seed teh tf2 server
     pub seeder_role: serenity::RoleId,
+    /// "trial mod" channel, for "helpful reminders"
     pub trial_mod_channel: serenity::ChannelId,
-    pub msg_counts: Arc<RwLock<HashMap<u64, u64>>>,
+    /// /seeder cooldown
     pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
+    /// Database pool
     pub pool: Pool<MySql>,
+    /// steamid.uk api client
     pub client: SteamIDClient,
 }
 impl PoiseData {
@@ -165,123 +177,21 @@ pub async fn event_handler(
             old_if_available,
             new,
         } => {
-            if let Some(old) = old_if_available {
-                if let Some(joined_at) = new.joined_at {
-                    let since_join: Duration = joined_at.signed_duration_since(Utc::now()).abs();
-                    if !old.roles.contains(&data.horny_role)
-                        && new.roles.contains(&data.horny_role)
-                        && since_join <= TimeDelta::hours(1)
-                        && data.horny_callouts.write().await.insert(new.user.id.0)
-                    {
-                        let total_s = since_join.num_seconds();
-                        let s = total_s % 60;
-                        let m = (total_s / 60) % 60;
-                        let h = (total_s / 60) / 60;
-                        let resp = format!(
-                            "{} has assigned themselves the NSFW role. Time since joining: `{:0>2}:{:0>2}:{:0>2}`",
-                            new.mention(),
-                            h, m, s
-                        );
-                        data.general_channel
-                            .send_message(&ctx, |m| m.content(resp))
-                            .await?;
-                    }
-                }
-            }
+            nsfw_callout::try_callout_nsfw_role(ctx, data, old_if_available, new).await?;
         }
         Event::GuildMemberAddition { new_member } => {
-            const INTROS: [&str; 8] = [
-                "welcome to tiny kitty's girl pound",
-                "haiiiii ^_^ hi!! hiiiiii <3 haiiiiii hii :3",
-                "gweetings fwom tiny kitty's girl pound",
-                "o-omg hii.. >///<",
-                "welcome to da girl pound <3",
-                "hello girl pounder",
-                "hii lol >w<",
-                "whale cum to the girl pound",
-            ];
-
-            if let Some(guild) = new_member.guild_id.to_guild_cached(ctx) {
-                if let Some(sid) = guild.system_channel_id {
-                    let r = (random::<f32>() * INTROS.len() as f32).floor() as usize;
-                    let g = (random::<f32>() * guild.emojis.len() as f32).floor() as usize;
-                    let emoji = guild.emojis.values().skip(g).next();
-                    let _ = sid
-                        .send_message(ctx, |m| {
-                            m.content(&format!(
-                                "{} {} {} | total meowmbers: {}",
-                                emoji
-                                    .map(|e| e.to_string())
-                                    .unwrap_or(":white_check_mark:".to_string()),
-                                new_member.mention(),
-                                INTROS[r],
-                                guild.member_count
-                            ))
-                        })
-                        .await;
-                }
-            }
+            new_user::welcome_user(ctx, new_member).await?;
         }
         Event::Message { new_message } => {
-            const HELPFUL_REMINDERS: [&str; 2] = [
-                "keep up the good work :white_check_mark:",
-                "Please be respectful to all players on the server :thumbs_up:",
-            ];
-
-            if let Some(_guild_id) = new_message.guild_id {
-                // trial mod channel positivity quota
-                if new_message.channel_id == data.trial_mod_channel {
-                    let r: f32 = random();
-                    if r < 0.1 {
-                        let g = (random::<f32>() * HELPFUL_REMINDERS.len() as f32).floor() as usize;
-                        new_message
-                            .channel_id
-                            .send_message(ctx, |m| m.content(HELPFUL_REMINDERS[g]))
-                            .await?;
-                    }
-                }
-
-                // media channel spam limit
-                let mut media_cooldown = data.media_cooldown.write().await;
-                // if we have to wait before posting an image...
-                if let Err(time_left) = media_cooldown.try_allow_one(new_message) {
-                    // delete the image
-                    new_message.delete(ctx).await?;
-                    // send da cooldown msg
-                    let _ = cooldown_handler
-                        .send(Cooldown {
-                            channel: new_message.channel_id,
-                            user: new_message.author.id,
-                            delete_at: Utc::now() + time_left,
-                        })
-                        .await;
-                }
-            }
+            on_message::trial_mod_reminders(ctx, data, new_message).await?;
+            on_message::handle_cooldowns(ctx, data, cooldown_handler, new_message).await?;
         }
         Event::MessageDelete {
             channel_id,
             deleted_message_id,
             ..
         } => {
-            let Some(message) = ctx.cache.message(channel_id, deleted_message_id) else {
-                return Err("Message not found in cache")?;
-            };
-            let Some(channel) = channel_id.to_channel(ctx).await?.guild() else {
-                return Err("Channel not found.")?;
-            };
-            let _ = data
-                .deleted_message_log_channel
-                .send_message(&ctx, |m| {
-                    m.embed(|e| {
-                        e.title("Deleted Message");
-                        e.field("Author", message.author.tag(), true);
-                        e.field("Channel", channel.name(), true);
-                        e.field("Content", message.content, false);
-                        e
-                    });
-                    m
-                })
-                .await;
+            on_delete::save_deleted(ctx, data, channel_id, deleted_message_id).await?;
         }
         _ => (),
     };
@@ -378,7 +288,6 @@ pub async fn start_bot(
                         .collect(),
                         pug_server,
                         seeder_role: serenity::RoleId(seeder_role_id),
-                        msg_counts: Arc::new(RwLock::new(HashMap::new())),
                         horny_role: serenity::RoleId(horny_role_id),
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
                         general_channel: serenity::ChannelId(general_channel_id),

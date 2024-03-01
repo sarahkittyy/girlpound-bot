@@ -1,8 +1,7 @@
 use crate::discord::Context;
-use crate::{Error, Server};
+use crate::Error;
 
 use poise;
-use poise::serenity_prelude as serenity;
 
 use super::util::*;
 

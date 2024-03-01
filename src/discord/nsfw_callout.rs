@@ -1,0 +1,40 @@
+use chrono::{Duration, TimeDelta, Utc};
+use poise::serenity_prelude as serenity;
+use serenity::{Member, Mentionable};
+
+use crate::Error;
+
+use super::PoiseData;
+
+/// Checks if the user has received the nsfw role maximum 1 hour since joining, and if so, posts about it in gen.
+pub async fn try_callout_nsfw_role(
+    ctx: &serenity::Context,
+    data: &PoiseData,
+    old: &Option<Member>,
+    new: &Member,
+) -> Result<(), Error> {
+    if let Some(old) = old {
+        if let Some(joined_at) = new.joined_at {
+            let since_join: Duration = joined_at.signed_duration_since(Utc::now()).abs();
+            if !old.roles.contains(&data.horny_role)
+                && new.roles.contains(&data.horny_role)
+                && since_join <= TimeDelta::hours(1)
+                && data.horny_callouts.write().await.insert(new.user.id.0)
+            {
+                let total_s = since_join.num_seconds();
+                let s = total_s % 60;
+                let m = (total_s / 60) % 60;
+                let h = (total_s / 60) / 60;
+                let resp = format!(
+                            "{} has assigned themselves the NSFW role. Time since joining: `{:0>2}:{:0>2}:{:0>2}`",
+                            new.mention(),
+                            h, m, s
+                        );
+                data.general_channel
+                    .send_message(&ctx, |m| m.content(resp))
+                    .await?;
+            }
+        }
+    }
+    Ok(())
+}
