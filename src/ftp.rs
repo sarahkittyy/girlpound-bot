@@ -30,6 +30,17 @@ impl ServerFtp {
         self.exec(|ftp| Ok(ftp.simple_retr(path)?.into_inner()))
     }
 
+    /// download the contents of a file and split it into lines, trimming whitespace
+    pub async fn fetch_file_lines(&self, path: &str) -> Result<Vec<String>, Error> {
+        self.exec(|ftp| Ok(ftp.simple_retr(path)?.into_inner()))
+            .map(|bytes| {
+                bytes
+                    .split(|&c| c == b'\n')
+                    .map(|line| String::from_utf8_lossy(line).trim().to_owned())
+                    .collect()
+            })
+    }
+
     /// upload the contents of a file on the server.
     pub async fn upload_file(&self, path: &str, contents: &[u8]) -> Result<(), Error> {
         self.exec(|ftp| Ok(ftp.put(path, &mut Cursor::new(contents))?))

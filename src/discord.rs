@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::steamid::SteamIDClient;
@@ -21,10 +21,14 @@ mod media_cooldown;
 mod player_count;
 
 pub struct PoiseData {
-    pub servers: HashMap<SocketAddr, Server>,
     /// all tf2 servers known by the bot
-    pub guild_id: serenity::GuildId,
+    pub servers: HashMap<SocketAddr, Server>,
     /// guild the bot operates in
+    pub guild_id: serenity::GuildId,
+    /// identify the pug server. tkgp specific
+    pub pug_server: SocketAddr,
+    /// list of pug cfgs available for use
+    pub pug_cfgs: Vec<String>,
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
     pub horny_role: serenity::RoleId,
     pub general_channel: serenity::ChannelId,
@@ -44,6 +48,13 @@ impl PoiseData {
         self.servers
             .get(&server_addr)
             .ok_or("Server not found".into())
+    }
+
+    /// Fetches the tkgp pug server
+    pub fn pug_server(&self) -> Result<&Server, Error> {
+        self.servers
+            .get(&self.pug_server)
+            .ok_or("Pug server not found".into())
     }
 
     /// checks if a seeder ping is allowed. if on cooldown, returns time until usable
@@ -298,10 +309,16 @@ pub async fn start_bot(
     let girlpounder = {
         let servers = servers.clone();
         let pool = pool.clone();
+        let pug_server = "pug.fluffycat.gay:27015"
+            .to_socket_addrs()
+            .expect("Pug address DNS resolution failed")
+            .next()
+            .expect("Could not resolve PUG server address.");
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
                 commands: vec![
                     commands::bark(),
+                    commands::pug(),
                     commands::rcon(),
                     commands::snipers(),
                     commands::seeder(),
@@ -346,6 +363,20 @@ pub async fn start_bot(
                             media_cooldown::MediaCooldown::from_env(),
                         )),
                         guild_id: serenity::GuildId(guild_id),
+                        pug_cfgs: [
+                            "rgl_off",
+                            "rgl_7s_koth",
+                            "rgl_7s_koth_bo5",
+                            "rgl_6s_koth_scrim",
+                            "rgl_6s_koth_bo5",
+                            "rgl_6s_koth",
+                            "rgl_6s_5cp_scrim",
+                            "rgl_6s_5cp_match_pro",
+                        ]
+                        .into_iter()
+                        .map(|s| s.to_owned())
+                        .collect(),
+                        pug_server,
                         seeder_role: serenity::RoleId(seeder_role_id),
                         msg_counts: Arc::new(RwLock::new(HashMap::new())),
                         horny_role: serenity::RoleId(horny_role_id),

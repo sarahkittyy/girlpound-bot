@@ -89,6 +89,42 @@ pub async fn steam_id_autocomplete(
     res
 }
 
+/// Returns a list of maps available on the pug server
+pub async fn pug_maps_autocomplete(
+    ctx: Context<'_>,
+    partial: &str,
+) -> Vec<AutocompleteChoice<String>> {
+    let Ok(pug_server) = ctx.data().pug_server() else {
+        return vec![];
+    };
+    let Ok(maps) = pug_server.maps().await else {
+        return vec![];
+    };
+
+    maps.into_iter()
+        .filter(|map| map.to_lowercase().contains(&partial.to_lowercase()))
+        .map(|map| AutocompleteChoice {
+            name: map.clone(),
+            value: map.clone(),
+        })
+        .collect()
+}
+
+pub async fn pug_cfgs_autocomplete(
+    ctx: Context<'_>,
+    partial: &str,
+) -> Vec<AutocompleteChoice<String>> {
+    ctx.data()
+        .pug_cfgs
+        .iter()
+        .filter(|&cfg| cfg.to_lowercase().contains(&partial.to_lowercase()))
+        .map(|cfg| AutocompleteChoice {
+            name: cfg.clone(),
+            value: cfg.clone(),
+        })
+        .collect()
+}
+
 /// Returns the list of connected servers
 pub async fn servers_autocomplete(
     ctx: Context<'_>,

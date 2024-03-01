@@ -23,14 +23,7 @@ async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) ->
         .cloned()
         .collect();
     let server = servers.first().ok_or("No servers")?;
-    let mapcyclefile = "mapcycle.txt";
-    let mut maps: Vec<String> = server
-        .ftp
-        .fetch_file(&format!("tf/cfg/{}", mapcyclefile))
-        .await?
-        .split(|&c| c == b'\n')
-        .map(|v| String::from_utf8_lossy(v).trim().to_owned())
-        .collect();
+    let mut maps: Vec<String> = server.maps().await?;
     maps.push(map.clone());
     maps.sort_by(|a, b| {
         let a = a.strip_prefix("workshop/").unwrap_or(a);
@@ -42,10 +35,7 @@ async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) ->
     for server in servers {
         server
             .ftp
-            .upload_file(
-                &format!("tf/cfg/{}", mapcyclefile),
-                maps.join("\n").as_bytes(),
-            )
+            .upload_file("tf/cfg/mapcycle.txt", maps.join("\n").as_bytes())
             .await?;
     }
     ctx.say(":white_check_mark:").await?;
@@ -66,23 +56,17 @@ async fn rm(
         .cloned()
         .collect();
     let server = servers.first().ok_or("No servers")?;
-    let mapcyclefile = "mapcycle.txt";
     let maps: Vec<String> = server
-        .ftp
-        .fetch_file(&format!("tf/cfg/{}", mapcyclefile))
+        .maps()
         .await?
-        .split(|&c| c == b'\n')
-        .map(|v| String::from_utf8_lossy(v).trim().to_owned())
-        .filter(|s| s != &map)
+        .into_iter()
+        .filter(|m| m != &map)
         .collect();
 
     for server in servers {
         server
             .ftp
-            .upload_file(
-                &format!("tf/cfg/{}", mapcyclefile),
-                maps.join("\n").as_bytes(),
-            )
+            .upload_file("tf/cfg/mapcycle.txt", maps.join("\n").as_bytes())
             .await?;
     }
     ctx.say(":white_check_mark:").await?;
@@ -102,13 +86,10 @@ async fn list(
         .filter(|s| s.control_mapfile)
         .next()
         .ok_or("No servers")?;
-    let mapcyclefile = "mapcycle.txt";
     let maps: Vec<String> = server
-        .ftp
-        .fetch_file(&format!("tf/cfg/{}", mapcyclefile))
+        .maps()
         .await?
-        .split(|&c| c == b'\n')
-        .map(|v| String::from_utf8_lossy(v).trim().to_owned())
+        .into_iter()
         .filter(|s| filter.as_ref().map(|f| s.contains(f)).unwrap_or(true))
         .collect();
     let data = Cow::Owned(maps.join("\n").as_bytes().to_vec());

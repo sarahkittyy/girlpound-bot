@@ -13,6 +13,9 @@ pub use map::map;
 mod mods;
 pub use mods::*;
 
+mod pug;
+pub use pug::*;
+
 use poise;
 use poise::serenity_prelude as serenity;
 use rand::prelude::*;

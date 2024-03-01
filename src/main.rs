@@ -76,6 +76,13 @@ pub struct Server {
     pub control_mapfile: bool,
 }
 
+impl Server {
+    /// Retrieve this server's maps
+    pub async fn maps(&self) -> Result<Vec<String>, Error> {
+        self.ftp.fetch_file_lines("tf/cfg/mapcycle.txt").await
+    }
+}
+
 fn parse_env<T: FromStr>(name: &str) -> T {
     env::var(name)
         .ok()
