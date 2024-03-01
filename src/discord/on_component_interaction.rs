@@ -31,15 +31,6 @@ async fn execute_modal_generic<
         .timeout(timeout.unwrap_or(std::time::Duration::from_secs(3600)))
         .await;
     Ok(response)
-
-    /*// Send acknowledgement so that the pop-up is closed
-    response
-        .create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
-        .await?;
-
-    Ok(Some(
-        M::parse(response.data.clone()).map_err(serenity::Error::Other)?,
-    ))*/
 }
 
 /// handle all permanent component interactions

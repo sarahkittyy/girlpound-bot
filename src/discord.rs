@@ -6,7 +6,7 @@ use crate::steamid::SteamIDClient;
 use crate::{logs::LogReceiver, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, Mentionable};
 use serenity::CreateMessage;
 
 use sqlx::{MySql, Pool};
@@ -209,6 +209,14 @@ async fn event_handler(
             if let Some(mci) = interaction.as_message_component() {
                 on_component_interaction::dispatch(ctx, data, mci).await?;
             }
+        }
+        Event::GuildMemberRemoval { user, .. } => {
+            data.deleted_message_log_channel
+                .send_message(
+                    &ctx,
+                    CreateMessage::new().content(format!("{} left the server", user.mention())),
+                )
+                .await?;
         }
         _ => (),
     };
