@@ -16,8 +16,14 @@ pub use mods::*;
 mod pug;
 pub use pug::*;
 
+mod birthday_check;
+pub use birthday_check::*;
+
 use poise;
 use poise::serenity_prelude as serenity;
+use poise::CreateReply;
+use serenity::{CreateAllowedMentions, CreateEmbed, CreateMessage, GetMessages};
+
 use rand::prelude::*;
 use regex::Regex;
 
@@ -68,7 +74,8 @@ pub async fn rcon(
 ) -> Result<(), Error> {
     let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
     let hide_reply = hide_reply.unwrap_or(false);
-    ctx.send(|m| m.ephemeral(hide_reply).content(reply)).await?;
+    ctx.send(CreateReply::default().ephemeral(hide_reply).content(reply))
+        .await?;
     Ok(())
 }
 
@@ -88,7 +95,8 @@ pub async fn snipers(
     );
     let reply = rcon_user_output(&output_servers(ctx, Some(server))?, cmd).await;
     let hide_reply = hide_reply.unwrap_or(false);
-    ctx.send(|m| m.ephemeral(hide_reply).content(reply)).await?;
+    ctx.send(CreateReply::default().ephemeral(hide_reply).content(reply))
+        .await?;
 
     Ok(())
 }
@@ -102,34 +110,40 @@ pub async fn feedback(
 ) -> Result<(), Error> {
     // get the owner id in the env file
     let Ok(owner_id) = env::var("FEEDBACK_USER") else {
-        poise::send_reply(ctx, |m| {
-            m.ephemeral(true)
-                .content("Feedback is not configured properly! Message an admin.")
-        })
+        poise::send_reply(
+            ctx,
+            CreateReply::default()
+                .ephemeral(true)
+                .content("Feedback is not configured properly! Message an admin."),
+        )
         .await?;
         return Ok(());
     };
 
     // get the owner
-    let recip = serenity::UserId(owner_id.parse()?);
+    let recip = serenity::UserId::new(owner_id.parse()?);
     let dm_channel = recip.create_dm_channel(ctx).await?;
     dm_channel
-        .send_message(ctx, |m| {
-            m.embed(|e| {
-                let mut r = e.title("anon feedback").description(msg);
+        .send_message(
+            ctx,
+            CreateMessage::default().embed({
+                let mut r = CreateEmbed::new().title("anon feedback").description(msg);
 
                 if let Some(attachment) = attachment {
                     r = r.image(attachment.url);
                 }
 
                 r
-            })
-        })
+            }),
+        )
         .await?;
 
-    poise::send_reply(ctx, |m| {
-        m.ephemeral(true).content("Feedback anonymously sent!")
-    })
+    poise::send_reply(
+        ctx,
+        CreateReply::default()
+            .ephemeral(true)
+            .content("Feedback anonymously sent!"),
+    )
     .await?;
     Ok(())
 }
@@ -151,7 +165,7 @@ pub async fn respawntimes(
         ),
     };
     let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
-    ctx.send(|m| m.content(reply)).await?;
+    ctx.send(CreateReply::default().content(reply)).await?;
 
     Ok(())
 }
@@ -170,12 +184,10 @@ pub async fn seeder(
         Ok(()) => (),
         Err(time_left) => {
             let now = chrono::Utc::now();
-            ctx.send(|m| {
-                m.content(format!(
-                    "Server was seeded too recently. Try again <t:{}:R>",
-                    (now + time_left).timestamp()
-                ))
-            })
+            ctx.send(CreateReply::default().content(format!(
+                "Server was seeded too recently. Try again <t:{}:R>",
+                (now + time_left).timestamp()
+            )))
             .await?;
             return Ok(());
         }
@@ -184,7 +196,7 @@ pub async fn seeder(
     let server_addr = server;
     let server = ctx.data().server(server)?;
     if !server.allow_seed {
-        ctx.send(|m| m.content("This server is not seedable."))
+        ctx.send(CreateReply::default().content("This server is not seedable."))
             .await?;
         return Ok(());
     }
@@ -194,12 +206,12 @@ pub async fn seeder(
     let player_count = status.players.len();
 
     if player_count < 2 {
-        ctx.send(|m| m.content("Server must have >2 players to ping."))
+        ctx.send(CreateReply::default().content("Server must have >2 players to ping."))
             .await?;
         return Ok(());
     }
     if player_count >= 16 {
-        ctx.send(|m| m.content("Server must have <16 players to ping."))
+        ctx.send(CreateReply::default().content("Server must have <16 players to ping."))
             .await?;
         return Ok(());
     }
@@ -207,21 +219,22 @@ pub async fn seeder(
     let seeder_role = ctx.data().seeder_role;
 
     // send seed
-    ctx.send(|m| {
-        m.content(format!(
-            "{}<@&{}> come fwag on {} :3\nraowquested by: <@{}>\n{}",
-            if let Some(msg) = message {
-                msg + "\n"
-            } else {
-                "".to_owned()
-            },
-            seeder_role.0,
-            server.emoji,
-            ctx.author().id,
-            status.as_discord_output(server, false),
-        ))
-        .allowed_mentions(|am| am.roles(vec![seeder_role.0]))
-    })
+    ctx.send(
+        CreateReply::default()
+            .content(format!(
+                "{}<@&{}> come fwag on {} :3\nraowquested by: <@{}>\n{}",
+                if let Some(msg) = message {
+                    msg + "\n"
+                } else {
+                    "".to_owned()
+                },
+                seeder_role.get(),
+                server.emoji,
+                ctx.author().id,
+                status.as_discord_output(server, false),
+            ))
+            .allowed_mentions(CreateAllowedMentions::new().roles(vec![seeder_role.get()])),
+    )
     .await?;
     // reset cooldown
     ctx.data().reset_seed_cooldown(server_addr).await;
@@ -238,14 +251,14 @@ pub async fn lookup(
     query: String,
 ) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
-    let client = &ctx.data().client;
+    let client = &ctx.data().steamid_client;
     let data = client.lookup(&query).await?;
     // fetch important info
 
-    ctx.send(|m| {
-        m.content(format!("Results for query: `{}`", query));
+    ctx.send({
+        let mut m = CreateReply::default().content(format!("Results for query: `{}`", query));
         for user in &data {
-            m.embed(|e| user.populate_embed(e));
+            m = m.embed(user.to_embed());
         }
         m.ephemeral(true)
     })
@@ -287,9 +300,9 @@ pub async fn status(
     // delete last status msg
     let msgs = ctx
         .channel_id()
-        .messages(ctx.http(), |gm| gm.limit(45))
+        .messages(ctx.http(), GetMessages::new().limit(45))
         .await?;
-    let bid = ctx.cache().current_user_id();
+    let bid = ctx.cache().current_user().id;
     for msg in &msgs {
         if msg.author.id == bid && (msg.content.starts_with("🅰️") || msg.content.starts_with("🅱️"))
         {
@@ -298,7 +311,8 @@ pub async fn status(
         }
     }
     // send status msg
-    ctx.send(|m| m.content(output).ephemeral(show_uids)).await?;
+    ctx.send(CreateReply::default().content(output).ephemeral(show_uids))
+        .await?;
     Ok(())
 }
 
@@ -313,7 +327,10 @@ pub async fn reacted_users(
     let mut after: Option<serenity::UserId> = None;
     let channel: u64 = channel_id.parse()?;
     let message: u64 = message_id.parse()?;
-    let msg = ctx.http().get_message(channel, message).await?;
+    let msg = ctx
+        .http()
+        .get_message(channel.into(), message.into())
+        .await?;
     let r_type = &msg.reactions.first().unwrap().reaction_type;
     loop {
         let mut users = match msg
@@ -393,7 +410,8 @@ pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
     let response =
         format!("Barking is strictly prohibited. Your ID has been logged.\nLast 15 infractions:```\n{user_list}```");
 
-    ctx.send(|c| c.ephemeral(true).content(response)).await?;
+    ctx.send(CreateReply::default().ephemeral(true).content(response))
+        .await?;
 
     Ok(())
 }
@@ -472,6 +490,6 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
     ];
     let r = (random::<f32>() * meows.len() as f32).floor() as usize;
 
-    poise::send_reply(ctx, |message| message.content(meows[r])).await?;
+    poise::send_reply(ctx, CreateReply::default().content(meows[r])).await?;
     Ok(())
 }

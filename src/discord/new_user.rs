@@ -1,5 +1,5 @@
 use poise::serenity_prelude as serenity;
-use serenity::{Member, Mentionable};
+use serenity::{CreateMessage, Member, Mentionable};
 
 use crate::Error;
 use rand::prelude::*;
@@ -17,14 +17,15 @@ pub async fn welcome_user(ctx: &serenity::Context, new_member: &Member) -> Resul
         "whale cum to the girl pound",
     ];
 
-    if let Some(guild) = new_member.guild_id.to_guild_cached(ctx) {
+    if let Some(guild) = new_member.guild_id.to_guild_cached(ctx).map(|g| g.clone()) {
         if let Some(sid) = guild.system_channel_id {
             let r = (random::<f32>() * INTROS.len() as f32).floor() as usize;
             let g = (random::<f32>() * guild.emojis.len() as f32).floor() as usize;
             let emoji = guild.emojis.values().skip(g).next();
             let _ = sid
-                .send_message(ctx, |m| {
-                    m.content(&format!(
+                .send_message(
+                    ctx,
+                    CreateMessage::new().content(&format!(
                         "{} {} {} | total meowmbers: {}",
                         emoji
                             .map(|e| e.to_string())
@@ -32,8 +33,8 @@ pub async fn welcome_user(ctx: &serenity::Context, new_member: &Member) -> Resul
                         new_member.mention(),
                         INTROS[r],
                         guild.member_count
-                    ))
-                })
+                    )),
+                )
                 .await;
         }
     }

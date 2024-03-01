@@ -1,6 +1,7 @@
 use crate::logs::{as_discord_message, LogReceiver};
 use crate::{Error, Server};
 use poise::serenity_prelude::{self as serenity};
+use serenity::CreateMessage;
 use sqlx::{MySql, Pool};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -14,7 +15,7 @@ pub fn spawn_log_thread(
     mut log_receiver: LogReceiver,
     servers: HashMap<SocketAddr, Server>,
     pool: Pool<MySql>,
-    ctx: Arc<serenity::CacheAndHttp>,
+    ctx: Arc<serenity::Http>,
 ) {
     let mut interval = time::interval(time::Duration::from_secs(3));
     tokio::spawn(async move {
@@ -63,7 +64,7 @@ pub fn spawn_log_thread(
                 }
                 // post it
                 if let Err(e) = logs_channel
-                    .send_message(ctx.as_ref(), |m| m.content(msg))
+                    .send_message(ctx.as_ref(), CreateMessage::new().content(msg))
                     .await
                 {
                     println!("Could not send message to logs channel: {:?}", e);

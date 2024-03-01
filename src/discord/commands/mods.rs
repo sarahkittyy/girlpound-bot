@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 
 use crate::{discord::Context, Error};
 use poise;
+use poise::CreateReply;
 
 use super::util::{
     output_servers, rcon_and_reply, rcon_user_output, servers_autocomplete, users_autocomplete,
@@ -39,7 +40,7 @@ pub async fn tf2banid(
     let reason = reason.unwrap_or("undesirable".to_owned());
     let cmd = format!("sm_addban {} {} {}", minutes, id, reason);
     let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
-    ctx.send(|m| m.content(reply)).await?;
+    ctx.send(CreateReply::default().content(reply)).await?;
 
     Ok(())
 }

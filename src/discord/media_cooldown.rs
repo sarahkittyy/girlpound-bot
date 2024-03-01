@@ -66,13 +66,13 @@ impl MediaCooldown {
         let channels: Vec<serenity::ChannelId> = parse_env::<String>("MEDIA_COOLDOWN")
             .split(',')
             .map(|s| s.parse::<u64>().unwrap())
-            .map(serenity::ChannelId)
+            .map(serenity::ChannelId::new)
             .collect();
         println!(
             "found media cooldown channels: {}",
             channels
                 .iter()
-                .map(|s| s.0.to_string())
+                .map(|s| s.get().to_string())
                 .collect::<Vec<String>>()
                 .join(",")
         );

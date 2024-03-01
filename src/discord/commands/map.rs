@@ -5,6 +5,8 @@ use crate::{Error, Server};
 
 use poise;
 use poise::serenity_prelude as serenity;
+use poise::CreateReply;
+use serenity::CreateAttachment;
 
 /// mapcycle.txt related configuration
 #[poise::command(slash_command, subcommands("add", "rm", "list"), subcommand_required)]
@@ -93,12 +95,9 @@ async fn list(
         .filter(|s| filter.as_ref().map(|f| s.contains(f)).unwrap_or(true))
         .collect();
     let data = Cow::Owned(maps.join("\n").as_bytes().to_vec());
-    ctx.send(|f| {
-        f.attachment(serenity::AttachmentType::Bytes {
-            data,
-            filename: "message.txt".to_owned(),
-        })
-    })
+    ctx.send(
+        CreateReply::default().attachment(CreateAttachment::bytes(data, "message.txt".to_owned())),
+    )
     .await?;
     Ok(())
 }

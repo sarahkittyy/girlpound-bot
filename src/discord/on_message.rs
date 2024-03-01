@@ -1,6 +1,6 @@
 use chrono::Utc;
 use poise::serenity_prelude as serenity;
-use serenity::Message;
+use serenity::{CreateMessage, Message};
 
 use crate::Error;
 
@@ -25,7 +25,7 @@ pub async fn trial_mod_reminders(
             let g = (random::<f32>() * HELPFUL_REMINDERS.len() as f32).floor() as usize;
             new_message
                 .channel_id
-                .send_message(ctx, |m| m.content(HELPFUL_REMINDERS[g]))
+                .send_message(ctx, CreateMessage::new().content(HELPFUL_REMINDERS[g]))
                 .await?;
         }
     }

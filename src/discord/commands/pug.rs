@@ -2,6 +2,7 @@ use crate::discord::Context;
 use crate::Error;
 
 use poise;
+use poise::CreateReply;
 
 use super::util::*;
 
@@ -18,13 +19,14 @@ pub async fn pug(
 ) -> Result<(), Error> {
     ctx.defer().await?;
     if !ctx.data().pug_cfgs.contains(&cfg) {
-        ctx.send(|m| m.content("That cfg file does not exist!"))
+        ctx.send(CreateReply::default().content("That cfg file does not exist!"))
             .await?;
         return Ok(());
     }
     let ps = ctx.data().pug_server()?;
     if !ps.maps().await?.contains(&map) {
-        ctx.send(|m| m.content("That map does not exist!")).await?;
+        ctx.send(CreateReply::default().content("That map does not exist!"))
+            .await?;
         return Ok(());
     }
 
@@ -33,6 +35,6 @@ pub async fn pug(
         Ok(_) => format!("Ran `{cfg}.cfg` and changed to map `{map}`."),
         Err(e) => format!("Error: {e}"),
     };
-    ctx.send(|m| m.content(response)).await?;
+    ctx.send(CreateReply::default().content(response)).await?;
     Ok(())
 }

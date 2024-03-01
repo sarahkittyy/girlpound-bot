@@ -51,8 +51,8 @@ impl ServerBuilder {
             controller: Arc::new(RwLock::new(
                 RconController::connect(self.addr, &self.rcon_pass).await?,
             )),
-            player_count_channel: self.player_count_cid.map(serenity::ChannelId),
-            log_channel: self.log_cid.map(serenity::ChannelId),
+            player_count_channel: self.player_count_cid.map(serenity::ChannelId::new),
+            log_channel: self.log_cid.map(serenity::ChannelId::new),
             ftp: ServerFtp::new(ftp_url, self.ftp_credentials),
             allow_seed: self.allow_seed,
             show_status: self.show_status,

@@ -9,7 +9,7 @@ edition = "2021"
 chrono = "0.4.31"
 dotenv = "0.15.0"
 ftp = "3.0.1"
-poise = "0.5.6"
+poise = "0.6.1"
 rand = "0.8.5"
 # rcon = { version = "0.6.0", features = ["rt-tokio"] }
 rcon = { path = "rust-rcon", features = ["rt-tokio"] }

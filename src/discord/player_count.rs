@@ -1,11 +1,12 @@
 use poise::serenity_prelude as serenity;
+use serenity::EditChannel;
 use std::sync::Arc;
 use tokio::time;
 
 use crate::Server;
 
 /// spawns a thread that uses RCON to count the players on the server and update the corresponding channel name
-pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp>) {
+pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::Http>) {
     if let Some(player_count_channel) = server.player_count_channel {
         // check player count in this interval
         let mut interval = time::interval(time::Duration::from_secs(5 * 61));
@@ -26,14 +27,15 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::CacheAndHttp
                 };
                 // edit channel name to reflect player count
                 let r = player_count_channel
-                    .edit(ctx.as_ref(), |c| {
-                        c.name(format!(
+                    .edit(
+                        &ctx,
+                        EditChannel::new().name(format!(
                             "{} {}/{} online",
                             server.emoji,
                             status.players.len(),
                             status.max_players,
-                        ))
-                    })
+                        )),
+                    )
                     .await;
                 if let Err(e) = r {
                     println!("Could not update player count channel: {e}");

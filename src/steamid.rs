@@ -23,13 +23,14 @@ pub struct SteamIDProfile {
 }
 
 impl SteamIDProfile {
-    pub fn populate_embed<'a>(&self, embed: &'a mut CreateEmbed) -> &'a mut CreateEmbed {
-        embed.field("SteamID64", &self.steamid64, false);
-        embed.field("SteamID", &self.steamid, false);
-        embed.field("Steam3", &self.steam3, false);
-        embed.field("SteamID URL", &self.steamidurl, false);
+    pub fn to_embed(&self) -> CreateEmbed {
+        let mut embed = CreateEmbed::new();
+        embed = embed.field("SteamID64", &self.steamid64, false);
+        embed = embed.field("SteamID", &self.steamid, false);
+        embed = embed.field("Steam3", &self.steam3, false);
+        embed = embed.field("SteamID URL", &self.steamidurl, false);
         if let Some(inviteurl) = &self.inviteurl {
-            embed.field("Invite URL", inviteurl, false);
+            embed = embed.field("Invite URL", inviteurl, false);
         }
         embed
     }

@@ -7,6 +7,7 @@ use crate::{logs::LogReceiver, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude as serenity;
+use serenity::CreateMessage;
 
 use sqlx::{MySql, Pool};
 use tokio::sync::mpsc::error::TryRecvError;
@@ -19,6 +20,7 @@ mod log_handler;
 mod media_cooldown;
 mod new_user;
 mod nsfw_callout;
+mod on_component_interaction;
 mod on_delete;
 mod on_message;
 mod player_count;
@@ -35,24 +37,31 @@ pub struct PoiseData {
     /// image spam prevention
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
-    /// NSFW role
-    pub horny_role: serenity::RoleId,
-    /// #general
-    pub general_channel: serenity::ChannelId,
     /// Users that have already been called out for going into NSFW <1 hr after joining
     pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
-    /// channel where deleted messages are logged
-    deleted_message_log_channel: serenity::ChannelId,
+
+    /// NSFW role
+    pub horny_role: serenity::RoleId,
     /// role to seed teh tf2 server
     pub seeder_role: serenity::RoleId,
+    /// role to give users to allow them into the server
+    pub member_role: serenity::RoleId,
+
+    /// #general
+    pub general_channel: serenity::ChannelId,
+    /// channel where deleted messages are logged
+    deleted_message_log_channel: serenity::ChannelId,
     /// "trial mod" channel, for "helpful reminders"
     pub trial_mod_channel: serenity::ChannelId,
+    /// age verification channel
+    pub birthday_channel: serenity::ChannelId,
+
     /// /seeder cooldown
     pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
     /// Database pool
     pub pool: Pool<MySql>,
     /// steamid.uk api client
-    pub client: SteamIDClient,
+    pub steamid_client: SteamIDClient,
 }
 impl PoiseData {
     /// fetch the server with the given socket address
@@ -97,6 +106,7 @@ impl PoiseData {
     }
 }
 pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
+pub type ApplicationContext<'a> = poise::ApplicationContext<'a, PoiseData, Error>;
 
 struct Cooldown {
     user: serenity::UserId,
@@ -126,12 +136,11 @@ fn spawn_cooldown_manager(ctx: serenity::Context) -> Sender<Cooldown> {
                 {
                     let msg_string = format!(
                         "<@{}> guh!! >_<... post again <t:{}:R>",
-                        user.0,
+                        user.get(),
                         delete_at.timestamp()
                     );
-                    if let Ok(msg) = ctx
-                        .http
-                        .send_message(channel.0, &serenity::json::json!({ "content": msg_string }))
+                    if let Ok(msg) = channel
+                        .send_message(&ctx, CreateMessage::new().content(msg_string))
                         .await
                     {
                         queue.push((cooldown, msg));
@@ -144,9 +153,11 @@ fn spawn_cooldown_manager(ctx: serenity::Context) -> Sender<Cooldown> {
                 // if it should be deleted by now
                 let delete = Utc::now() - cooldown.delete_at > Duration::zero();
                 if delete {
-                    let mid = msg.id.0;
-                    let cid = msg.channel_id.0;
-                    tokio::task::spawn(async move { http.delete_message(cid, mid).await });
+                    let mid = msg.id;
+                    let cid = msg.channel_id;
+                    tokio::task::spawn(async move {
+                        http.delete_message(cid, mid, Some("media cooldown")).await
+                    });
                 }
                 !delete
             });
@@ -158,13 +169,13 @@ fn spawn_cooldown_manager(ctx: serenity::Context) -> Sender<Cooldown> {
 }
 
 /// handle discord events
-pub async fn event_handler(
+async fn event_handler(
     ctx: &serenity::Context,
-    event: &poise::Event<'_>,
+    event: &serenity::FullEvent,
     _framework: poise::FrameworkContext<'_, PoiseData, Error>,
     data: &PoiseData,
 ) -> Result<(), Error> {
-    use poise::Event;
+    use serenity::FullEvent as Event;
 
     let cooldown_handler = {
         let ctx = ctx.clone();
@@ -176,6 +187,7 @@ pub async fn event_handler(
         Event::GuildMemberUpdate {
             old_if_available,
             new,
+            ..
         } => {
             nsfw_callout::try_callout_nsfw_role(ctx, data, old_if_available, new).await?;
         }
@@ -193,6 +205,11 @@ pub async fn event_handler(
         } => {
             on_delete::save_deleted(ctx, data, channel_id, deleted_message_id).await?;
         }
+        Event::InteractionCreate { interaction } => {
+            if let Some(mci) = interaction.as_message_component() {
+                on_component_interaction::dispatch(ctx, data, mci).await?;
+            }
+        }
         _ => (),
     };
     Ok(())
@@ -209,14 +226,17 @@ pub async fn start_bot(
     let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
     let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
     let horny_role_id: u64 = parse_env("HORNY_ROLE");
+    let member_role_id: u64 = parse_env("MEMBER_ROLE");
     let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
     let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
+    let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
+
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
         | serenity::GatewayIntents::GUILD_MESSAGES
         | serenity::GatewayIntents::GUILD_MEMBERS;
 
-    let girlpounder = {
+    let framework = {
         let servers = servers.clone();
         let pool = pool.clone();
         let pug_server = "pug.fluffycat.gay:27015"
@@ -228,6 +248,7 @@ pub async fn start_bot(
             .options(poise::FrameworkOptions {
                 commands: vec![
                     commands::bark(),
+                    commands::birthday_modal(),
                     commands::pug(),
                     commands::rcon(),
                     commands::snipers(),
@@ -252,27 +273,26 @@ pub async fn start_bot(
                 event_handler: |a, b, c, d| Box::pin(event_handler(a, b, c, d)),
                 ..Default::default()
             })
-            .token(bot_token)
-            .intents(intents)
             .setup(move |ctx, _ready, framework| {
                 Box::pin(async move {
                     ctx.cache.set_max_messages(500);
                     poise::builtins::register_in_guild(
                         ctx,
                         &framework.options().commands,
-                        serenity::GuildId(guild_id),
+                        serenity::GuildId::new(guild_id),
                     )
                     .await?;
 
-                    ctx.set_activity(serenity::Activity::playing("!add 5 ultracide.net"))
-                        .await;
+                    ctx.set_activity(Some(serenity::ActivityData::playing(
+                        "!add 5 ultracide.net",
+                    )));
 
                     Ok(PoiseData {
                         servers,
                         media_cooldown: Arc::new(RwLock::new(
                             media_cooldown::MediaCooldown::from_env(),
                         )),
-                        guild_id: serenity::GuildId(guild_id),
+                        guild_id: serenity::GuildId::new(guild_id),
                         pug_cfgs: [
                             "rgl_off",
                             "rgl_7s_koth",
@@ -284,21 +304,23 @@ pub async fn start_bot(
                             "rgl_6s_5cp_match_pro",
                         ]
                         .into_iter()
-                        .map(|s| s.to_owned())
+                        .map(str::to_owned)
                         .collect(),
                         pug_server,
-                        seeder_role: serenity::RoleId(seeder_role_id),
-                        horny_role: serenity::RoleId(horny_role_id),
+                        seeder_role: serenity::RoleId::new(seeder_role_id),
+                        horny_role: serenity::RoleId::new(horny_role_id),
+                        member_role: serenity::RoleId::new(member_role_id),
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
-                        general_channel: serenity::ChannelId(general_channel_id),
-                        deleted_message_log_channel: serenity::ChannelId(
+                        general_channel: serenity::ChannelId::new(general_channel_id),
+                        deleted_message_log_channel: serenity::ChannelId::new(
                             deleted_messages_log_channel_id,
                         ),
-                        trial_mod_channel: serenity::ChannelId(trial_mod_channel_id),
+                        trial_mod_channel: serenity::ChannelId::new(trial_mod_channel_id),
+                        birthday_channel: serenity::ChannelId::new(birthday_channel_id),
                         media_cooldown_thread: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
                         pool,
-                        client: SteamIDClient::new(
+                        steamid_client: SteamIDClient::new(
                             parse_env("STEAMID_MYID"),
                             parse_env("STEAMID_API_KEY"),
                         ),
@@ -306,24 +328,26 @@ pub async fn start_bot(
                 })
             })
             .build()
-            .await
-            .expect("Failed to build girlpounder bot.")
     };
     // launch alt threads
 
-    let ctx = girlpounder.client().cache_and_http.clone();
+    let mut client = serenity::Client::builder(bot_token, intents)
+        .framework(framework)
+        .await
+        .expect("Could not initialize client.");
+
     for (_addr, server) in servers.iter() {
-        player_count::spawn_player_count_thread(server.clone(), ctx.clone());
+        player_count::spawn_player_count_thread(server.clone(), client.http.clone());
     }
 
     log_handler::spawn_log_thread(
         log_receiver.clone(),
         servers.clone(),
         pool.clone(),
-        ctx.clone(),
+        client.http.clone(),
     );
 
-    let fut = girlpounder.start();
+    let fut = client.start();
     println!("Bot started!");
     fut.await.expect("Bot broke"); //
 }
