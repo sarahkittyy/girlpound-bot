@@ -258,6 +258,7 @@ pub async fn start_bot(
                     commands::bark(),
                     commands::birthday_modal(),
                     commands::pug(),
+                    commands::donate(),
                     commands::rcon(),
                     commands::snipers(),
                     commands::seeder(),

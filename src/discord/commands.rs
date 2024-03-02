@@ -27,6 +27,14 @@ use serenity::{CreateAllowedMentions, CreateEmbed, CreateMessage, GetMessages};
 use rand::prelude::*;
 use regex::Regex;
 
+/// Sends the donation link
+#[poise::command(slash_command)]
+pub async fn donate(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.send(CreateReply::default().content("https://fluffycat.gay/donate"))
+        .await?;
+    Ok(())
+}
+
 /// Sets the server player limit
 #[poise::command(slash_command)]
 pub async fn playercap(
