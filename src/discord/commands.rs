@@ -42,32 +42,40 @@ pub async fn playercap(
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
     server: SocketAddr,
-    #[description = "The player cap 24 <= p <= 32"] count: u8,
+    #[description = "The player cap 24 <= p <= 32"] count: i32,
 ) -> Result<(), Error> {
     let re = Regex::new(r#""maxplayers" is "(\d+)""#).unwrap();
 
-    let min = 24;
-    let max = ctx
-        .data()
-        .server(server)?
-        .controller
-        .write()
-        .await
-        .run("maxplayers")
-        .await?;
-    let max = re
+    let server = ctx.data().server(server)?;
+
+    let min: i32 = 24;
+    let max = server.controller.write().await.run("maxplayers").await?;
+    let max: i32 = re
         .captures(&max)
-        .and_then(|caps| caps[1].parse::<u8>().ok())
+        .and_then(|caps| caps[1].parse::<i32>().ok())
         .unwrap_or(25)
         - 1;
 
     let visible = count.max(min).min(max);
-    let reserved = (max - visible - 1).min(0);
-    let cmd = format!(
-        "sm_reserved_slots {}; sv_visiblemaxplayers {};",
-        reserved, visible
-    );
-    rcon_and_reply(ctx, Some(server), cmd).await
+    let reserved = (max - visible - 1).max(0);
+
+    let rs = format!("sm_reserved_slots {reserved}");
+    let vmp = format!("sv_visiblemaxplayers {visible}");
+
+    // update server.cfg for persistence
+    server
+        .ftp
+        .add_or_edit_line("tf/cfg/server.cfg", "sm_reserved_slots", &rs)
+        .await?;
+    server
+        .ftp
+        .add_or_edit_line("tf/cfg/server.cfg", "sv_visiblemaxplayers", &vmp)
+        .await?;
+
+    let cmd = format!("{rs};{vmp}");
+    let reply = rcon_user_output(&[server], cmd).await;
+    ctx.send(CreateReply::default().content(reply)).await?;
+    Ok(())
 }
 
 /// Sends an RCON command to the server.
