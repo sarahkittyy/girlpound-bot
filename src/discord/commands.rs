@@ -1,7 +1,7 @@
 use std::env;
 use std::net::SocketAddr;
 
-use super::Context;
+use super::{Context, PoiseData};
 use crate::{Error, Server};
 
 pub mod util;
@@ -19,6 +19,9 @@ pub use pug::*;
 mod birthday_check;
 pub use birthday_check::*;
 
+mod botsay;
+pub use botsay::*;
+
 use poise;
 use poise::serenity_prelude as serenity;
 use poise::CreateReply;
@@ -26,6 +29,33 @@ use serenity::{CreateAllowedMentions, CreateEmbed, CreateMessage, GetMessages};
 
 use rand::prelude::*;
 use regex::Regex;
+
+pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
+    bark,
+    botsay,
+    birthday_modal,
+    pug,
+    donate,
+    rcon,
+    snipers,
+    seeder,
+    respawntimes,
+    playercap,
+    meow,
+    map,
+    status,
+    lookup,
+    reacted_users,
+    feedback,
+    tf2ban,
+    tf2banid,
+    tf2unban,
+    tf2kick,
+    tf2mute,
+    tf2unmute,
+    tf2gag,
+    tf2ungag,
+];
 
 /// Sends the donation link
 #[poise::command(slash_command)]
@@ -464,6 +494,10 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
         "is she, yknow, like, *curls paw*?",
         "ehe, uhm, mraow !! >w<",
         "guh wuh huh ?? nya...",
+		"omg >w< like literally,, nya !!! :3",
+		"mrraow !! raow raow >w< prraow raow raow",
+		"raow nya.. prraow >w<",
+		"meow meow meow",
         "eep!! *purrs*",
         "rawr i'm feral !!!! grrr >_<",
         "rrrr",
@@ -482,6 +516,9 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
 		"https://media.discordapp.net/attachments/901299978817925131/1126298371410366494/JMvRJlHy.gif",
 		"https://media.discordapp.net/attachments/779900906665017405/1061512722228981860/attachment-19.gif",
 		"https://media.discordapp.net/attachments/984367821901402153/1043398180722720848/kat.gif",
+		"https://tenor.com/view/cat-meow-angry-pet-hiss-gif-16838272",
+		"https://tenor.com/view/cat-power-cat-cat-pillow-repost-this-post-this-cat-gif-23865940",
+		"https://tenor.com/view/cat-gif-7623921",
 		"meow",
         "meow",
         "meow",

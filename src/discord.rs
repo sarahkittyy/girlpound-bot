@@ -254,31 +254,7 @@ pub async fn start_bot(
             .expect("Could not resolve PUG server address.");
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
-                commands: vec![
-                    commands::bark(),
-                    commands::birthday_modal(),
-                    commands::pug(),
-                    commands::donate(),
-                    commands::rcon(),
-                    commands::snipers(),
-                    commands::seeder(),
-                    commands::respawntimes(),
-                    commands::playercap(),
-                    commands::meow(),
-                    commands::map(),
-                    commands::status(),
-                    commands::lookup(),
-                    commands::reacted_users(),
-                    commands::feedback(),
-                    commands::tf2ban(),
-                    commands::tf2banid(),
-                    commands::tf2unban(),
-                    commands::tf2kick(),
-                    commands::tf2mute(),
-                    commands::tf2unmute(),
-                    commands::tf2gag(),
-                    commands::tf2ungag(),
-                ],
+                commands: commands::ALL.iter().map(|f| f()).collect(),
                 event_handler: |a, b, c, d| Box::pin(event_handler(a, b, c, d)),
                 ..Default::default()
             })
