@@ -4,6 +4,8 @@ use crate::{discord::Context, Error};
 use poise;
 use poise::CreateReply;
 
+use regex::Regex;
+
 use super::util::{
     output_servers, rcon_and_reply, rcon_user_output, servers_autocomplete, users_autocomplete,
 };
@@ -37,6 +39,23 @@ pub async fn tf2banid(
     #[description = "Time to ban them for, in minutes"] minutes: u32,
     #[description = "The reason for the ban"] reason: Option<String>,
 ) -> Result<(), Error> {
+    let sid_re = Regex::new(r#"(?:(STEAM_\d+:\d+:\d+)|\[?(.:1:\d+)]?)"#).unwrap();
+    let Some(caps) = sid_re.captures(&id) else {
+        ctx.send(CreateReply::default().content(
+			format!("Invalid steam id format. Examples: STEAM_0:0:150459717, [U:1:125818436], U:1:125818436")
+		).ephemeral(true)).await?;
+        return Ok(());
+    };
+    let id = if let Some(id) = caps.get(1) {
+        id.as_str().to_owned()
+    } else if let Some(id3) = caps.get(2) {
+        format!("[{}]", id3.as_str())
+    } else {
+        ctx.send(CreateReply::default().content(
+			format!("Invalid steam id format. Examples: STEAM_0:0:150459717, [U:1:125818436], U:1:125818436")
+		).ephemeral(true)).await?;
+        return Ok(());
+    };
     let reason = reason.unwrap_or("undesirable".to_owned());
     let cmd = format!("sm_addban {} {} {}", minutes, id, reason);
     let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
