@@ -2,6 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 
 use super::{Context, PoiseData};
+use crate::logs::safe_strip;
 use crate::{Error, Server};
 
 pub mod util;
@@ -270,7 +271,7 @@ pub async fn seeder(
             .content(format!(
                 "{}<@&{}> come fwag on {} :3\nraowquested by: <@{}>\n{}",
                 if let Some(msg) = message {
-                    msg + "\n"
+                    safe_strip(&(msg + "\n"))
                 } else {
                     "".to_owned()
                 },

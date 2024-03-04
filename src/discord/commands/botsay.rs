@@ -1,8 +1,9 @@
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, CreateAllowedMentions};
 use poise::{self, CreateReply};
 use serenity::{CreateAttachment, CreateMessage};
 
 use super::Context;
+use crate::logs::safe_strip;
 use crate::Error;
 
 /// says something on behalf of the bot
@@ -17,7 +18,7 @@ pub async fn botsay(
 
     // content
     if let Some(content) = content {
-        message = message.content(content);
+        message = message.content(safe_strip(&content));
     }
 
     // attachments
@@ -25,6 +26,8 @@ pub async fn botsay(
         let att = CreateAttachment::url(&ctx, &att.url).await?;
         message = message.files(vec![att]);
     }
+
+    message = message.allowed_mentions(CreateAllowedMentions::new().empty_roles().empty_users());
 
     cid.send_message(&ctx, message).await?;
 
