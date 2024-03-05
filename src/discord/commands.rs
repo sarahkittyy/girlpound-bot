@@ -23,6 +23,8 @@ pub use birthday_check::*;
 mod botsay;
 pub use botsay::*;
 
+use crate::treats::command::treats;
+
 use poise;
 use poise::serenity_prelude as serenity;
 use poise::CreateReply;
@@ -32,6 +34,7 @@ use rand::prelude::*;
 use regex::Regex;
 
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
+    treats,
     bark,
     botsay,
     birthday_modal,

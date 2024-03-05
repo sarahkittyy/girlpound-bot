@@ -1,4 +1,4 @@
-use crate::logs::{as_discord_message, LogReceiver};
+use super::{as_discord_message, LogReceiver};
 use crate::{Error, Server};
 use poise::serenity_prelude::{self as serenity};
 use serenity::CreateMessage;

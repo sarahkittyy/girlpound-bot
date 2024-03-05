@@ -15,6 +15,7 @@ mod ftp;
 mod logs;
 mod steamid;
 mod tf2_rcon;
+mod treats;
 
 use ftp::ServerFtp;
 

@@ -3,7 +3,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::steamid::SteamIDClient;
-use crate::{logs::LogReceiver, Error};
+use crate::{logs, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
@@ -16,7 +16,6 @@ use tokio::sync::OnceCell;
 use tokio::{self, sync::RwLock};
 
 mod commands;
-mod log_handler;
 mod media_cooldown;
 mod new_user;
 mod nsfw_callout;
@@ -195,8 +194,8 @@ async fn event_handler(
             new_user::welcome_user(ctx, new_member).await?;
         }
         Event::Message { new_message } => {
-            on_message::trial_mod_reminders(ctx, data, new_message).await?;
-            on_message::handle_cooldowns(ctx, data, cooldown_handler, new_message).await?;
+            let _ = on_message::trial_mod_reminders(ctx, data, new_message).await;
+            let _ = on_message::handle_cooldowns(ctx, data, cooldown_handler, new_message).await;
         }
         Event::MessageDelete {
             channel_id,
@@ -226,7 +225,7 @@ async fn event_handler(
 /// initialize the discord bot
 pub async fn start_bot(
     pool: Pool<MySql>,
-    log_receiver: LogReceiver,
+    log_receiver: logs::LogReceiver,
     servers: HashMap<SocketAddr, crate::Server>,
 ) {
     let bot_token: String = parse_env("BOT_TOKEN");
@@ -325,7 +324,7 @@ pub async fn start_bot(
         player_count::spawn_player_count_thread(server.clone(), client.http.clone());
     }
 
-    log_handler::spawn_log_thread(
+    logs::spawn_log_thread(
         log_receiver.clone(),
         servers.clone(),
         pool.clone(),

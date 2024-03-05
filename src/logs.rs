@@ -12,6 +12,9 @@ use srcds_log_parser::LogMessage;
 mod util;
 pub use util::{as_discord_message, safe_strip};
 
+mod discord;
+pub use discord::spawn_log_thread;
+
 use crate::Error;
 
 #[derive(Clone)]
