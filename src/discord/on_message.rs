@@ -9,7 +9,7 @@ use tokio::sync::mpsc::Sender;
 
 use super::{Cooldown, PoiseData};
 
-const KATELYN_UID: u64 = 135895345296048128;
+const KATELYN_UID: u64 = 712534342445826078;
 pub async fn hi_cat(
     ctx: &serenity::Context,
     data: &PoiseData,
