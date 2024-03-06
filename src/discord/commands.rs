@@ -296,7 +296,7 @@ pub async fn seeder(
 #[poise::command(slash_command, global_cooldown = 10)]
 pub async fn lookup(
     ctx: Context<'_>,
-    #[description = "SteamID, Steam2, Steam3, or vanity URL. Separate multiple by commas."]
+    #[description = "SteamID, Steam2, Steam3, or vanity URL"]
     #[autocomplete = "steam_id_autocomplete"]
     query: String,
 ) -> Result<(), Error> {

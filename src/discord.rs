@@ -307,6 +307,7 @@ pub async fn start_bot(
                         steamid_client: SteamIDClient::new(
                             parse_env("STEAMID_MYID"),
                             parse_env("STEAMID_API_KEY"),
+                            parse_env("STEAM_API_KEY"),
                         ),
                     })
                 })

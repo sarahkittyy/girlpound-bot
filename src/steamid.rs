@@ -1,15 +1,21 @@
+use std::str::FromStr;
+
 use poise::serenity_prelude as serenity;
+use regex::Regex;
 use reqwest;
 use serenity::CreateEmbed;
 
 use crate::Error;
 use serde::{Deserialize, Serialize};
 
-const BASEURL: &'static str = "https://steamidapi.uk/v2/";
+const STEAMID_BASEURL: &'static str = "https://steamidapi.uk/v2/";
+const STEAM_BASEURL: &'static str = "https://api.steampowered.com/";
+const STEAM_VANITY_ROUTE: &'static str = "ISteamUser/ResolveVanityURL/v0001/";
 
 pub struct SteamIDClient {
     myid: u64,
-    api_key: String,
+    steamid_api_key: String,
+    steam_api_key: String,
     client: reqwest::Client,
 }
 
@@ -20,6 +26,32 @@ pub struct SteamIDProfile {
     pub steam3: String,
     pub steamidurl: String,
     pub inviteurl: Option<String>,
+}
+
+enum SteamProfileURL {
+    Vanity(String),
+    SteamID64(u64),
+}
+
+impl FromStr for SteamProfileURL {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // parse input url
+        let regex = Regex::new(r#"https?://steamcommunity\.com/(id|profiles)/([^/]+)/?"#).unwrap();
+        let caps = regex
+            .captures(s.trim())
+            .ok_or("Is not a valid steam profile url.")?;
+        // /id/ is vanity, /profiles/ with digits is just directly a steamid64
+        let idtype = caps.get(1).unwrap().as_str();
+        let id = caps.get(2).unwrap().as_str();
+
+        match idtype {
+            "profiles" => Ok(SteamProfileURL::SteamID64(id.parse()?)),
+            "id" => Ok(SteamProfileURL::Vanity(id.to_owned())),
+            _ => Err("Invalid profile type. Valid: /profiles/, /id/".into()),
+        }
+    }
 }
 
 impl SteamIDProfile {
@@ -37,22 +69,63 @@ impl SteamIDProfile {
 }
 
 impl SteamIDClient {
-    pub fn new(myid: u64, api_key: String) -> Self {
+    pub fn new(myid: u64, steamid_api_key: String, steam_api_key: String) -> Self {
         Self {
             myid,
-            api_key,
+            steamid_api_key,
+            steam_api_key,
             client: reqwest::Client::new(),
         }
     }
 
-    pub async fn lookup(&self, input: &str) -> Result<Vec<SteamIDProfile>, Error> {
+    /// resolves a steam profile url to a steamid64
+    async fn resolve_vanity(&self, url: SteamProfileURL) -> Result<u64, Error> {
+        let vanityurl = match url {
+            SteamProfileURL::SteamID64(id) => return Ok(id),
+            SteamProfileURL::Vanity(v) => v,
+        };
+
+        // otherwise, fetch conversion api
+        let path = format!("{}{}", STEAM_BASEURL, STEAM_VANITY_ROUTE);
         let resp = self
             .client
-            .get(format!("{}{}", BASEURL, "convert.php"))
+            .get(path)
+            .query(&[
+                ("key", self.steam_api_key.to_owned()),
+                ("vanityurl", vanityurl),
+            ])
+            .send()
+            .await?;
+        let body = resp.text().await?;
+        let response: serde_json::Value = serde_json::from_str(&body)?;
+
+        if let Some(steamid) = response.get("response").and_then(|r| r.get("steamid")) {
+            Ok(steamid
+                .as_str()
+                .and_then(|s| s.parse().ok())
+                .ok_or("Could not parse steamid response field")?)
+        } else if let Some(error) = response.get("response").and_then(|r| r.get("message")) {
+            Err(format!("Steam API error: {}", error).into())
+        } else {
+            Err("Invalid response from steam api.".into())
+        }
+    }
+
+    /// Convert between steam urls.
+    pub async fn lookup(&self, input: &str) -> Result<Vec<SteamIDProfile>, Error> {
+        let input = if let Ok(url) = input.parse::<SteamProfileURL>() {
+            self.resolve_vanity(url).await?.to_string()
+        } else {
+            input.to_string()
+        };
+
+        let resp = self
+            .client
+            .get(format!("{}{}", STEAMID_BASEURL, "convert.php"))
             .query(&[
                 ("myid", &self.myid.to_string()),
-                ("apikey", &self.api_key),
-                ("input", &input.to_owned()),
+                ("apikey", &self.steamid_api_key),
+                ("input", &input),
             ])
             .send()
             .await?;
@@ -61,7 +134,7 @@ impl SteamIDClient {
         let response: serde_json::Value = serde_json::from_str(&body)?;
         let response = if let Some(errormsg) = response.get("error").and_then(|e| e.get("errormsg"))
         {
-            Err(errormsg.to_string())?
+            return Err(format!("steamid.uk error: {}", errormsg).into());
         } else if let Some(converted) = response.get("converted") {
             if converted.is_object() {
                 Ok(vec![serde_json::from_value(converted.clone())?])
