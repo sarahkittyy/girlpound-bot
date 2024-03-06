@@ -200,6 +200,7 @@ async fn event_handler(
         Event::Message { new_message } => {
             let _ = on_message::trial_mod_reminders(ctx, data, new_message).await;
             let _ = on_message::handle_cooldowns(ctx, data, cooldown_handler, new_message).await;
+            let _ = on_message::hi_cat(ctx, data, new_message).await;
         }
         Event::MessageDelete {
             channel_id,

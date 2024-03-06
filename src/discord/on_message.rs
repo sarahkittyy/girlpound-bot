@@ -9,6 +9,40 @@ use tokio::sync::mpsc::Sender;
 
 use super::{Cooldown, PoiseData};
 
+const KATELYN_UID: u64 = 712534342445826078;
+pub async fn hi_cat(
+    ctx: &serenity::Context,
+    data: &PoiseData,
+    new_message: &Message,
+) -> Result<(), Error> {
+    if new_message.author.id.get() == KATELYN_UID
+        && new_message.content.to_lowercase().contains("hi cat")
+    {
+        let hicats = sqlx::query!("SELECT count FROM `hicat` WHERE uid=?", KATELYN_UID)
+            .fetch_optional(&data.sb_pool)
+            .await?;
+        let mut count = hicats.map(|c| c.count).unwrap_or(0);
+        count += 1;
+        sqlx::query!(
+            r#"
+			INSERT INTO `hicat` (`uid`, `count`)
+			VALUES (?, ?)
+			ON DUPLICATE KEY UPDATE `count` = ?
+			"#,
+            KATELYN_UID,
+            count,
+            count
+        )
+        .execute(&data.local_pool)
+        .await?;
+
+        new_message
+            .reply(&ctx, format!("\"hi cat\" counter: {}", count))
+            .await?;
+    }
+    Ok(())
+}
+
 pub async fn trial_mod_reminders(
     ctx: &serenity::Context,
     data: &PoiseData,
