@@ -52,6 +52,7 @@ impl BanProtest {
 			("Expires", expires, true),
 			("Admin", self.admin.clone(), true),
 			("Ban Reason", self.banreason.clone(), true)
+			("SteamID", self.authid.clone(), true)
 		])
 		.footer(CreateEmbedFooter::new("Appeal submitted"))
 		.timestamp(Timestamp::from_unix_timestamp(self.datesubmitted.into()).unwrap())
