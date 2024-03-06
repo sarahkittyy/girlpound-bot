@@ -23,18 +23,20 @@ pub use birthday_check::*;
 mod botsay;
 pub use botsay::*;
 
+use crate::psychostats;
 use crate::treats::command::treats;
 
 use poise;
 use poise::serenity_prelude as serenity;
 use poise::CreateReply;
-use serenity::{CreateAllowedMentions, CreateEmbed, CreateMessage, GetMessages};
+use serenity::{CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, CreateMessage, GetMessages};
 
 use rand::prelude::*;
 use regex::Regex;
 
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     treats,
+    stats,
     bark,
     botsay,
     birthday_modal,
@@ -60,6 +62,47 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2gag,
     tf2ungag,
 ];
+
+/// Lookup your tkgp stats with your steamcommunity.com profile url.
+#[poise::command(slash_command, user_cooldown = 15)]
+pub async fn stats(
+    ctx: Context<'_>,
+    #[description = "Steam profile url, eg. https://steamcommunity.com/id/sarahkitty/"]
+    profile: String,
+) -> Result<(), Error> {
+    ctx.defer().await?;
+    let profiles = ctx.data().steamid_client.lookup(&profile).await?;
+    let profile = profiles.first().ok_or("Profile not found")?;
+    let steamid = &profile.steamid;
+    let summary = ctx
+        .data()
+        .steamid_client
+        .get_player_summary(profile.steamid64.parse()?)
+        .await?;
+    let (tkgp4id, tkgp5id) = psychostats::find_plr_ids(steamid).await?;
+
+    let url4 = tkgp4id
+        .map(|id| format!("{}player.php?id={}", psychostats::BASEURL4, id))
+        .unwrap_or("Not found.".to_owned());
+    let url5 = tkgp5id
+        .map(|id| format!("{}player.php?id={}", psychostats::BASEURL5, id))
+        .unwrap_or("Not found.".to_owned());
+
+    let embed = CreateEmbed::new()
+        .title(format!("Psychostats lookup for {}", summary.personaname))
+        .url(summary.profileurl)
+        .thumbnail(summary.avatarmedium)
+        .footer(CreateEmbedFooter::new("Not you? DM @sarahkittyy :3"))
+        .description(format!("### TKGP #4\n{}\n### TKGP #5\n{}", url4, url5));
+
+    ctx.send(
+        CreateReply::default()
+            .embed(embed)
+            .allowed_mentions(CreateAllowedMentions::new().empty_roles().empty_users()),
+    )
+    .await?;
+    Ok(())
+}
 
 /// Sends the donation link
 #[poise::command(slash_command)]

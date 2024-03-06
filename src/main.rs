@@ -13,6 +13,7 @@ use tokio;
 mod discord;
 mod ftp;
 mod logs;
+mod psychostats;
 mod steamid;
 mod tf2_rcon;
 mod treats;

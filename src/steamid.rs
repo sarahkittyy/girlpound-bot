@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 const STEAMID_BASEURL: &'static str = "https://steamidapi.uk/v2/";
 const STEAM_BASEURL: &'static str = "https://api.steampowered.com/";
 const STEAM_VANITY_ROUTE: &'static str = "ISteamUser/ResolveVanityURL/v0001/";
+const STEAM_INFO_ROUTE: &'static str = "ISteamUser/GetPlayerSummaries/v0002/";
 
 pub struct SteamIDClient {
     myid: u64,
@@ -28,6 +29,14 @@ pub struct SteamIDProfile {
     pub inviteurl: Option<String>,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct SteamPlayerSummary {
+    pub steamid: String,
+    pub avatarmedium: String,
+    pub personaname: String,
+    pub profileurl: String,
+}
+
 enum SteamProfileURL {
     Vanity(String),
     SteamID64(u64),
@@ -38,7 +47,8 @@ impl FromStr for SteamProfileURL {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // parse input url
-        let regex = Regex::new(r#"https?://steamcommunity\.com/(id|profiles)/([^/]+)/?"#).unwrap();
+        let regex =
+            Regex::new(r#"(?:https?://)?steamcommunity\.com/(id|profiles)/([^/]+)/?"#).unwrap();
         let caps = regex
             .captures(s.trim())
             .ok_or("Is not a valid steam profile url.")?;
@@ -78,6 +88,30 @@ impl SteamIDClient {
         }
     }
 
+    /// returns a steam user's player info
+    pub async fn get_player_summary(&self, steamid64: u64) -> Result<SteamPlayerSummary, Error> {
+        let path = format!("{}{}", STEAM_BASEURL, STEAM_INFO_ROUTE);
+        let resp = self
+            .client
+            .get(path)
+            .query(&[
+                ("key", self.steam_api_key.clone()),
+                ("steamids", steamid64.to_string()),
+            ])
+            .send()
+            .await?;
+        let body = resp.text().await?;
+        let response: serde_json::Value = serde_json::from_str(&body)?;
+        let players = response
+            .get("response")
+            .and_then(|r| r.get("players"))
+            .and_then(|players| players.as_array())
+            .ok_or("Could not parse response body.")?;
+        let player = players.first().ok_or("No player data found.")?;
+
+        Ok(serde_json::from_value(player.clone())?)
+    }
+
     /// resolves a steam profile url to a steamid64
     async fn resolve_vanity(&self, url: SteamProfileURL) -> Result<u64, Error> {
         let vanityurl = match url {
@@ -91,7 +125,7 @@ impl SteamIDClient {
             .client
             .get(path)
             .query(&[
-                ("key", self.steam_api_key.to_owned()),
+                ("key", self.steam_api_key.clone()),
                 ("vanityurl", vanityurl),
             ])
             .send()
