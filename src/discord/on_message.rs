@@ -9,7 +9,7 @@ use tokio::sync::mpsc::Sender;
 
 use super::{Cooldown, PoiseData};
 
-const KATELYN_UID: u64 = 712534342445826078;
+const KATELYN_UID: u64 = 135895345296048128;
 pub async fn hi_cat(
     ctx: &serenity::Context,
     data: &PoiseData,
@@ -19,7 +19,7 @@ pub async fn hi_cat(
         && new_message.content.to_lowercase().contains("hi cat")
     {
         let hicats = sqlx::query!("SELECT count FROM `hicat` WHERE uid=?", KATELYN_UID)
-            .fetch_optional(&data.sb_pool)
+            .fetch_optional(&data.local_pool)
             .await?;
         let mut count = hicats.map(|c| c.count).unwrap_or(0);
         count += 1;
