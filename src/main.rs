@@ -14,6 +14,7 @@ mod discord;
 mod ftp;
 mod logs;
 mod psychostats;
+mod sourcebans;
 mod steamid;
 mod tf2_rcon;
 mod treats;
@@ -23,8 +24,6 @@ use ftp::ServerFtp;
 use logs::LogReceiver;
 use tf2_rcon::RconController;
 
-use sqlx::mysql::MySql;
-use sqlx::Pool;
 use tokio::sync::RwLock;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -96,13 +95,6 @@ fn parse_env<T: FromStr>(name: &str) -> T {
 async fn main() -> Result<(), Error> {
     dotenv().ok();
     println!("Starting the girlpound bot...");
-
-    let db_url: String = parse_env("DATABASE_URL");
-
-    // migrate the db
-    let pool = Pool::<MySql>::connect(&db_url).await?;
-    sqlx::migrate!().run(&pool).await?;
-    println!("DB Migrated.");
 
     let rcon_pass: String = parse_env("RCON_PASS");
 
@@ -177,6 +169,5 @@ async fn main() -> Result<(), Error> {
         .expect("Could not bind log receiver");
 
     println!("Starting discord bot...");
-    discord::start_bot(pool, log_receiver, servers).await;
-    Ok(())
+    discord::start_bot(log_receiver, servers).await
 }

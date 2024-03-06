@@ -3,13 +3,13 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::steamid::SteamIDClient;
-use crate::{logs, Error};
+use crate::{logs, sourcebans, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use serenity::CreateMessage;
 
-use sqlx::{MySql, Pool};
+use sqlx::{MySql, Pool, Row};
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::OnceCell;
@@ -49,7 +49,9 @@ pub struct PoiseData {
     /// #general
     pub general_channel: serenity::ChannelId,
     /// channel where deleted messages are logged
-    deleted_message_log_channel: serenity::ChannelId,
+    pub deleted_message_log_channel: serenity::ChannelId,
+    /// mod channel id
+    pub mod_channel: serenity::ChannelId,
     /// "trial mod" channel, for "helpful reminders"
     pub trial_mod_channel: serenity::ChannelId,
     /// age verification channel
@@ -57,8 +59,10 @@ pub struct PoiseData {
 
     /// /seeder cooldown
     pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
-    /// Database pool
-    pub pool: Pool<MySql>,
+    /// Bot database pool
+    pub local_pool: Pool<MySql>,
+    /// Sourcebans database pool
+    pub sb_pool: Pool<MySql>,
     /// steamid.uk api client
     pub steamid_client: SteamIDClient,
 }
@@ -224,10 +228,9 @@ async fn event_handler(
 
 /// initialize the discord bot
 pub async fn start_bot(
-    pool: Pool<MySql>,
     log_receiver: logs::LogReceiver,
     servers: HashMap<SocketAddr, crate::Server>,
-) {
+) -> Result<(), Error> {
     let bot_token: String = parse_env("BOT_TOKEN");
     let guild_id: u64 = parse_env("GUILD_ID");
     let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
@@ -235,8 +238,20 @@ pub async fn start_bot(
     let horny_role_id: u64 = parse_env("HORNY_ROLE");
     let member_role_id: u64 = parse_env("MEMBER_ROLE");
     let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
+    let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
     let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
     let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
+
+    let db_url: String = parse_env("DATABASE_URL");
+    let sb_db_url: String = parse_env("SB_DATABASE_URL");
+
+    // migrate the db
+    let local_pool = Pool::<MySql>::connect(&db_url).await?;
+    sqlx::migrate!().run(&local_pool).await?;
+    println!("DB Migrated.");
+
+    let sb_pool = Pool::<MySql>::connect(&sb_db_url).await?;
+    println!("Connected to sourcebans pool.");
 
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
@@ -245,7 +260,8 @@ pub async fn start_bot(
 
     let framework = {
         let servers = servers.clone();
-        let pool = pool.clone();
+        let local_pool = local_pool.clone();
+        let sb_pool = sb_pool.clone();
         let pug_server = "pug.fluffycat.gay:27015"
             .to_socket_addrs()
             .expect("Pug address DNS resolution failed")
@@ -299,11 +315,13 @@ pub async fn start_bot(
                         deleted_message_log_channel: serenity::ChannelId::new(
                             deleted_messages_log_channel_id,
                         ),
+                        mod_channel: serenity::ChannelId::new(mod_channel_id),
                         trial_mod_channel: serenity::ChannelId::new(trial_mod_channel_id),
                         birthday_channel: serenity::ChannelId::new(birthday_channel_id),
                         media_cooldown_thread: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
-                        pool,
+                        local_pool: local_pool,
+                        sb_pool: sb_pool,
                         steamid_client: SteamIDClient::new(
                             parse_env("STEAMID_MYID"),
                             parse_env("STEAMID_API_KEY"),
@@ -328,11 +346,26 @@ pub async fn start_bot(
     logs::spawn_log_thread(
         log_receiver.clone(),
         servers.clone(),
-        pool.clone(),
+        local_pool.clone(),
+        client.http.clone(),
+    );
+
+    // fetch the current latest protest
+    let latest_protest_pid: i32 =
+        sqlx::query("SELECT `pid` FROM `sb_protests` ORDER BY `pid` DESC LIMIT 1")
+            .fetch_one(&sb_pool)
+            .await?
+            .try_get("pid")?;
+    sourcebans::spawn_ban_protest_thread(
+        sb_pool.clone(),
+        serenity::ChannelId::new(mod_channel_id),
+        latest_protest_pid,
         client.http.clone(),
     );
 
     let fut = client.start();
     println!("Bot started!");
     fut.await.expect("Bot broke"); //
+
+    Ok(())
 }

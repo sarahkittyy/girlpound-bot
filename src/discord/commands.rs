@@ -486,7 +486,7 @@ pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
         nickname,
         nickname
     )
-    .execute(&ctx.data().pool)
+    .execute(&ctx.data().local_pool)
     .await?;
 
     // fetch recent barkers
@@ -497,7 +497,7 @@ pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
 		LIMIT 15
 	"#
     )
-    .fetch_all(&ctx.data().pool)
+    .fetch_all(&ctx.data().local_pool)
     .await?;
 
     let user_list = results
