@@ -69,8 +69,13 @@ pub async fn stats(
     ctx: Context<'_>,
     #[description = "Steam profile url, eg. https://steamcommunity.com/id/sarahkitty/"]
     profile: String,
+    #[description = "Hide the resulting output"] hide_reply: Option<bool>,
 ) -> Result<(), Error> {
-    ctx.defer().await?;
+    if hide_reply.unwrap_or(true) {
+        ctx.defer_ephemeral().await?;
+    } else {
+        ctx.defer().await?;
+    };
     let profiles = ctx.data().steamid_client.lookup(&profile).await?;
     let profile = profiles.first().ok_or("Profile not found")?;
     let steamid = &profile.steamid;
@@ -82,18 +87,18 @@ pub async fn stats(
     let (tkgp4id, tkgp5id) = psychostats::find_plr_ids(steamid).await?;
 
     let url4 = tkgp4id
-        .map(|id| format!("{}player.php?id={}", psychostats::BASEURL4, id))
+        .map(|id| format!("[#{}]({}player.php?id={})", id, psychostats::BASEURL4, id))
         .unwrap_or("Not found.".to_owned());
     let url5 = tkgp5id
-        .map(|id| format!("{}player.php?id={}", psychostats::BASEURL5, id))
+        .map(|id| format!("[#{}]({}player.php?id={})", id, psychostats::BASEURL5, id))
         .unwrap_or("Not found.".to_owned());
 
     let embed = CreateEmbed::new()
-        .title(format!("Psychostats lookup for {}", summary.personaname))
+        .title(format!("PStats lookup for {}", summary.personaname))
         .url(summary.profileurl)
         .thumbnail(summary.avatarmedium)
         .footer(CreateEmbedFooter::new("Not you? DM @sarahkittyy :3"))
-        .description(format!("### TKGP #4\n{}\n### TKGP #5\n{}", url4, url5));
+        .description(format!("### TKGP #4: {}\n### TKGP #5: {}", url4, url5));
 
     ctx.send(
         CreateReply::default()
