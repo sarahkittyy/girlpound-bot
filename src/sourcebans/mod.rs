@@ -51,7 +51,7 @@ impl BanProtest {
 			("Banned", format!("<t:{}:f>", self.created), true),
 			("Expires", expires, true),
 			("Admin", self.admin.clone(), true),
-			("Ban Reason", self.banreason.clone(), true)
+			("Ban Reason", self.banreason.clone(), true),
 			("SteamID", self.authid.clone(), true)
 		])
 		.footer(CreateEmbedFooter::new("Appeal submitted"))
