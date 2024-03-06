@@ -68,7 +68,7 @@ pub fn spawn_ban_protest_thread(
 ) {
     println!("Last ban protest id: {}", last_protest_pid);
     // interval to listen for new protest submissions
-    let mut interval = time::interval(time::Duration::from_secs(30));
+    let mut interval = time::interval(time::Duration::from_secs(120));
     tokio::spawn(async move {
         let mut last_pid = last_protest_pid;
         loop {
