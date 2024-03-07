@@ -258,8 +258,9 @@ pub async fn respawntimes(
     let cmd: String = match instant {
         None => format!("mp_disable_respawn_times"),
         Some(instant) => format!(
-            "mp_disable_respawn_times {}",
-            if instant { "1" } else { "0" }
+            "mp_disable_respawn_times {}; sm_lowpop_enabled {}",
+            if instant { "1" } else { "0" },
+            if instant { "0" } else { "1" },
         ),
     };
     let reply = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
