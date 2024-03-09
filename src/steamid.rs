@@ -20,7 +20,7 @@ pub struct SteamIDClient {
     client: reqwest::Client,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct SteamIDProfile {
     pub steamid64: String,
     pub steamid: String,
