@@ -224,7 +224,11 @@ async fn event_handler(
             data.deleted_message_log_channel
                 .send_message(
                     &ctx,
-                    CreateMessage::new().content(format!("{} left the server", user.mention())),
+                    CreateMessage::new().content(format!(
+                        "{} ({}) left the server",
+                        user.mention(),
+                        user.name
+                    )),
                 )
                 .await?;
         }
