@@ -4,6 +4,8 @@ use poise::CreateReply;
 use reqwest;
 use serde::Deserialize;
 
+use uwuifier::uwuify_str_sse;
+
 #[derive(Deserialize)]
 struct BibleVerseApiResponse {
     pub reference: String,
@@ -20,7 +22,7 @@ pub async fn bibleverse(ctx: Context<'_>) -> Result<(), Error> {
 
     ctx.send(CreateReply::default().content(format!(
         "\"{}\" ({}).",
-        verse.text.trim(),
+        uwuify_str_sse(&verse.text.trim()),
         verse.reference
     )))
     .await?;

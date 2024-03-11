@@ -22,3 +22,4 @@ tokio = { version = "1", features = ["full"] }
 srcds_log_parser = { git = "https://github.com/sarahkittyy/srcds-log-parser", branch = "main" }
 futures = "0.3.30"
 scraper = "0.19.0"
+uwuify = "0.2.2"
