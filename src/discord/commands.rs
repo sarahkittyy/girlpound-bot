@@ -23,6 +23,9 @@ pub use birthday_check::*;
 mod botsay;
 pub use botsay::*;
 
+mod bibleverse;
+pub use bibleverse::*;
+
 use crate::psychostats;
 use crate::treats::command::treats;
 
@@ -35,6 +38,7 @@ use rand::prelude::*;
 use regex::Regex;
 
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
+    bibleverse,
     treats,
     stats,
     bark,
@@ -516,7 +520,7 @@ pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 /// Meow (suppawters only)
-#[poise::command(slash_command, channel_cooldown = 4)]
+#[poise::command(slash_command, channel_cooldown = 7)]
 pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
     let meows = [
         "meow!! :revolving_hearts:",
