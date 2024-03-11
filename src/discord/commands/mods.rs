@@ -37,7 +37,7 @@ pub async fn tf2banid(
     #[description = "Time to ban them for, in minutes"] minutes: u32,
     #[description = "The reason for the ban"] reason: Option<String>,
 ) -> Result<(), Error> {
-    ctx.defer_ephemeral().await?;
+    ctx.defer().await?;
     //let sid_re = Regex::new(r#"(?:(STEAM_\d+:\d+:\d+)|\[?(.:1:\d+)]?)"#).unwrap();
     let Ok(profile) = ctx
         .data()
