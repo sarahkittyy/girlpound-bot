@@ -74,6 +74,9 @@ pub async fn watch_emojis(
         ));
     }
 
+    rows.sort_unstable_by_key(|r| r.1.clone());
+    rows.dedup_by_key(|r| r.1.clone());
+
     let mut der = data.emoji_rank.write().await;
     for (name, eid, is_discord, animated) in rows.into_iter() {
         der.add_usage(eid, name, is_discord, animated);
