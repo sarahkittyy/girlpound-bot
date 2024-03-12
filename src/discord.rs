@@ -16,12 +16,14 @@ use tokio::sync::OnceCell;
 use tokio::{self, sync::RwLock};
 
 mod commands;
+mod emojirank;
 mod media_cooldown;
 mod new_user;
 mod nsfw_callout;
 mod on_component_interaction;
 mod on_delete;
 mod on_message;
+mod on_react;
 mod player_count;
 
 pub struct PoiseData {
@@ -38,6 +40,8 @@ pub struct PoiseData {
     media_cooldown_thread: OnceCell<Sender<Cooldown>>,
     /// Users that have already been called out for going into NSFW <1 hr after joining
     pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
+    /// Emoji ranking cache for tracking emoji usage
+    pub emoji_rank: Arc<RwLock<emojirank::EmojiWatcher>>,
 
     /// NSFW role
     pub horny_role: serenity::RoleId,
@@ -198,6 +202,9 @@ async fn event_handler(
             new_user::welcome_user(ctx, new_member).await?;
         }
         Event::Message { new_message } => {
+            let _ = on_message::watch_emojis(ctx, data, new_message)
+                .await
+                .inspect_err(|e| eprintln!("watch emojis fail: {e}"));
             let _ = on_message::trial_mod_reminders(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("trial mod reminder fail: {e}"));
@@ -214,6 +221,16 @@ async fn event_handler(
             ..
         } => {
             on_delete::save_deleted(ctx, data, channel_id, deleted_message_id).await?;
+        }
+        Event::ReactionAdd { add_reaction } => {
+            let _ = on_react::add(ctx, data, add_reaction)
+                .await
+                .inspect_err(|e| eprintln!("add react fail: {e}"));
+        }
+        Event::ReactionRemove { removed_reaction } => {
+            let _ = on_react::rm(ctx, data, removed_reaction)
+                .await
+                .inspect_err(|e| eprintln!("rm react fail: {e}"));
         }
         Event::InteractionCreate { interaction } => {
             if let Some(mci) = interaction.as_message_component() {
@@ -269,7 +286,10 @@ pub async fn start_bot(
         | serenity::GatewayIntents::GUILD_MESSAGES
         | serenity::GatewayIntents::GUILD_MEMBERS;
 
+    let watcher = Arc::new(RwLock::new(emojirank::EmojiWatcher::new()));
+
     let framework = {
+        let watcher = watcher.clone();
         let servers = servers.clone();
         let local_pool = local_pool.clone();
         let sb_pool = sb_pool.clone();
@@ -318,6 +338,7 @@ pub async fn start_bot(
                         .map(str::to_owned)
                         .collect(),
                         pug_server,
+                        emoji_rank: watcher.clone(),
                         seeder_role: serenity::RoleId::new(seeder_role_id),
                         horny_role: serenity::RoleId::new(horny_role_id),
                         member_role: serenity::RoleId::new(member_role_id),
@@ -373,6 +394,7 @@ pub async fn start_bot(
         latest_protest_pid,
         client.http.clone(),
     );
+    emojirank::launch_flush_thread(watcher.clone(), local_pool.clone());
 
     let fut = client.start();
     println!("Bot started!");

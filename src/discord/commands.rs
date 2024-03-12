@@ -26,6 +26,9 @@ pub use botsay::*;
 mod bibleverse;
 pub use bibleverse::*;
 
+mod emojitop;
+pub use emojitop::*;
+
 use crate::psychostats;
 use crate::treats::command::treats;
 
@@ -43,6 +46,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     stats,
     bark,
     botsay,
+    emojitop,
     birthday_modal,
     pug,
     donate,
@@ -96,7 +100,6 @@ pub async fn stats(
     let url5 = tkgp5id
         .map(|id| format!("[#{}]({}player.php?id={})", id, psychostats::BASEURL5, id))
         .unwrap_or("Not found.".to_owned());
-
     let embed = CreateEmbed::new()
         .title(format!("PStats lookup for {}", summary.personaname))
         .url(summary.profileurl)

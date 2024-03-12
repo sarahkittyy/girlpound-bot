@@ -1,9 +1,11 @@
 use chrono::Utc;
 use poise::serenity_prelude as serenity;
+use regex::Regex;
 use serenity::{CreateMessage, Message};
 
 use crate::Error;
 
+use emojito;
 use rand::prelude::*;
 use tokio::sync::mpsc::Sender;
 
@@ -39,6 +41,42 @@ pub async fn hi_cat(
         new_message
             .reply(&ctx, format!("\"hi cat\" counter: {}", count))
             .await?;
+    }
+    Ok(())
+}
+
+pub async fn watch_emojis(
+    _ctx: &serenity::Context,
+    data: &PoiseData,
+    new_message: &Message,
+) -> Result<(), Error> {
+    // find all unicode emoji
+    let uemojis: Vec<&'static emojito::Emoji> = emojito::find_emoji(&new_message.content);
+    //			name 		eid 		is_discord		animated
+    let mut rows: Vec<(String, String, bool, bool)> = vec![];
+    for uemoji in &uemojis {
+        let name = uemoji.name;
+        let id = uemoji.codepoint;
+        rows.push((name.to_owned(), id.to_owned(), false, false));
+    }
+
+    // find all discord emoji
+    let emoji = Regex::new(r#"<(a?):([A-Za-z0-9_-]+):(\d+)>"#).unwrap();
+    for emoji_caps in emoji.captures_iter(&new_message.content) {
+        let anim = emoji_caps.get(1).unwrap();
+        let name = emoji_caps.get(2).unwrap();
+        let id = emoji_caps.get(3).unwrap();
+        rows.push((
+            name.as_str().to_owned(),
+            id.as_str().to_owned(),
+            true,
+            anim.as_str() == "a",
+        ));
+    }
+
+    let mut der = data.emoji_rank.write().await;
+    for (name, eid, is_discord, animated) in rows.into_iter() {
+        der.add_usage(eid, name, is_discord, animated);
     }
     Ok(())
 }
