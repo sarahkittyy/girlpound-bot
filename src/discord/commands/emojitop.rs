@@ -50,7 +50,7 @@ async fn react(ctx: Context<'_>) -> Result<(), Error> {
         .join("\n");
 
     let mut embed = CreateEmbed::new();
-    embed = embed.title("Top emojis :3");
+    embed = embed.title("Top reaction emojis :3");
     embed = embed.description(desc);
 
     ctx.send(CreateReply::default().embed(embed).ephemeral(true))
@@ -90,7 +90,7 @@ async fn text(ctx: Context<'_>) -> Result<(), Error> {
         .join("\n");
 
     let mut embed = CreateEmbed::new();
-    embed = embed.title("Top emojis :3");
+    embed = embed.title("Top message emojis :3");
     embed = embed.description(desc);
 
     ctx.send(CreateReply::default().embed(embed).ephemeral(true))

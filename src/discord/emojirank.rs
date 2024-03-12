@@ -20,14 +20,16 @@ pub struct EmojiWatcher {
 pub fn launch_flush_thread(watcher: Arc<RwLock<EmojiWatcher>>, pool: Pool<MySql>) {
     let mut interval = time::interval(time::Duration::from_secs(15));
     tokio::spawn(async move {
-        interval.tick().await;
+        loop {
+            interval.tick().await;
 
-        let _ = watcher
-            .write()
-            .await
-            .flush(&pool)
-            .await
-            .inspect_err(|e| eprintln!("Could not flush emoji watcher: {e}"));
+            let _ = watcher
+                .write()
+                .await
+                .flush(&pool)
+                .await
+                .inspect_err(|e| eprintln!("Could not flush emoji watcher: {e}"));
+        }
     });
 }
 
