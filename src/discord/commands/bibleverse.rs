@@ -28,8 +28,9 @@ pub async fn bibleverse(
     let ultra = ultra.unwrap_or(false);
 
     if ultra {
-        ctx.send(CreateReply::default().content("\"Game is game rise and grind to hustle everyday so that one day you may get yourself a cute trans girl in your dms begging for your presence everyday..\" (Ultralations 6:23)"))
+        let r = ctx.send(CreateReply::default().content("\"Game is game rise and grind to hustle everyday so that one day you may get yourself a cute trans girl in your dms begging for your presence everyday..\" (Ultralations 6:23)"))
 			.await?;
+        r.message().await?.react(&ctx, '🙏').await?;
         return Ok(());
     }
 
@@ -39,7 +40,9 @@ pub async fn bibleverse(
         verse.text.trim().to_owned()
     };
 
-    ctx.send(CreateReply::default().content(format!("\"{}\" ({}).", text, verse.reference)))
+    let r = ctx
+        .send(CreateReply::default().content(format!("\"{}\" ({}).", text, verse.reference)))
         .await?;
+    r.message().await?.react(&ctx, '🙏').await?;
     Ok(())
 }
