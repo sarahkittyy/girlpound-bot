@@ -49,6 +49,8 @@ pub struct PoiseData {
     pub seeder_role: serenity::RoleId,
     /// role to give users to allow them into the server
     pub member_role: serenity::RoleId,
+    /// role for 6s games
+    pub scrim_role: serenity::RoleId,
 
     /// #general
     pub general_channel: serenity::ChannelId,
@@ -265,6 +267,7 @@ pub async fn start_bot(
     let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
     let horny_role_id: u64 = parse_env("HORNY_ROLE");
     let member_role_id: u64 = parse_env("MEMBER_ROLE");
+    let scrim_role_id: u64 = parse_env("SCRIM_ROLE");
     let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
     let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
     let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
@@ -342,6 +345,7 @@ pub async fn start_bot(
                         seeder_role: serenity::RoleId::new(seeder_role_id),
                         horny_role: serenity::RoleId::new(horny_role_id),
                         member_role: serenity::RoleId::new(member_role_id),
+                        scrim_role: serenity::RoleId::new(scrim_role_id),
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
                         general_channel: serenity::ChannelId::new(general_channel_id),
                         deleted_message_log_channel: serenity::ChannelId::new(

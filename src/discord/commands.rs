@@ -43,6 +43,7 @@ use regex::Regex;
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     bibleverse,
     treats,
+    givepro,
     stats,
     bark,
     botsay,
@@ -70,6 +71,48 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2gag,
     tf2ungag,
 ];
+
+/// Toggle the pro role on a user
+#[poise::command(context_menu_command = "Toggle pro/scrim role.", global_cooldown = 5)]
+pub async fn givepro(
+    ctx: Context<'_>,
+    #[description = "The user to toggle"] user: serenity::User,
+) -> Result<(), Error> {
+    let Some(guild) = ctx.guild_id() else {
+        return Ok(());
+    };
+    let member = guild.member(&ctx, user.id).await?;
+    let pro_role = ctx.data().scrim_role;
+    let no_mention = CreateAllowedMentions::new().empty_roles().empty_users();
+
+    if member.roles.contains(&pro_role) {
+        member.remove_role(&ctx, pro_role).await?;
+        ctx.send(
+            CreateReply::default()
+                .content(format!(
+                    "Removed <@&{}> from user {}",
+                    pro_role.get(),
+                    member.display_name()
+                ))
+                .allowed_mentions(no_mention),
+        )
+        .await?;
+    } else {
+        member.add_role(&ctx, pro_role).await?;
+        ctx.send(
+            CreateReply::default()
+                .content(format!(
+                    "Gave <@&{}> to user {}",
+                    pro_role.get(),
+                    member.display_name()
+                ))
+                .allowed_mentions(no_mention),
+        )
+        .await?;
+    }
+
+    Ok(())
+}
 
 /// Lookup your tkgp stats with your steamcommunity.com profile url.
 #[poise::command(slash_command, user_cooldown = 15)]
