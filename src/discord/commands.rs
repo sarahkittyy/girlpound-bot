@@ -94,7 +94,8 @@ pub async fn givepro(
                     pro_role.get(),
                     member.display_name()
                 ))
-                .allowed_mentions(no_mention),
+                .allowed_mentions(no_mention)
+                .ephemeral(true),
         )
         .await?;
     } else {
@@ -106,7 +107,8 @@ pub async fn givepro(
                     pro_role.get(),
                     member.display_name()
                 ))
-                .allowed_mentions(no_mention),
+                .allowed_mentions(no_mention)
+                .ephemeral(true),
         )
         .await?;
     }
