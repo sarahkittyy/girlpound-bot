@@ -3,11 +3,13 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::steamid::SteamIDClient;
-use crate::{logs, sourcebans, Error};
+use crate::{logs, sourcebans, wacky_wednesday, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use serenity::CreateMessage;
+
+use tokio_cron_scheduler::JobScheduler;
 
 use sqlx::{MySql, Pool, Row};
 use tokio::sync::mpsc::error::TryRecvError;
@@ -84,6 +86,16 @@ impl PoiseData {
     pub fn pug_server(&self) -> Result<&Server, Error> {
         self.servers
             .get(&self.pug_server)
+            .ok_or("Pug server not found".into())
+    }
+
+    /// Fetches the tkgp wacky server
+    pub fn wacky_server(&self) -> Result<&Server, Error> {
+        self.servers
+            .iter()
+            .map(|s| s.1)
+            .filter(|s| s.wacky_server)
+            .next()
             .ok_or("Pug server not found".into())
     }
 
@@ -398,7 +410,27 @@ pub async fn start_bot(
         latest_protest_pid,
         client.http.clone(),
     );
-    emojirank::launch_flush_thread(watcher.clone(), local_pool.clone());
+    emojirank::spawn_flush_thread(watcher.clone(), local_pool.clone());
+
+    let sched = JobScheduler::new().await?;
+
+    let wacky_server_ip = "tf2.fluffycat.gay:27015"
+        .to_socket_addrs()
+        .expect("Wacky address DNS resolution failed")
+        .next()
+        .expect("Could not resolve WACKY server address.");
+    let wacky_server: &Server = servers
+        .get(&wacky_server_ip)
+        .expect("Wacky server dose not exist.");
+
+    sched
+        .add(wacky_wednesday::ww_start_job(wacky_server.clone()))
+        .await?;
+    sched
+        .add(wacky_wednesday::ww_end_job(wacky_server.clone()))
+        .await?;
+
+    sched.start().await?;
 
     let fut = client.start();
     println!("Bot started!");

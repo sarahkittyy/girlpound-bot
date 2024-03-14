@@ -17,7 +17,7 @@ pub struct EmojiWatcher {
     cache: HashMap<String, EmojiUsage>,
 }
 
-pub fn launch_flush_thread(watcher: Arc<RwLock<EmojiWatcher>>, pool: Pool<MySql>) {
+pub fn spawn_flush_thread(watcher: Arc<RwLock<EmojiWatcher>>, pool: Pool<MySql>) {
     let mut interval = time::interval(time::Duration::from_secs(15));
     tokio::spawn(async move {
         loop {

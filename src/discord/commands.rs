@@ -11,6 +11,9 @@ use util::*;
 mod map;
 pub use map::map;
 
+mod wacky;
+pub use wacky::*;
+
 mod mods;
 pub use mods::*;
 
@@ -43,6 +46,7 @@ use regex::Regex;
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     bibleverse,
     treats,
+    wacky,
     givepro,
     stats,
     bark,

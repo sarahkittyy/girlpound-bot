@@ -18,6 +18,7 @@ mod sourcebans;
 mod steamid;
 mod tf2_rcon;
 mod treats;
+mod wacky_wednesday;
 
 use ftp::ServerFtp;
 
@@ -39,6 +40,7 @@ pub struct ServerBuilder {
     pub allow_seed: bool,
     pub show_status: bool,
     pub control_mapfile: bool,
+    pub wacky_server: bool,
 }
 
 impl ServerBuilder {
@@ -58,6 +60,7 @@ impl ServerBuilder {
             allow_seed: self.allow_seed,
             show_status: self.show_status,
             control_mapfile: self.control_mapfile,
+            wacky_server: self.wacky_server,
         })
     }
 }
@@ -75,12 +78,20 @@ pub struct Server {
     pub allow_seed: bool,
     pub show_status: bool,
     pub control_mapfile: bool,
+    pub wacky_server: bool,
 }
 
 impl Server {
     /// Retrieve this server's maps
     pub async fn maps(&self) -> Result<Vec<String>, Error> {
         self.ftp.fetch_file_lines("tf/cfg/mapcycle.txt").await
+    }
+    /// Retrieve this server's wacky maps
+    pub async fn wacky_maps(&self) -> Result<Vec<String>, Error> {
+        if !self.wacky_server {
+            return Err("Not a wacky server!".into());
+        }
+        self.ftp.fetch_file_lines("tf/cfg/mapcycle-wacky.txt").await
     }
 }
 
@@ -113,6 +124,7 @@ async fn main() -> Result<(), Error> {
         show_status: true,
         allow_seed: true,
         control_mapfile: true,
+        wacky_server: true,
     }
     .build()
     .await
@@ -131,6 +143,7 @@ async fn main() -> Result<(), Error> {
         show_status: true,
         allow_seed: true,
         control_mapfile: true,
+        wacky_server: false,
     }
     .build()
     .await
@@ -149,6 +162,7 @@ async fn main() -> Result<(), Error> {
         show_status: false,
         allow_seed: false,
         control_mapfile: false,
+        wacky_server: false,
     }
     .build()
     .await
