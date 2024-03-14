@@ -58,12 +58,20 @@ async fn rm(
         .cloned()
         .collect();
     let server = servers.first().ok_or("No servers")?;
-    let maps: Vec<String> = server
-        .maps()
-        .await?
-        .into_iter()
-        .filter(|m| m != &map)
-        .collect();
+    let mut maps: Vec<String> = server.maps().await?;
+
+    let Some((index, map)) = maps
+        .iter()
+        .cloned()
+        .enumerate()
+        .find(|(_, m)| m.contains(&map))
+    else {
+        ctx.send(CreateReply::default().content(format!("Could not find map with filter `{map}`")))
+            .await?;
+        return Ok(());
+    };
+
+    maps.remove(index);
 
     for server in servers {
         server
@@ -71,7 +79,8 @@ async fn rm(
             .upload_file("tf/cfg/mapcycle.txt", maps.join("\n").as_bytes())
             .await?;
     }
-    ctx.say(":white_check_mark:").await?;
+    ctx.send(CreateReply::default().content(format!("Removed map `{}`", map)))
+        .await?;
     Ok(())
 }
 
