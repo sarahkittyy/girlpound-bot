@@ -58,11 +58,9 @@ pub async fn spawn_tracker(
         // set up event listener for this server
         tokio::spawn(async move {
             // primary event loop
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
             let mut last_sync = Instant::now();
             let mut last_flush = Instant::now();
             loop {
-                interval.tick().await;
                 let mut events = vec![];
                 receiver.recv_many(&mut events, 100).await;
 
