@@ -70,7 +70,7 @@ impl Tracker {
         self.players_online.insert(steamid, now());
 
         // if we have exceeded the seeder population
-        if self.players_online.len() > SEEDER_POP_THRESHOLD {
+        if self.seeding && self.players_online.len() > SEEDER_POP_THRESHOLD {
             // flush everyone currently online to db
             self.push_all_seed_times();
             // set as not seeding
