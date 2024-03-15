@@ -3,7 +3,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::steamid::SteamIDClient;
-use crate::{logs, sourcebans, wacky_wednesday, Error};
+use crate::{logs, seederboard, sourcebans, wacky_wednesday, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
@@ -303,16 +303,18 @@ pub async fn start_bot(
 
     let watcher = Arc::new(RwLock::new(emojirank::EmojiWatcher::new()));
 
+    let pug_server = "pug.fluffycat.gay:27015"
+        .to_socket_addrs()
+        .expect("Pug address DNS resolution failed")
+        .next()
+        .expect("Could not resolve PUG server address.");
+
     let framework = {
         let watcher = watcher.clone();
         let servers = servers.clone();
         let local_pool = local_pool.clone();
         let sb_pool = sb_pool.clone();
-        let pug_server = "pug.fluffycat.gay:27015"
-            .to_socket_addrs()
-            .expect("Pug address DNS resolution failed")
-            .next()
-            .expect("Could not resolve PUG server address.");
+        let pug_server = pug_server.clone();
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
                 commands: commands::ALL.iter().map(|f| f()).collect(),
@@ -398,6 +400,13 @@ pub async fn start_bot(
         client.http.clone(),
     )
     .await;
+
+    {
+        // exclude pug server from seed tracking
+        let mut servers = servers.clone();
+        servers.remove(&pug_server);
+        seederboard::spawn_tracker(log_receiver.clone(), servers, local_pool.clone()).await;
+    }
 
     // fetch the current latest protest
     let latest_protest_pid: i32 =

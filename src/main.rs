@@ -15,6 +15,7 @@ mod discord;
 mod ftp;
 mod logs;
 mod psychostats;
+mod seederboard;
 mod sourcebans;
 mod steamid;
 mod tf2_rcon;
