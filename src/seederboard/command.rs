@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{discord::Context, Error};
 use poise::{
     self,
-    serenity_prelude::{Color, CreateEmbed},
+    serenity_prelude::{Color, CreateEmbed, CreateEmbedFooter},
     CreateReply,
 };
 
@@ -74,6 +74,9 @@ pub async fn seederboard(ctx: Context<'_>) -> Result<(), Error> {
     let embed = CreateEmbed::new()
         .title("Top seeders <3")
         .description(leaderboard)
+        .footer(CreateEmbedFooter::new(
+            "Counts time played on TKGP with <=12 online.",
+        ))
         .color(Color::DARK_RED);
 
     ctx.send(CreateReply::default().embed(embed)).await?;
