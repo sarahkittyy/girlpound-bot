@@ -73,8 +73,7 @@ async fn total(ctx: Context<'_>) -> Result<(), Error> {
     embed = embed.title("Top overall emojis :3");
     embed = embed.description(get_ranks("use_count+react_count", &ctx.data().local_pool).await?);
 
-    ctx.send(CreateReply::default().embed(embed).ephemeral(true))
-        .await?;
+    ctx.send(CreateReply::default().embed(embed)).await?;
 
     Ok(())
 }
@@ -86,8 +85,7 @@ async fn react(ctx: Context<'_>) -> Result<(), Error> {
     embed = embed.title("Top reaction emojis :3");
     embed = embed.description(get_ranks("react_count", &ctx.data().local_pool).await?);
 
-    ctx.send(CreateReply::default().embed(embed).ephemeral(true))
-        .await?;
+    ctx.send(CreateReply::default().embed(embed)).await?;
 
     Ok(())
 }
@@ -99,8 +97,7 @@ async fn text(ctx: Context<'_>) -> Result<(), Error> {
     embed = embed.title("Top message emojis :3");
     embed = embed.description(get_ranks("use_count", &ctx.data().local_pool).await?);
 
-    ctx.send(CreateReply::default().embed(embed).ephemeral(true))
-        .await?;
+    ctx.send(CreateReply::default().embed(embed)).await?;
 
     Ok(())
 }

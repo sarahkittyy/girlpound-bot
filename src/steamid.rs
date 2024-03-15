@@ -89,14 +89,17 @@ impl SteamIDClient {
     }
 
     /// returns a steam user's player info
-    pub async fn get_player_summary(&self, steamid64: u64) -> Result<SteamPlayerSummary, Error> {
+    pub async fn get_player_summaries(
+        &self,
+        steamids: &str,
+    ) -> Result<Vec<SteamPlayerSummary>, Error> {
         let path = format!("{}{}", STEAM_BASEURL, STEAM_INFO_ROUTE);
         let resp = self
             .client
             .get(path)
             .query(&[
                 ("key", self.steam_api_key.clone()),
-                ("steamids", steamid64.to_string()),
+                ("steamids", steamids.to_string()),
             ])
             .send()
             .await?;
@@ -107,9 +110,12 @@ impl SteamIDClient {
             .and_then(|r| r.get("players"))
             .and_then(|players| players.as_array())
             .ok_or("Could not parse response body.")?;
-        let player = players.first().ok_or("No player data found.")?;
 
-        Ok(serde_json::from_value(player.clone())?)
+        Ok(players
+            .into_iter()
+            .map(|v| serde_json::from_value(v.clone()))
+            .flatten()
+            .collect())
     }
 
     /// resolves a steam profile url to a steamid64

@@ -7,6 +7,7 @@ use tokio::{
     time::Instant,
 };
 
+pub mod command;
 mod tracker;
 
 /// launch seeder time tracking thread

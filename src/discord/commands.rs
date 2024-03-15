@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 
 use super::{Context, PoiseData};
 use crate::logs::safe_strip;
+use crate::seederboard::command::seederboard;
 use crate::{Error, Server};
 
 pub mod util;
@@ -46,6 +47,7 @@ use regex::Regex;
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     bibleverse,
     catcoin,
+    seederboard,
     wacky,
     givepro,
     stats,
@@ -139,8 +141,9 @@ pub async fn stats(
     let summary = ctx
         .data()
         .steamid_client
-        .get_player_summary(profile.steamid64.parse()?)
+        .get_player_summaries(&profile.steamid64)
         .await?;
+    let summary = summary.first().ok_or("Profile not found.")?;
     let (tkgp4id, tkgp5id) = psychostats::find_plr_ids(steamid).await?;
 
     let url4 = tkgp4id
@@ -151,8 +154,8 @@ pub async fn stats(
         .unwrap_or("Not found.".to_owned());
     let embed = CreateEmbed::new()
         .title(format!("PStats lookup for {}", summary.personaname))
-        .url(summary.profileurl)
-        .thumbnail(summary.avatarmedium)
+        .url(&summary.profileurl)
+        .thumbnail(&summary.avatarmedium)
         .footer(CreateEmbedFooter::new("Not you? DM @sarahkittyy :3"))
         .description(format!("### TKGP #4: {}\n### TKGP #5: {}", url4, url5));
 
