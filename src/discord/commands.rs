@@ -32,8 +32,8 @@ pub use bibleverse::*;
 mod emojitop;
 pub use emojitop::*;
 
+use crate::catcoin::command::catcoin;
 use crate::psychostats;
-use crate::treats::command::treats;
 
 use poise;
 use poise::serenity_prelude as serenity;
@@ -45,7 +45,7 @@ use regex::Regex;
 
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     bibleverse,
-    treats,
+    catcoin,
     wacky,
     givepro,
     stats,

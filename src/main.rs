@@ -10,6 +10,7 @@ use dotenv::dotenv;
 use poise::serenity_prelude as serenity;
 use tokio;
 
+mod catcoin;
 mod discord;
 mod ftp;
 mod logs;
@@ -17,7 +18,6 @@ mod psychostats;
 mod sourcebans;
 mod steamid;
 mod tf2_rcon;
-mod treats;
 mod wacky_wednesday;
 
 use ftp::ServerFtp;

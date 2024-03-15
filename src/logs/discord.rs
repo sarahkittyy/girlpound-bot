@@ -11,22 +11,40 @@ use tokio::time;
 use srcds_log_parser::MessageType;
 
 /// receives logs from the tf2 server & posts them in a channel
-pub fn spawn_log_thread(
-    mut log_receiver: LogReceiver,
+pub async fn spawn_log_thread(
+    log_receiver: LogReceiver,
     servers: HashMap<SocketAddr, Server>,
     pool: Pool<MySql>,
     ctx: Arc<serenity::Http>,
 ) {
     let mut interval = time::interval(time::Duration::from_secs(3));
+    let (msg_in, mut msg_out) = tokio::sync::mpsc::channel(1000);
+
+    // subscribe to log messages and receive them into a buffer
+    {
+        let msg_in = msg_in.clone();
+        log_receiver
+            .subscribe(Box::new(move |from, _msg, parsed| {
+                let parsed = parsed.clone();
+                let from = from.clone();
+                let msg_in = msg_in.clone();
+                tokio::spawn(async move {
+                    let _ = msg_in.send((from, parsed)).await;
+                });
+            }))
+            .await;
+    }
+
+    // handle received messages
     tokio::spawn(async move {
         loop {
             interval.tick().await;
             // drain all received log messages
-            let msgs = log_receiver.drain().await;
-            let mut output = HashMap::<SocketAddr, String>::new();
-            for (from, msg) in msgs {
-                let parsed = MessageType::from_message(msg.message.as_str());
+            let mut msgs = vec![];
+            msg_out.recv_many(&mut msgs, 100).await;
 
+            let mut output = HashMap::<SocketAddr, String>::new();
+            for (from, parsed) in msgs {
                 if parsed.is_unknown() {
                     continue;
                 }

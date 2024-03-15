@@ -368,8 +368,8 @@ pub async fn start_bot(
                         birthday_channel: serenity::ChannelId::new(birthday_channel_id),
                         media_cooldown_thread: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
-                        local_pool: local_pool,
-                        sb_pool: sb_pool,
+                        local_pool,
+                        sb_pool,
                         steamid_client: SteamIDClient::new(
                             parse_env("STEAMID_MYID"),
                             parse_env("STEAMID_API_KEY"),
@@ -396,7 +396,8 @@ pub async fn start_bot(
         servers.clone(),
         local_pool.clone(),
         client.http.clone(),
-    );
+    )
+    .await;
 
     // fetch the current latest protest
     let latest_protest_pid: i32 =

@@ -1,5 +1,4 @@
 use std::{
-    collections::VecDeque,
     net::{Ipv4Addr, SocketAddr},
     sync::Arc,
 };
@@ -7,7 +6,7 @@ use std::{
 use chrono::Utc;
 use tokio::{net::UdpSocket, sync::RwLock};
 
-use srcds_log_parser::LogMessage;
+use srcds_log_parser::{LogMessage, MessageType};
 
 mod util;
 pub use util::{as_discord_message, safe_strip};
@@ -17,24 +16,29 @@ pub use discord::spawn_log_thread;
 
 use crate::Error;
 
+type LogCallback = Box<dyn Fn(SocketAddr, &LogMessage, &MessageType) + Send + Sync + 'static>;
+
+/// Receives logs from srcds and sends them to the given callbacks
 #[derive(Clone)]
 pub struct LogReceiver {
-    messages: Arc<RwLock<VecDeque<(SocketAddr, LogMessage)>>>,
+    callbacks: Arc<RwLock<Vec<LogCallback>>>,
 }
 
 impl LogReceiver {
     /// create and bind a udp socket to listen to srcds logs
     pub async fn connect(addr: Ipv4Addr, port: u16) -> Result<Self, Error> {
         let sock = Arc::new(UdpSocket::bind((addr, port)).await?);
-        let messages = Arc::new(RwLock::new(VecDeque::new()));
+        let callbacks = Arc::new(RwLock::new(Vec::new()));
 
         let expected_password: Option<String> = std::env::var("SRCDS_LOG_PASSWORD")
             .ok()
             .and_then(|p| if p.len() > 0 { Some(p) } else { None });
 
+        let lr = LogReceiver { callbacks };
+
         let _task = {
             let sock = sock.clone();
-            let messages = messages.clone();
+            let lr = lr.clone();
             tokio::spawn(async move {
                 let mut buf = [0u8; 1024];
                 loop {
@@ -49,31 +53,38 @@ impl LogReceiver {
                     if expected_password.is_some() && message.secret != expected_password {
                         continue;
                     }
-                    messages.write().await.push_back((from, message));
+
+                    lr.broadcast_message(from, message).await;
                 }
             })
         };
 
-        Ok(LogReceiver { messages })
+        Ok(lr)
     }
 
-    /// retrieve all log messages from the queue
-    pub async fn drain(&mut self) -> Vec<(SocketAddr, LogMessage)> {
-        let mut messages = self.messages.write().await;
-        messages.drain(..).collect()
+    pub async fn subscribe(&self, cb: LogCallback) {
+        self.callbacks.write().await.push(cb);
+    }
+
+    async fn broadcast_message(&self, from: SocketAddr, msg: LogMessage) {
+        let parsed = MessageType::from_message(msg.message.as_str());
+        for cb in self.callbacks.read().await.iter() {
+            cb(from.clone(), &msg, &parsed);
+        }
     }
 
     pub async fn _spoof_message(&self, msg: &str) {
         let expected_password: Option<String> = std::env::var("SRCDS_LOG_PASSWORD")
             .ok()
             .and_then(|p| if p.len() > 0 { Some(p) } else { None });
-        self.messages.write().await.push_back((
+        self.broadcast_message(
             "192.168.0.0:12345".parse().unwrap(),
             LogMessage {
                 timestamp: Utc::now().naive_utc(),
                 message: msg.to_owned(),
                 secret: expected_password,
             },
-        ));
+        )
+        .await;
     }
 }
