@@ -1,7 +1,7 @@
 use crate::{logs::LogReceiver, Server};
 use sqlx::{MySql, Pool};
 use srcds_log_parser::MessageType;
-use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::{
     sync::{mpsc, RwLock},
     time::Instant,

@@ -4,9 +4,7 @@ use crate::{discord::Context, Error};
 use poise;
 use poise::CreateReply;
 
-use super::util::{
-    output_servers, rcon_and_reply, rcon_user_output, servers_autocomplete, users_autocomplete,
-};
+use super::util::{rcon_and_reply, rcon_user_output, servers_autocomplete, users_autocomplete};
 
 /// Ban a user from the tf2 server
 #[poise::command(slash_command)]
@@ -30,9 +28,6 @@ pub async fn tf2ban(
 #[poise::command(slash_command)]
 pub async fn tf2banid(
     ctx: Context<'_>,
-    #[description = "The server to query"]
-    #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
     #[description = "The steam id to ban"] id: String,
     #[description = "Time to ban them for, in minutes"] minutes: u32,
     #[description = "The reason for the ban"] reason: Option<String>,
@@ -55,7 +50,7 @@ pub async fn tf2banid(
     };
     let reason = reason.unwrap_or("undesirable".to_owned());
     let cmd = format!("sm_addban {} {} {}", minutes, &profile.steamid, reason);
-    let _ = rcon_user_output(&output_servers(ctx, server)?, cmd).await;
+    let _ = rcon_user_output(&[ctx.data().servers.values().next().unwrap()], cmd).await;
     ctx.send(CreateReply::default().content(format!(
         "Banned https://steamcommunity.com/profiles/{}",
         &profile.steamid64
@@ -69,14 +64,33 @@ pub async fn tf2banid(
 #[poise::command(slash_command)]
 pub async fn tf2unban(
     ctx: Context<'_>,
-    #[description = "The server to query"]
-    #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
     #[description = "The steamid / ip to unban."] steamid: String,
     #[description = "The reason for the unban"] reason: Option<String>,
 ) -> Result<(), Error> {
+    let server = ctx.data().servers.keys().next().unwrap();
+
+    let Ok(profile) = ctx
+        .data()
+        .steamid_client
+        .lookup(&steamid)
+        .await
+        .and_then(|profiles| profiles.first().cloned().ok_or("No profile found".into()))
+    else {
+        ctx.send(
+            CreateReply::default()
+                .content(format!("Could not resolve given SteamID to a profile.")),
+        )
+        .await?;
+        return Ok(());
+    };
+
     let reason = reason.unwrap_or("chill".to_owned());
-    rcon_and_reply(ctx, server, format!("sm_unban {} {}", steamid, reason)).await
+    rcon_and_reply(
+        ctx,
+        Some(server.clone()),
+        format!("sm_unban {} {}", profile.steamid, reason),
+    )
+    .await
 }
 
 /// Kick a user from the tf2 server
