@@ -14,11 +14,13 @@ mod catcoin;
 mod discord;
 mod ftp;
 mod logs;
+mod profile;
 mod psychostats;
 mod seederboard;
 mod sourcebans;
 mod steamid;
 mod tf2_rcon;
+mod tf2class;
 mod wacky_wednesday;
 
 use ftp::ServerFtp;

@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 
 use super::{Context, PoiseData};
 use crate::logs::safe_strip;
+use crate::profile::command::profile;
 use crate::seederboard::command::seederboard;
 use crate::{Error, Server};
 
@@ -48,6 +49,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     bibleverse,
     catcoin,
     seederboard,
+    profile,
     wacky,
     givepro,
     stats,

@@ -3,6 +3,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::steamid::SteamIDClient;
+use crate::tf2class::TF2Class;
 use crate::{logs, seederboard, sourcebans, wacky_wednesday, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
@@ -44,6 +45,9 @@ pub struct PoiseData {
     pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
     /// Emoji ranking cache for tracking emoji usage
     pub emoji_rank: Arc<RwLock<emojirank::EmojiWatcher>>,
+
+    /// Emojis for each of the 9 tf2 classes
+    pub class_emojis: HashMap<TF2Class, String>,
 
     /// NSFW role
     pub horny_role: serenity::RoleId,
@@ -288,6 +292,16 @@ pub async fn start_bot(
     let db_url: String = parse_env("DATABASE_URL");
     let sb_db_url: String = parse_env("SB_DATABASE_URL");
 
+    let class_emojis: Vec<String> = parse_env::<String>("CLASS_EMOJIS") //
+        .split(",")
+        .map(str::to_owned)
+        .collect();
+    let class_emojis: HashMap<TF2Class, String> = TF2Class::all()
+        .to_vec()
+        .into_iter()
+        .zip(class_emojis.into_iter())
+        .collect();
+
     // migrate the db
     let local_pool = Pool::<MySql>::connect(&db_url).await?;
     sqlx::migrate!().run(&local_pool).await?;
@@ -360,6 +374,7 @@ pub async fn start_bot(
                         horny_role: serenity::RoleId::new(horny_role_id),
                         member_role: serenity::RoleId::new(member_role_id),
                         scrim_role: serenity::RoleId::new(scrim_role_id),
+                        class_emojis,
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
                         general_channel: serenity::ChannelId::new(general_channel_id),
                         deleted_message_log_channel: serenity::ChannelId::new(
