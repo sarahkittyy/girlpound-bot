@@ -9,7 +9,7 @@ use poise::{
     CreateReply,
 };
 
-use super::vote::vote_on;
+use super::{view_profile, vote::vote_on};
 use crate::{
     discord::Context,
     profile::{get_user_profile, vote::get_profile_votes},
@@ -55,6 +55,11 @@ pub async fn profile(
 async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), Error> {
     ctx.defer().await?;
     let uuid = ctx.id();
+
+    // increment views
+    let _ = view_profile(&ctx.data().local_pool, member.user.id)
+        .await
+        .inspect_err(|e| eprintln!("Could not view profile: {e}"));
 
     let like_id = format!("{uuid}-like");
     let dislike_id = format!("{uuid}-dislike");

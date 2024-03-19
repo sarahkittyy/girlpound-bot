@@ -20,6 +20,7 @@ pub struct UserProfile {
     pub classes: u16,
     pub favorite_map: Option<String>,
     pub color: Option<u32>,
+    pub views: u64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -34,6 +35,7 @@ impl UserProfile {
             description: None,
             image: None,
             classes: 0,
+            views: 0,
             favorite_map: None,
             color: None,
             created_at: Utc::now().naive_utc(),
@@ -104,6 +106,8 @@ impl UserProfile {
         if let Some(color) = &self.color {
             e = e.color(*color);
         }
+        // views
+        e = e.field("Views", format!("`{}`", self.views), true);
 
         Ok(e)
     }
@@ -111,6 +115,22 @@ impl UserProfile {
 
 fn get_bit(value: u16, bit: u8) -> bool {
     value & (1 << bit) > 0
+}
+
+/// add a view to the profile
+pub async fn view_profile(pool: &Pool<MySql>, uid: serenity::UserId) -> Result<(), Error> {
+    sqlx::query!(
+        r#"
+		INSERT INTO `profiles` (`uid`, `views`)
+		VALUES (?, ?)
+		ON DUPLICATE KEY UPDATE `views` = `views` + 1
+	"#,
+        uid.get(),
+        1
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 /// retrieve a profile by discord user id
