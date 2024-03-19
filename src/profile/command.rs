@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// TKGP Profile
-#[poise::command(slash_command, user_cooldown = 8, global_cooldown = 2)]
+#[poise::command(slash_command, channel_cooldown = 10, global_cooldown = 2)]
 pub async fn profile(
     ctx: Context<'_>,
     #[description = "The user to retrieve"] member: Option<serenity::Member>,
@@ -99,7 +99,7 @@ pub async fn profile(
 
     while let Some(mci) = ComponentInteractionCollector::new(ctx)
         .channel_id(ctx.channel_id())
-        .timeout(Duration::from_secs(20))
+        .timeout(Duration::from_secs(30))
         .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
         .await
     {
