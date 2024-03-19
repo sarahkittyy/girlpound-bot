@@ -4,7 +4,7 @@ use poise::{
     serenity_prelude::{
         self as serenity, ButtonStyle, ComponentInteraction, ComponentInteractionCollector,
         CreateActionRow, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage,
-        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
+        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, GetMessages,
     },
     CreateReply,
 };
@@ -43,6 +43,28 @@ pub async fn profile(
     let dislike_id = format!("{uuid}-dislike");
     let edit_id = format!("{uuid}-edit");
     let reload_id = format!("{uuid}-reload");
+
+    // delete last profile msg
+    let msgs = ctx
+        .channel_id()
+        .messages(ctx.http(), GetMessages::new().limit(45))
+        .await?;
+    let bid = ctx.cache().current_user().id;
+    for msg in &msgs {
+        if msg.author.id == bid
+            && msg
+                .embeds
+                .first()
+                .is_some_and(|e| e.fields.first().is_some_and(|f| f.name == "Votes"))
+            && msg
+                .interaction
+                .as_ref()
+                .is_some_and(|i| i.user.id == ctx.author().id)
+        {
+            msg.delete(ctx.http()).await?;
+            break;
+        }
+    }
 
     // buttons
     let components = vec![CreateActionRow::Buttons(vec![
@@ -140,6 +162,9 @@ async fn open_edit_menu(ctx: Context<'_>, mci: &ComponentInteraction) -> Result<
         CreateSelectMenuOption::new("Description", "description")
             .description("Edit your bio")
             .emoji('📝'),
+        CreateSelectMenuOption::new("Color", "color")
+            .description("Edit your bio color")
+            .emoji('🎨'),
         CreateSelectMenuOption::new("Classes", "classes")
             .description("Display your favorite TF2 classes.")
             .emoji('🔫'),

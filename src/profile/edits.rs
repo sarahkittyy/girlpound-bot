@@ -63,6 +63,16 @@ pub struct FavoriteMapModal {
     pub map: String,
 }
 
+#[derive(Debug, Modal)]
+#[name = "Pick your bio color"]
+pub struct ColorModal {
+    #[name = "The color hex (www.color-hex.com)"]
+    #[placeholder = "#365AA1"]
+    #[min_length = 7]
+    #[max_length = 7]
+    pub color: String,
+}
+
 async fn open_class_select_menu(
     ctx: &serenity::Context,
     data: &PoiseData,
@@ -168,6 +178,27 @@ pub async fn dispatch_profile_edit(
         }
         "classes" => {
             open_class_select_menu(ctx, data, mci).await?;
+        }
+        "color" => {
+            edit_field_modal::<ColorModal, _, u32, &str>(
+                "color",
+                |cm| {
+                    let re = Regex::new(r#"#([0-9A-Fa-f]{6})"#).unwrap();
+                    match re.captures(&cm.color) {
+                        Some(caps) => {
+                            let v = caps.get(1).ok_or("Not a valid color!")?;
+                            let color = u32::from_str_radix(v.as_str(), 16)
+                                .map_err(|_| "Could not parse hex string")?;
+                            Ok(color)
+                        }
+                        None => Err("Not a valid color!"),
+                    }
+                },
+                ctx,
+                mci,
+                data,
+            )
+            .await?;
         }
         "favorite-map" => {
             edit_field_modal::<FavoriteMapModal, _, _, &str>(

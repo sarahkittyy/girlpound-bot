@@ -18,6 +18,7 @@ pub struct UserProfile {
     pub image: Option<String>,       // customizable image
     pub classes: u16,
     pub favorite_map: Option<String>,
+    pub color: Option<u32>,
 }
 
 impl UserProfile {
@@ -31,6 +32,7 @@ impl UserProfile {
             image: None,
             classes: 0,
             favorite_map: None,
+            color: None,
         }
     }
 
@@ -89,10 +91,13 @@ impl UserProfile {
         if classes.len() > 0 {
             e = e.field("Classes", classes.join(""), true);
         }
-
         // fav map
         if let Some(map) = &self.favorite_map {
             e = e.field("Favorite Map", map, true);
+        }
+        // color
+        if let Some(color) = &self.color {
+            e = e.color(*color);
         }
 
         Ok(e)
