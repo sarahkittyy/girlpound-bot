@@ -17,14 +17,25 @@ use crate::{
 };
 
 /// TKGP Profile
-#[poise::command(slash_command, channel_cooldown = 10, global_cooldown = 2)]
+#[poise::command(
+    context_menu_command = "Get TKGP Profile",
+    user_cooldown = 5,
+    global_cooldown = 2
+)]
+pub async fn get_profile(
+    ctx: Context<'_>,
+    #[description = "The user to retrieve"] user: serenity::User,
+) -> Result<(), Error> {
+    let member = ctx.data().guild_id.member(&ctx, user).await?;
+    send_profile(ctx, member).await
+}
+
+/// TKGP Profile
+#[poise::command(slash_command, user_cooldown = 5, global_cooldown = 2)]
 pub async fn profile(
     ctx: Context<'_>,
     #[description = "The user to retrieve"] member: Option<serenity::Member>,
 ) -> Result<(), Error> {
-    ctx.defer().await?;
-    let uuid = ctx.id();
-
     let member = if let Some(member) = member {
         member
     } else if let Some(member) = ctx.author_member().await {
@@ -38,6 +49,12 @@ pub async fn profile(
         .await?;
         return Ok(());
     };
+    send_profile(ctx, member).await
+}
+
+async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), Error> {
+    ctx.defer().await?;
+    let uuid = ctx.id();
 
     let like_id = format!("{uuid}-like");
     let dislike_id = format!("{uuid}-dislike");
