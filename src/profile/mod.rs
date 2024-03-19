@@ -1,4 +1,5 @@
 use crate::{discord::Context, tf2class::TF2Class, Error};
+use chrono::{NaiveDateTime, Utc};
 use poise::serenity_prelude::{self as serenity};
 use sqlx::{self, MySql, Pool};
 
@@ -19,6 +20,8 @@ pub struct UserProfile {
     pub classes: u16,
     pub favorite_map: Option<String>,
     pub color: Option<u32>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 impl UserProfile {
@@ -33,6 +36,8 @@ impl UserProfile {
             classes: 0,
             favorite_map: None,
             color: None,
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
         }
     }
 

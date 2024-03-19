@@ -17,7 +17,7 @@ regex = "1.9.6"
 reqwest = { version = "0.11.22", features = ["json"] }
 serde = {version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
-sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql"] }
+sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
 tokio = { version = "1", features = ["full"] }
 srcds_log_parser = { git = "https://github.com/sarahkittyy/srcds-log-parser", branch = "main" }
 futures = "0.3.30"
