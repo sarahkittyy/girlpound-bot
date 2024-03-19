@@ -22,7 +22,7 @@ pub struct DescriptionModal {
     #[name = "New bio."]
     #[placeholder = "Cat ipsum dolor sit amet, american shorthair, but puma leopard."]
     #[paragraph]
-    #[max_length = 2048]
+    #[max_length = 256]
     pub description: String,
 }
 
