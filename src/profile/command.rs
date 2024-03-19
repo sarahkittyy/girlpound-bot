@@ -99,7 +99,7 @@ pub async fn profile(
 
     while let Some(mci) = ComponentInteractionCollector::new(ctx)
         .channel_id(ctx.channel_id())
-        .timeout(Duration::from_secs(45))
+        .timeout(Duration::from_secs(20))
         .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
         .await
     {
