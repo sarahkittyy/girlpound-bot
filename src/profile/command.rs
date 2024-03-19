@@ -1,6 +1,20 @@
-use poise::{serenity_prelude as serenity, CreateReply};
+use std::time::Duration;
 
-use crate::{discord::Context, profile::get_user_profile, Error};
+use poise::{
+    serenity_prelude::{
+        self as serenity, ButtonStyle, ComponentInteraction, ComponentInteractionCollector,
+        CreateActionRow, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage,
+        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption,
+    },
+    CreateReply,
+};
+
+use super::vote::vote_on;
+use crate::{
+    discord::Context,
+    profile::{get_user_profile, vote::get_profile_votes},
+    Error,
+};
 
 /// TKGP Profile
 #[poise::command(slash_command, user_cooldown = 8, global_cooldown = 2)]
@@ -8,6 +22,9 @@ pub async fn profile(
     ctx: Context<'_>,
     #[description = "The user to retrieve"] member: Option<serenity::Member>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
+    let uuid = ctx.id();
+
     let member = if let Some(member) = member {
         member
     } else if let Some(member) = ctx.author_member().await {
@@ -21,8 +38,142 @@ pub async fn profile(
         .await?;
         return Ok(());
     };
-    let profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
-    ctx.send(CreateReply::default().embed(profile.to_embed(&ctx, &ctx.data().local_pool).await?))
+
+    let like_id = format!("{uuid}-like");
+    let dislike_id = format!("{uuid}-dislike");
+    let edit_id = format!("{uuid}-edit");
+    let reload_id = format!("{uuid}-reload");
+
+    // buttons
+    let components = vec![CreateActionRow::Buttons(vec![
+        // like
+        CreateButton::new(like_id.clone())
+            .style(ButtonStyle::Success)
+            .emoji('👍'),
+        // dislike
+        CreateButton::new(dislike_id.clone())
+            .style(ButtonStyle::Danger)
+            .emoji('👎'),
+        // edit
+        CreateButton::new(edit_id.clone())
+            .style(ButtonStyle::Primary)
+            .label("Edit")
+            .emoji('📝'),
+        // reload
+        CreateButton::new(reload_id.clone())
+            .style(ButtonStyle::Secondary)
+            .emoji('🔃'),
+    ])];
+
+    let mut profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
+    let mut votes = get_profile_votes(&ctx.data().local_pool, member.user.id).await?;
+    let msg = ctx
+        .send(
+            CreateReply::default()
+                .embed(profile.to_embed(&ctx, votes.clone()).await?)
+                .components(components),
+        )
         .await?;
+
+    while let Some(mci) = ComponentInteractionCollector::new(ctx)
+        .channel_id(ctx.channel_id())
+        .timeout(Duration::from_secs(240))
+        .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
+        .await
+    {
+        if mci.data.custom_id == like_id || mci.data.custom_id == dislike_id {
+            // submit vote
+            let diff = vote_on(
+                &ctx.data().local_pool,
+                member.user.id,
+                mci.user.id,
+                mci.data.custom_id == like_id,
+            )
+            .await?;
+            // update vote count
+            votes.likes += diff.likes;
+            votes.dislikes += diff.dislikes;
+            // acknowledge btn
+            mci.create_response(
+                &ctx,
+                CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::new()
+                        .embed(profile.to_embed(&ctx, votes).await?),
+                ),
+            )
+            .await?;
+        } else if mci.data.custom_id == edit_id {
+            if mci.user.id == member.user.id {
+                open_edit_menu(ctx.clone(), &mci).await?;
+            } else {
+                mci.create_response(
+                    &ctx,
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::new()
+                            .ephemeral(true)
+                            .content("This is not your profile! >:3"),
+                    ),
+                )
+                .await?;
+            }
+        } else if mci.data.custom_id == reload_id {
+            profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
+            votes = get_profile_votes(&ctx.data().local_pool, member.user.id).await?;
+            mci.create_response(
+                &ctx,
+                CreateInteractionResponse::UpdateMessage(
+                    CreateInteractionResponseMessage::new()
+                        .embed(profile.to_embed(&ctx, votes).await?),
+                ),
+            )
+            .await?;
+        };
+    }
+
+    msg.delete(ctx).await?;
+    Ok(())
+}
+
+async fn open_edit_menu(ctx: Context<'_>, mci: &ComponentInteraction) -> Result<(), Error> {
+    let options = vec![
+        //
+        CreateSelectMenuOption::new("Description", "description")
+            .description("Edit your bio")
+            .emoji('📝'),
+        CreateSelectMenuOption::new("Classes", "classes")
+            .description("Display your favorite TF2 classes.")
+            .emoji('🔫'),
+        CreateSelectMenuOption::new("Favorite Map", "favorite-map")
+            .description("Display your favorite map.")
+            .emoji('📄'),
+        CreateSelectMenuOption::new("Url", "url")
+            .description("Set a custom link to redirect to")
+            .emoji('🔗'),
+        CreateSelectMenuOption::new("Title", "title")
+            .description("Customize the header of your profile")
+            .emoji('🐈'),
+        CreateSelectMenuOption::new("Image", "image")
+            .description("Link an image to your profile")
+            .emoji('📷'),
+        CreateSelectMenuOption::new("Remove Image", "remove-image")
+            .description("Remove your profile image")
+            .emoji('❌'),
+    ];
+
+    let components = vec![CreateActionRow::SelectMenu(CreateSelectMenu::new(
+        "profile.edit.select",
+        CreateSelectMenuKind::String { options },
+    ))];
+
+    mci.create_response(
+        &ctx,
+        CreateInteractionResponse::Message(
+            CreateInteractionResponseMessage::new()
+                .components(components)
+                .ephemeral(true),
+        ),
+    )
+    .await?;
+
     Ok(())
 }

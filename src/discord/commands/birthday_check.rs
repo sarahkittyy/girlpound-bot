@@ -1,8 +1,16 @@
-use poise::serenity_prelude as serenity;
+use chrono::NaiveDate;
+use poise::serenity_prelude::{
+    self as serenity, ComponentInteraction, CreateInteractionResponse,
+    CreateInteractionResponseMessage,
+};
 use poise::{CreateReply, Modal};
+use regex::Regex;
 use serenity::{CreateActionRow, CreateButton, CreateEmbed, CreateMessage};
 
+use crate::discord::PoiseData;
 use crate::{discord::ApplicationContext, Error};
+
+use super::execute_modal_generic;
 
 #[derive(Debug, Modal)]
 #[name = "TKGP"]
@@ -18,6 +26,81 @@ fn birthday_embed() -> serenity::CreateEmbed {
     CreateEmbed::new()
         .title("Confirm your birthday to access the server.")
         .color(serenity::Color::GOLD)
+}
+
+pub async fn submit_button(
+    ctx: &serenity::Context,
+    data: &PoiseData,
+    mci: &ComponentInteraction,
+) -> Result<(), Error> {
+    let Some(guild_id) = mci.guild_id else {
+        return Ok(());
+    };
+    if let Some(response) = execute_modal_generic::<AgeModal, _>(
+        ctx,
+        |resp| mci.create_response(ctx, resp),
+        mci.id.to_string(),
+        None,
+        None,
+    )
+    .await?
+    {
+        let invalid_birthday = || {
+            response.create_response(
+                &ctx,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .content("Invalid birthday format. Try again. Example: 01/01/1995")
+                        .ephemeral(true),
+                ),
+            )
+        };
+        // parse modal response
+        let am = AgeModal::parse(response.data.clone())?;
+
+        // parse month/day/year
+        let re = Regex::new(r#"^(\d{1,2})/(\d{1,2})/(\d{4})$"#)
+            .expect("regex error in dispatch() for some reason");
+        let Some(caps) = re.captures(&am.birthday) else {
+            invalid_birthday().await?;
+            return Ok(());
+        };
+        let (_, [month, day, year]) = caps.extract::<3>();
+        let month: u32 = month.parse()?;
+        let day: u32 = day.parse()?;
+        let year: i32 = year.parse()?;
+        let Some(birthday) = NaiveDate::from_ymd_opt(year, month, day) else {
+            invalid_birthday().await?;
+            return Ok(());
+        };
+
+        let today = chrono::Utc::now().date_naive();
+        let Some(age) = today.years_since(birthday) else {
+            invalid_birthday().await?;
+            return Ok(());
+        };
+        response
+            .create_response(&ctx, CreateInteractionResponse::Acknowledge)
+            .await?;
+        if age < 18 {
+            // banned
+            ctx.http
+                .ban_user(guild_id, mci.user.id, 7, Some("tkgp: under 18"))
+                .await?;
+        } else {
+            // allowed in
+            ctx.http
+                .add_member_role(
+                    guild_id,
+                    mci.user.id,
+                    data.member_role,
+                    Some("passed the age check"),
+                )
+                .await?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Spawns the birthday modal

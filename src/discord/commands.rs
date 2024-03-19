@@ -22,7 +22,7 @@ pub use mods::*;
 mod pug;
 pub use pug::*;
 
-mod birthday_check;
+pub mod birthday_check;
 pub use birthday_check::*;
 
 mod botsay;

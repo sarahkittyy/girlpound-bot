@@ -19,6 +19,7 @@ use tokio::sync::OnceCell;
 use tokio::{self, sync::RwLock};
 
 mod commands;
+pub use commands::util;
 mod emojirank;
 mod media_cooldown;
 mod new_user;
@@ -252,7 +253,9 @@ async fn event_handler(
         }
         Event::InteractionCreate { interaction } => {
             if let Some(mci) = interaction.as_message_component() {
-                on_component_interaction::dispatch(ctx, data, mci).await?;
+                let _ = on_component_interaction::dispatch(ctx, data, mci)
+                    .await
+                    .inspect_err(|e| eprintln!("Could not handle interaction create: {e}"));
             }
         }
         Event::GuildMemberRemoval { user, .. } => {

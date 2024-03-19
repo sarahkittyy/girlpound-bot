@@ -40,7 +40,7 @@ async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) ->
             .upload_file("tf/cfg/mapcycle.txt", maps.join("\n").as_bytes())
             .await?;
     }
-    ctx.say(":white_check_mark:").await?;
+    ctx.say(format!("Added map `{map}`")).await?;
     Ok(())
 }
 

@@ -2,7 +2,11 @@ use crate::{discord::Context, tf2class::TF2Class, Error};
 use poise::serenity_prelude::{self as serenity};
 use sqlx::{self, MySql, Pool};
 
+use self::vote::Votes;
+
 pub mod command;
+pub mod edits;
+pub mod vote;
 
 #[derive(sqlx::FromRow, Clone, Debug)]
 pub struct UserProfile {
@@ -13,6 +17,7 @@ pub struct UserProfile {
     pub description: Option<String>, // user bio
     pub image: Option<String>,       // customizable image
     pub classes: u16,
+    pub favorite_map: Option<String>,
 }
 
 impl UserProfile {
@@ -25,13 +30,14 @@ impl UserProfile {
             description: None,
             image: None,
             classes: 0,
+            favorite_map: None,
         }
     }
 
     pub async fn to_embed(
         &self,
         ctx: &Context<'_>,
-        pool: &Pool<MySql>,
+        votes: Votes,
     ) -> Result<serenity::CreateEmbed, Error> {
         let user = serenity::UserId::new(self.uid.parse()?)
             .to_user(&ctx)
@@ -51,12 +57,23 @@ impl UserProfile {
             .title(self.title.replace("%", &nickname))
             .thumbnail(pfp)
             .description(description);
+        // link
         if let Some(url) = &self.url {
             e = e.url(url);
         };
+        // image
         if let Some(image) = &self.image {
             e = e.image(image);
         };
+
+        // votes
+        e = e.field(
+            "Votes",
+            format!("👍`{}`|`{}`👎", votes.likes, votes.dislikes),
+            true,
+        );
+
+        // classes
         let mut classes = vec![];
         for i in 0..9u8 {
             if get_bit(self.classes, i) {
@@ -71,6 +88,11 @@ impl UserProfile {
         }
         if classes.len() > 0 {
             e = e.field("Classes", classes.join(""), true);
+        }
+
+        // fav map
+        if let Some(map) = &self.favorite_map {
+            e = e.field("Favorite Map", map, true);
         }
 
         Ok(e)

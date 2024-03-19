@@ -1,4 +1,5 @@
 use poise::serenity_prelude as serenity;
+use poise::Modal;
 use serenity::AutocompleteChoice;
 
 use crate::discord::Context;
@@ -42,6 +43,27 @@ pub async fn rcon_and_reply(
     ctx.say(rcon_user_output(&output_servers(ctx, server)?, cmd).await)
         .await?;
     Ok(())
+}
+
+pub async fn execute_modal_generic<
+    M: Modal,
+    F: std::future::Future<Output = Result<(), serenity::Error>>,
+>(
+    ctx: &serenity::Context,
+    create_interaction_response: impl FnOnce(serenity::CreateInteractionResponse) -> F,
+    modal_custom_id: String,
+    defaults: Option<M>,
+    timeout: Option<std::time::Duration>,
+) -> Result<Option<serenity::ModalInteraction>, Error> {
+    // Send modal
+    create_interaction_response(M::create(defaults, modal_custom_id.clone())).await?;
+
+    // Wait for user to submit
+    let response = serenity::collector::ModalInteractionCollector::new(&ctx.shard)
+        .filter(move |d| d.data.custom_id == modal_custom_id)
+        .timeout(timeout.unwrap_or(std::time::Duration::from_secs(3600)))
+        .await;
+    Ok(response)
 }
 
 /// Returns the list of online users
