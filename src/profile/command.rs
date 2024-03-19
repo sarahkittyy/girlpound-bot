@@ -152,7 +152,10 @@ pub async fn profile(
         };
     }
 
-    msg.delete(ctx).await?;
+    let _ = msg
+        .delete(ctx)
+        .await
+        .inspect_err(|e| eprintln!("Could not delete profile: {e}"));
     Ok(())
 }
 
