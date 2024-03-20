@@ -208,6 +208,9 @@ async fn open_edit_menu(ctx: Context<'_>, mci: &ComponentInteraction) -> Result<
         CreateSelectMenuOption::new("Remove Image", "remove-image")
             .description("Remove your profile image")
             .emoji('❌'),
+        CreateSelectMenuOption::new("Toggle Vote Visibility", "toggle-vote")
+            .description("Toggle if your profile votes are shown or not.")
+            .emoji('🫣'),
     ];
 
     let components = vec![CreateActionRow::SelectMenu(CreateSelectMenu::new(

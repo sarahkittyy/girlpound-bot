@@ -16,6 +16,8 @@ use crate::{
     Error,
 };
 
+use super::vote::toggle_vote_visibility;
+
 #[derive(Debug, Modal)]
 #[name = "Edit user description"]
 pub struct DescriptionModal {
@@ -178,6 +180,18 @@ pub async fn dispatch_profile_edit(
         }
         "classes" => {
             open_class_select_menu(ctx, data, mci).await?;
+        }
+        "toggle-vote" => {
+            toggle_vote_visibility(&data.local_pool, mci.user.id).await?;
+            mci.create_response(
+                ctx,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .content("Toggled vote visibility (refresh profile to update)")
+                        .ephemeral(true),
+                ),
+            )
+            .await?;
         }
         "color" => {
             edit_field_modal::<ColorModal, _, u32, &str>(
