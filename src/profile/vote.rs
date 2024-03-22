@@ -38,6 +38,15 @@ pub async fn get_profile_votes(
         .unwrap_or(Votes::zero()))
 }
 
+/// if votes are shown, hide them. else, show them.
+pub async fn toggle_vote_visibility(
+    pool: &Pool<MySql>,
+    profile_uid: serenity::UserId,
+) -> Result<(), Error> {
+    sqlx::query!(r#"INSERT INTO `profiles` (`uid`, `hide_votes`) VALUES (?, true) ON DUPLICATE KEY UPDATE `hide_votes` = NOT `hide_votes`"#, profile_uid.get()).execute(pool).await?;
+    Ok(())
+}
+
 /// Submits a vote to the profile, returning the change in total votes as a result
 pub async fn vote_on(
     pool: &Pool<MySql>,

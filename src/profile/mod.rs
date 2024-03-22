@@ -23,6 +23,7 @@ pub struct UserProfile {
     pub views: u64,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub hide_votes: i8,
 }
 
 impl UserProfile {
@@ -38,6 +39,7 @@ impl UserProfile {
             views: 0,
             favorite_map: None,
             color: None,
+            hide_votes: 0,
             created_at: Utc::now().naive_utc(),
             updated_at: Utc::now().naive_utc(),
         }
@@ -76,11 +78,13 @@ impl UserProfile {
         };
 
         // votes
-        e = e.field(
-            "Votes",
-            format!("👍`{}`|`{}`👎", votes.likes, votes.dislikes),
-            true,
-        );
+        if self.hide_votes == 0 {
+            e = e.field(
+                "Votes",
+                format!("👍`{}`|`{}`👎", votes.likes, votes.dislikes),
+                true,
+            );
+        }
 
         // classes
         let mut classes = vec![];
