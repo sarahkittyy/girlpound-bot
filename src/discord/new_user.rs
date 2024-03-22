@@ -1,4 +1,4 @@
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity};
 use serenity::{CreateMessage, Member, Mentionable};
 
 use crate::Error;
@@ -22,7 +22,7 @@ pub async fn welcome_user(ctx: &serenity::Context, new_member: &Member) -> Resul
             let r = (random::<f32>() * INTROS.len() as f32).floor() as usize;
             let g = (random::<f32>() * guild.emojis.len() as f32).floor() as usize;
             let emoji = guild.emojis.values().skip(g).next();
-            let _ = sid
+            let msg = sid
                 .send_message(
                     ctx,
                     CreateMessage::new().content(&format!(
@@ -35,7 +35,8 @@ pub async fn welcome_user(ctx: &serenity::Context, new_member: &Member) -> Resul
                         guild.member_count
                     )),
                 )
-                .await;
+                .await?;
+            let _ = msg.react(&ctx, '🐈').await?;
         }
     }
 
