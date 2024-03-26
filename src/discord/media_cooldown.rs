@@ -48,9 +48,10 @@ impl LeakyBucket {
             let needed = self.cost - current;
             // convert to minutes
             let needed_mins = needed / self.per_minute;
-            Err(Duration::milliseconds(
-                (needed_mins * 60. * 1000.).floor() as i64
-            ))
+            Err(
+                Duration::try_milliseconds((needed_mins * 60. * 1000.).floor() as i64)
+                    .ok_or(Duration::zero())?,
+            )
         }
     }
 }

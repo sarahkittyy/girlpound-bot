@@ -19,7 +19,7 @@ pub async fn try_callout_nsfw_role(
                 let since_join: Duration = joined_at.signed_duration_since(Utc::now()).abs();
                 if !old.roles.contains(&data.horny_role)
                     && new.roles.contains(&data.horny_role)
-                    && since_join <= TimeDelta::hours(1)
+                    && since_join <= TimeDelta::try_hours(1).unwrap()
                     && data.horny_callouts.write().await.insert(new.user.id.get())
                 {
                     let total_s = since_join.num_seconds();

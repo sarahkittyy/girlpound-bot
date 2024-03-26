@@ -8,6 +8,7 @@ use crate::{logs, seederboard, sourcebans, wacky_wednesday, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
+use poise::PrefixFrameworkOptions;
 use serenity::CreateMessage;
 
 use tokio_cron_scheduler::JobScheduler;
@@ -20,6 +21,8 @@ use tokio::{self, sync::RwLock};
 
 mod commands;
 pub use commands::util;
+
+use self::commands::ReminderManager;
 mod emojirank;
 mod media_cooldown;
 mod new_user;
@@ -72,6 +75,8 @@ pub struct PoiseData {
 
     /// /seeder cooldown
     pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
+    /// \ !remindme
+    pub reminders: Arc<RwLock<ReminderManager>>,
     /// Bot database pool
     pub local_pool: Pool<MySql>,
     /// Sourcebans database pool
@@ -107,13 +112,13 @@ impl PoiseData {
     /// checks if a seeder ping is allowed. if on cooldown, returns time until usable
     pub async fn can_seed(&self, server_addr: SocketAddr) -> Result<(), Duration> {
         // 4 hrs
-        const SEED_COOLDOWN: Duration = Duration::milliseconds(4 * 60 * 60 * 1000);
+        let seed_cooldown: Duration = Duration::try_milliseconds(4 * 60 * 60 * 1000).unwrap();
 
         let mut map = self.seeder_cooldown.write().await;
         let last_used = map.entry(server_addr).or_insert(DateTime::<Utc>::MIN_UTC);
         let now = chrono::Utc::now();
 
-        let allowed_at = *last_used + SEED_COOLDOWN;
+        let allowed_at = *last_used + seed_cooldown;
 
         if allowed_at < now {
             // allowed
@@ -326,16 +331,25 @@ pub async fn start_bot(
         .next()
         .expect("Could not resolve PUG server address.");
 
+    let reminders = Arc::new(RwLock::new(
+        ReminderManager::new_with_init(&local_pool).await?,
+    ));
+
     let framework = {
         let watcher = watcher.clone();
         let servers = servers.clone();
         let local_pool = local_pool.clone();
         let sb_pool = sb_pool.clone();
         let pug_server = pug_server.clone();
+        let reminders = reminders.clone();
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
                 commands: commands::ALL.iter().map(|f| f()).collect(),
                 event_handler: |a, b, c, d| Box::pin(event_handler(a, b, c, d)),
+                prefix_options: PrefixFrameworkOptions {
+                    prefix: Some("!".to_owned()),
+                    ..Default::default()
+                },
                 ..Default::default()
             })
             .setup(move |ctx, _ready, framework| {
@@ -358,6 +372,7 @@ pub async fn start_bot(
                             media_cooldown::MediaCooldown::from_env(),
                         )),
                         guild_id: serenity::GuildId::new(guild_id),
+                        reminders,
                         pug_cfgs: [
                             "rgl_off",
                             "rgl_7s_koth",
@@ -439,6 +454,12 @@ pub async fn start_bot(
         client.http.clone(),
     );
     emojirank::spawn_flush_thread(watcher.clone(), local_pool.clone());
+    commands::spawn_reminder_thread(
+        client.http.clone(),
+        local_pool.clone(),
+        guild_id,
+        reminders.clone(),
+    );
 
     let sched = JobScheduler::new().await?;
 

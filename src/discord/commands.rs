@@ -34,11 +34,14 @@ pub use bibleverse::*;
 mod emojitop;
 pub use emojitop::*;
 
+mod remindme;
+pub use remindme::*;
+
 use crate::catcoin::command::catcoin;
 use crate::psychostats;
 
 use poise;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity};
 use poise::CreateReply;
 use serenity::{CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, CreateMessage, GetMessages};
 
@@ -48,6 +51,10 @@ use regex::Regex;
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     bibleverse,
     catcoin,
+    || poise::Command {
+        slash_action: remindme_slash().slash_action,
+        ..remindme()
+    },
     seederboard,
     profile,
     get_profile,
@@ -82,7 +89,11 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
 ];
 
 /// Toggle the pro role on a user
-#[poise::command(context_menu_command = "Toggle pro/scrim role.", global_cooldown = 5)]
+#[poise::command(
+    slash_command,
+    context_menu_command = "Toggle pro/scrim role.",
+    global_cooldown = 5
+)]
 pub async fn givepro(
     ctx: Context<'_>,
     #[description = "The user to toggle"] user: serenity::User,
