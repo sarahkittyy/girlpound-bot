@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use poise::{
     self,
     serenity_prelude::{self as serenity, CreateMessage, MessageId, ReactionType},
@@ -115,9 +115,12 @@ pub async fn remindme_slash(
 
     let uid = ctx.author().id;
     let cid = ctx.channel_id();
-    let duration = humantime::parse_duration(&when)?;
+    let duration = TimeDelta::from_std(humantime::parse_duration(&when)?)?;
 
-    let remind_at = now.to_utc() + duration;
+    let remind_at = now
+        .to_utc()
+        .checked_add_signed(duration)
+        .ok_or("Too large!")?;
 
     let msg = ctx
         .send(CreateReply::default().content(format!(
@@ -150,9 +153,12 @@ pub async fn remindme(
     let uid = ctx.author().id;
     let mid = MessageId::new(ctx.id());
     let cid = ctx.channel_id();
-    let duration = humantime::parse_duration(&when)?;
+    let duration = TimeDelta::from_std(humantime::parse_duration(&when)?)?;
 
-    let remind_at = now.to_utc() + duration;
+    let remind_at = now
+        .to_utc()
+        .checked_add_signed(duration)
+        .ok_or("Too large!")?;
 
     let reminder = Reminder {
         mid: mid.to_string(),
