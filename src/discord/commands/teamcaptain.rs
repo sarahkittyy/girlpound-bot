@@ -127,6 +127,7 @@ pub async fn teamcaptain(
         )
         .await?
         .parse()?;
+        members.retain(|m| m.user.id != pick);
         team.push(pick);
         pick_red = !pick_red;
     }
