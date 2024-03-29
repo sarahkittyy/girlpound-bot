@@ -37,6 +37,9 @@ pub use emojitop::*;
 mod remindme;
 pub use remindme::*;
 
+mod teamcaptain;
+pub use teamcaptain::*;
+
 use crate::catcoin::command::catcoin;
 use crate::psychostats;
 
@@ -58,6 +61,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     seederboard,
     profile,
     get_profile,
+    teamcaptain,
     wacky,
     givepro,
     stats,
