@@ -59,7 +59,7 @@ async fn prompt(
             .await?;
         return res;
     }
-    return Err("No interaction received.".into());
+    return Err("/teamcaptain response missing, try again.".into());
 }
 
 /// Set up pug team captains and display prompts for them to pick users
