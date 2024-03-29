@@ -23,7 +23,7 @@ async fn prompt(
 
     // send msg
     let menu = CreateSelectMenu::new(
-        format!("{uuid}-red-captain"),
+        format!("{uuid}-choice"),
         serenity::CreateSelectMenuKind::String { options },
     );
     let row = vec![CreateActionRow::SelectMenu(menu)];
@@ -59,7 +59,7 @@ async fn prompt(
             .await?;
         return res;
     }
-    return Err("/teamcaptain response missing, try again.".into());
+    return Err("/teamcaptain response missing, aborted.".into());
 }
 
 /// Set up pug team captains and display prompts for them to pick users
@@ -134,7 +134,7 @@ pub async fn teamcaptain(
 
     let embed = CreateEmbed::new() //
         .field(
-            "RED",
+            "🔴 RED",
             red.into_iter()
                 .map(|uid| uid.mention().to_string())
                 .collect::<Vec<String>>()
@@ -142,7 +142,7 @@ pub async fn teamcaptain(
             true,
         )
         .field(
-            "BLU",
+            "🔵 BLU",
             blu.into_iter()
                 .map(|uid| uid.mention().to_string())
                 .collect::<Vec<String>>()
