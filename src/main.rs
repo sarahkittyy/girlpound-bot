@@ -10,6 +10,7 @@ use dotenv::dotenv;
 use poise::serenity_prelude as serenity;
 use tokio;
 
+mod api;
 mod catcoin;
 mod discord;
 mod ftp;
@@ -21,6 +22,7 @@ mod sourcebans;
 mod steamid;
 mod tf2_rcon;
 mod tf2class;
+mod util;
 mod wacky_wednesday;
 
 use ftp::ServerFtp;
@@ -185,6 +187,9 @@ async fn main() -> Result<(), Error> {
         .await
         .expect("Could not bind log receiver");
 
+    println!("Spawning HTTP API listener...");
+    let api_state = api::init().await.expect("Could not spawn api.");
+
     println!("Starting discord bot...");
-    discord::start_bot(log_receiver, servers).await
+    discord::start_bot(log_receiver, servers, api_state).await
 }

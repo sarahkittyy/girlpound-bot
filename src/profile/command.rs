@@ -3,18 +3,28 @@ use std::time::Duration;
 use poise::{
     serenity_prelude::{
         self as serenity, ButtonStyle, ComponentInteraction, ComponentInteractionCollector,
-        CreateActionRow, CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage,
-        CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, GetMessages,
+        CreateActionRow, CreateButton, CreateEmbed, CreateInteractionResponse,
+        CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind,
+        CreateSelectMenuOption, GetMessages,
     },
     CreateReply,
 };
 
-use super::{view_profile, vote::vote_on};
+use super::{steam::get_steam_profile_data, view_profile, vote::vote_on, UserProfile};
 use crate::{
     discord::Context,
     profile::{get_user_profile, vote::get_profile_votes},
     Error,
 };
+
+#[derive(Debug, poise::Modal)]
+#[name = "Enter your steam link code"]
+pub struct SteamLinkCodeModal {
+    #[name = "The 6-digit code"]
+    #[min_length = 6]
+    #[max_length = 6]
+    pub code: String,
+}
 
 /// TKGP Profile
 #[poise::command(
@@ -50,6 +60,28 @@ pub async fn profile(
         return Ok(());
     };
     send_profile(ctx, member).await
+}
+
+/// Link your steam account to TKGP
+#[poise::command(slash_command)]
+pub async fn link(ctx: Context<'_>) -> Result<(), Error> {
+    let (embed, row) = get_steam_link_content(&ctx.data().api_state.link_url());
+    ctx.send(CreateReply::default().embed(embed).components(row))
+        .await?;
+
+    Ok(())
+}
+
+pub fn get_steam_link_content(link_url: &str) -> (CreateEmbed, Vec<CreateActionRow>) {
+    let embed = CreateEmbed::new() //
+        .title("Click here to get a link code, then click the button below.")
+        .url(link_url);
+    let row = vec![CreateActionRow::Buttons(vec![CreateButton::new(
+        "steam.link",
+    )
+    .label("Enter Link Code")
+    .emoji('🔗')])];
+    (embed, row)
 }
 
 async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), Error> {
@@ -88,8 +120,12 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
         }
     }
 
+    let mut profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
+    let mut votes = get_profile_votes(&ctx.data().local_pool, member.user.id).await?;
+    let mut steam_data = get_steam_profile_data(&ctx, &profile).await?;
+
     // buttons
-    let components = vec![CreateActionRow::Buttons(vec![
+    let buttons = vec![
         // like
         CreateButton::new(like_id.clone())
             .style(ButtonStyle::Success)
@@ -107,14 +143,16 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
         CreateButton::new(reload_id.clone())
             .style(ButtonStyle::Secondary)
             .emoji('🔃'),
-    ])];
-
-    let mut profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
-    let mut votes = get_profile_votes(&ctx.data().local_pool, member.user.id).await?;
+    ];
+    let components = vec![CreateActionRow::Buttons(buttons)];
     let msg = ctx
         .send(
             CreateReply::default()
-                .embed(profile.to_embed(&ctx, votes.clone()).await?)
+                .embed(
+                    profile
+                        .to_embed(&ctx, votes.clone(), steam_data.clone())
+                        .await?,
+                )
                 .components(components),
         )
         .await?;
@@ -142,13 +180,13 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
                 &ctx,
                 CreateInteractionResponse::UpdateMessage(
                     CreateInteractionResponseMessage::new()
-                        .embed(profile.to_embed(&ctx, votes).await?),
+                        .embed(profile.to_embed(&ctx, votes, steam_data.clone()).await?),
                 ),
             )
             .await?;
         } else if mci.data.custom_id == edit_id {
             if mci.user.id == member.user.id {
-                open_edit_menu(ctx.clone(), &mci).await?;
+                open_edit_menu(ctx.clone(), &mci, &profile).await?;
             } else {
                 mci.create_response(
                     &ctx,
@@ -163,11 +201,12 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
         } else if mci.data.custom_id == reload_id {
             profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
             votes = get_profile_votes(&ctx.data().local_pool, member.user.id).await?;
+            steam_data = get_steam_profile_data(&ctx, &profile).await?;
             mci.create_response(
                 &ctx,
                 CreateInteractionResponse::UpdateMessage(
                     CreateInteractionResponseMessage::new()
-                        .embed(profile.to_embed(&ctx, votes).await?),
+                        .embed(profile.to_embed(&ctx, votes, steam_data.clone()).await?),
                 ),
             )
             .await?;
@@ -181,8 +220,12 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
     Ok(())
 }
 
-async fn open_edit_menu(ctx: Context<'_>, mci: &ComponentInteraction) -> Result<(), Error> {
-    let options = vec![
+async fn open_edit_menu(
+    ctx: Context<'_>,
+    mci: &ComponentInteraction,
+    profile: &UserProfile,
+) -> Result<(), Error> {
+    let mut options = vec![
         //
         CreateSelectMenuOption::new("Description", "description")
             .description("Edit your bio")
@@ -212,6 +255,14 @@ async fn open_edit_menu(ctx: Context<'_>, mci: &ComponentInteraction) -> Result<
             .description("Toggle if your profile votes are shown or not.")
             .emoji('🫣'),
     ];
+    if profile.steamid.is_none() {
+        options.insert(
+            0,
+            CreateSelectMenuOption::new("Link steam", "link-steam")
+                .description("Link your profile to your steam account")
+                .emoji('🔗'),
+        );
+    }
 
     let components = vec![CreateActionRow::SelectMenu(CreateSelectMenu::new(
         "profile.edit.select",

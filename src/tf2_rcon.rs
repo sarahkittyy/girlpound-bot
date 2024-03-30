@@ -1,9 +1,6 @@
-use std::{
-    net::SocketAddr,
-    time::{self, Duration},
-};
+use std::{net::SocketAddr, time};
 
-use crate::{logs::safe_strip, Error, Server};
+use crate::{logs::safe_strip, util::hhmmss, Error, Server};
 
 use rcon::Connection;
 use regex::Regex;
@@ -38,14 +35,6 @@ pub struct GameState {
     pub map: String,
     pub timeleft: Option<TimeLeft>,
     pub nextmap: Option<NextMap>,
-}
-
-fn hhmmss(duration: &Duration) -> String {
-    let secs = duration.as_secs();
-    let hours = secs / 3600;
-    let minutes = (secs % 3600) / 60;
-    let seconds = secs % 60;
-    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
 impl GameState {
@@ -95,7 +84,7 @@ impl GameState {
                 format!(
                     "Oldest player: `{}` for `{}`\n",
                     safe_strip(&longest_online.name),
-                    hhmmss(&longest_online.connected)
+                    hhmmss(longest_online.connected.as_secs())
                 )
             } else {
                 "".to_owned()

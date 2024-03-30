@@ -16,7 +16,7 @@ use crate::{
     Error,
 };
 
-use super::vote::toggle_vote_visibility;
+use super::{command::get_steam_link_content, vote::toggle_vote_visibility};
 
 #[derive(Debug, Modal)]
 #[name = "Edit user description"]
@@ -180,6 +180,19 @@ pub async fn dispatch_profile_edit(
         }
         "classes" => {
             open_class_select_menu(ctx, data, mci).await?;
+        }
+        "link-steam" => {
+            let (embed, components) = get_steam_link_content(&data.api_state.link_url());
+            mci.create_response(
+                ctx,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .embed(embed)
+                        .components(components)
+                        .ephemeral(true),
+                ),
+            )
+            .await?;
         }
         "toggle-vote" => {
             toggle_vote_visibility(&data.local_pool, mci.user.id).await?;

@@ -1,12 +1,13 @@
-use crate::{discord::Context, tf2class::TF2Class, Error};
+use crate::{discord::Context, tf2class::TF2Class, util::hhmmss, Error};
 use chrono::{NaiveDateTime, Utc};
-use poise::serenity_prelude::{self as serenity};
+use poise::serenity_prelude::{self as serenity, CreateEmbedFooter};
 use sqlx::{self, MySql, Pool};
 
-use self::vote::Votes;
+use self::{steam::SteamProfileData, vote::Votes};
 
 pub mod command;
 pub mod edits;
+pub mod steam;
 pub mod vote;
 
 #[derive(sqlx::FromRow, Clone, Debug)]
@@ -49,6 +50,7 @@ impl UserProfile {
         &self,
         ctx: &Context<'_>,
         votes: Votes,
+        steam_data: Option<SteamProfileData>,
     ) -> Result<serenity::CreateEmbed, Error> {
         let user = serenity::UserId::new(self.uid.parse()?)
             .to_user(&ctx)
@@ -80,7 +82,7 @@ impl UserProfile {
         // votes
         if self.hide_votes == 0 {
             e = e.field(
-                "Votes",
+                "Votes 🗳️",
                 format!("👍`{}`|`{}`👎", votes.likes, votes.dislikes),
                 true,
             );
@@ -100,18 +102,53 @@ impl UserProfile {
             }
         }
         if classes.len() > 0 {
-            e = e.field("Classes", classes.join(""), true);
+            e = e.field("Classes 🔨", classes.join(""), true);
+        }
+        if let Some(steam_data) = steam_data {
+            // steam fields
+            if let Some((rank, seconds)) = steam_data.seederboard {
+                e = e.field(
+                    "Time Seeded ❤️",
+                    format!(
+                        "`{}` **(#{})**",
+                        hhmmss(seconds.try_into().unwrap_or(0)),
+                        rank
+                    ),
+                    true,
+                );
+            };
+            match (steam_data.best_friend, steam_data.worst_enemy) {
+                (Some(best_friend), Some(worst_enemy)) => {
+                    e = e.field(
+                        "Dominations ⚔️",
+                        format!(
+                            "`{}` **(+{})**\n`{}` **(-{})**",
+                            best_friend.0.personaname,
+                            best_friend.1,
+                            worst_enemy.0.personaname,
+                            worst_enemy.1
+                        ),
+                        true,
+                    )
+                }
+                _ => (),
+            }
+        } else {
+            // link footer
+            e = e.footer(CreateEmbedFooter::new(
+                "For more stats, link your steam! /link",
+            ));
         }
         // fav map
         if let Some(map) = &self.favorite_map {
-            e = e.field("Favorite Map", map, true);
+            e = e.field("Favorite Map 🗺️", map, true);
         }
         // color
         if let Some(color) = &self.color {
             e = e.color(*color);
         }
         // views
-        e = e.field("Views", format!("`{}`", self.views), true);
+        e = e.field("Views 👀", format!("`{}`", self.views), true);
 
         Ok(e)
     }

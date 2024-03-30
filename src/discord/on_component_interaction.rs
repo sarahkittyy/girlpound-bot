@@ -1,14 +1,21 @@
-use poise::serenity_prelude::{
-    self as serenity, ComponentInteractionDataKind, CreateInteractionResponse,
+use poise::{
+    serenity_prelude::{
+        self as serenity, ComponentInteractionDataKind, CreateInteractionResponse,
+        CreateInteractionResponseMessage,
+    },
+    Modal,
 };
 use serenity::ComponentInteraction;
 
 use crate::{
-    profile::edits::{dispatch_profile_edit, toggle_class},
+    profile::{
+        command::SteamLinkCodeModal,
+        edits::{dispatch_profile_edit, toggle_class},
+    },
     Error,
 };
 
-use super::{commands::birthday_check, PoiseData};
+use super::{commands::birthday_check, util::execute_modal_generic, PoiseData};
 
 /// handle all permanent component interactions
 pub async fn dispatch(
@@ -40,6 +47,55 @@ pub async fn dispatch(
                     .await?;
             }
         },
+        "steam.link" => {
+            if let Some(response) = execute_modal_generic::<SteamLinkCodeModal, _>(
+                ctx,
+                |resp| mci.create_response(ctx, resp),
+                mci.id.to_string(),
+                None,
+                None,
+            )
+            .await?
+            {
+                let dm = SteamLinkCodeModal::parse(response.data.clone())?;
+                let steamid64 = match data.api_state.try_link_user(dm.code).await {
+                    Ok(s) => s,
+                    Err(e) => {
+                        response
+                            .create_response(
+                                ctx,
+                                CreateInteractionResponse::Message(
+                                    CreateInteractionResponseMessage::new()
+                                        .content(format!("Could not link: {e}"))
+                                        .ephemeral(true),
+                                ),
+                            )
+                            .await?;
+                        return Ok(());
+                    }
+                };
+                let profiles = data
+                    .steamid_client
+                    .lookup(steamid64.to_string().as_str())
+                    .await?;
+                let profile = profiles
+                    .first()
+                    .ok_or("No profile found for the returned steamid.")?;
+
+                sqlx::query!("INSERT INTO `profiles` (`uid`, `steamid`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `steamid` = ?", mci.user.id.to_string(), profile.steam3, profile.steam3).execute(&data.local_pool).await?;
+
+                response
+                    .create_response(
+                        ctx,
+                        CreateInteractionResponse::Message(
+                            CreateInteractionResponseMessage::new()
+                                .content(format!("Successfully linked to {}", profile.steamidurl))
+                                .ephemeral(true),
+                        ),
+                    )
+                    .await?;
+            }
+        }
         _ => (),
     }
     Ok(())

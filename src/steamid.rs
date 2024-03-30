@@ -29,7 +29,7 @@ pub struct SteamIDProfile {
     pub inviteurl: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SteamPlayerSummary {
     pub steamid: String,
     pub avatarmedium: String,
@@ -116,6 +116,21 @@ impl SteamIDClient {
             .map(|v| serde_json::from_value(v.clone()))
             .flatten()
             .collect())
+    }
+
+    pub async fn lookup_player_summaries(
+        &self,
+        input: &str,
+    ) -> Result<Vec<SteamPlayerSummary>, Error> {
+        let looked = self.lookup(input).await?;
+        self.get_player_summaries(
+            &looked
+                .iter()
+                .map(|l| l.steamid64.clone())
+                .collect::<Vec<String>>()
+                .join(","),
+        )
+        .await
     }
 
     /// resolves a steam profile url to a steamid64

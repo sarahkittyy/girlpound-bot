@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
+use crate::api::ApiState;
 use crate::steamid::SteamIDClient;
 use crate::tf2class::TF2Class;
 use crate::{logs, seederboard, sourcebans, wacky_wednesday, Error};
@@ -52,6 +53,9 @@ pub struct PoiseData {
     pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
     /// Emoji ranking cache for tracking emoji usage
     pub emoji_rank: Arc<RwLock<emojirank::EmojiWatcher>>,
+
+    /// Shared api state
+    pub api_state: ApiState,
 
     /// Emojis for each of the 9 tf2 classes
     pub class_emojis: HashMap<TF2Class, String>,
@@ -225,6 +229,7 @@ async fn event_handler(
 pub async fn start_bot(
     log_receiver: logs::LogReceiver,
     servers: HashMap<SocketAddr, crate::Server>,
+    api_state: ApiState,
 ) -> Result<(), Error> {
     let bot_token: String = parse_env("BOT_TOKEN");
     let guild_id: u64 = parse_env("GUILD_ID");
@@ -328,6 +333,7 @@ pub async fn start_bot(
                         .map(str::to_owned)
                         .collect(),
                         pug_server,
+                        api_state,
                         emoji_rank: watcher.clone(),
                         seeder_role: serenity::RoleId::new(seeder_role_id),
                         horny_role: serenity::RoleId::new(horny_role_id),

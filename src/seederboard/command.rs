@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{discord::Context, Error};
+use crate::{discord::Context, util::hhmmss, Error};
 use poise::{
     self,
     serenity_prelude::{Color, CreateEmbed, CreateEmbedFooter},
@@ -56,16 +56,11 @@ pub async fn seederboard(ctx: Context<'_>) -> Result<(), Error> {
             let id64 = id3_to_id64.get(&seeder.steamid)?;
             let profile = profiles.get(id64)?;
             let total_s = seeder.seconds_seeded;
-            let s = total_s % 60;
-            let m = (total_s / 60) % 60;
-            let h = (total_s / 60) / 60;
             Some(format!(
-                "{}. `{}` - `{:0>2}:{:0>2}:{:0>2}`",
+                "{}. `{}` - `{}`",
                 i + 1,
                 profile.personaname,
-                h,
-                m,
-                s
+                hhmmss(total_s.try_into().ok()?)
             ))
         })
         .collect::<Vec<_>>()

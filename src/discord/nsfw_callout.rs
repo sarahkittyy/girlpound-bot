@@ -2,7 +2,7 @@ use chrono::{Duration, TimeDelta, Utc};
 use poise::serenity_prelude as serenity;
 use serenity::{CreateMessage, Member, Mentionable};
 
-use crate::Error;
+use crate::{util::hhmmss, Error};
 
 use super::PoiseData;
 
@@ -23,14 +23,11 @@ pub async fn try_callout_nsfw_role(
                     && data.horny_callouts.write().await.insert(new.user.id.get())
                 {
                     let total_s = since_join.num_seconds();
-                    let s = total_s % 60;
-                    let m = (total_s / 60) % 60;
-                    let h = (total_s / 60) / 60;
                     let resp = format!(
-                            "{} has assigned themselves the NSFW role. Time since joining: `{:0>2}:{:0>2}:{:0>2}`",
-                            new.mention(),
-                            h, m, s
-                        );
+                        "{} has assigned themselves the NSFW role. Time since joining: `{}`",
+                        new.mention(),
+                        hhmmss(total_s.try_into()?)
+                    );
                     data.general_channel
                         .send_message(&ctx, CreateMessage::new().content(resp))
                         .await?;
