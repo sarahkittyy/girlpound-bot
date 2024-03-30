@@ -16,7 +16,7 @@ use crate::{
     Error,
 };
 
-use super::{command::get_steam_link_content, vote::toggle_vote_visibility};
+use super::command::get_steam_link_content;
 
 #[derive(Debug, Modal)]
 #[name = "Edit user description"]
@@ -195,12 +195,49 @@ pub async fn dispatch_profile_edit(
             .await?;
         }
         "toggle-vote" => {
-            toggle_vote_visibility(&data.local_pool, mci.user.id).await?;
+            toggle_bool_field(&data.local_pool, mci.user.id, "hide_votes").await?;
             mci.create_response(
                 ctx,
                 CreateInteractionResponse::Message(
                     CreateInteractionResponseMessage::new()
                         .content("Toggled vote visibility (refresh profile to update)")
+                        .ephemeral(true),
+                ),
+            )
+            .await?;
+        }
+        "toggle-stats" => {
+            toggle_bool_field(&data.local_pool, mci.user.id, "hide_stats").await?;
+            mci.create_response(
+                ctx,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .content("Toggled stats visibility (refresh profile to update)")
+                        .ephemeral(true),
+                ),
+            )
+            .await?;
+        }
+        "toggle-domination" => {
+            toggle_bool_field(&data.local_pool, mci.user.id, "hide_dominations").await?;
+            mci.create_response(
+                ctx,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .content("Toggled domination record visibility (refresh profile to update)")
+                        .ephemeral(true),
+                ),
+            )
+            .await?;
+        }
+        "unlink-steam" => {
+            update_profile_column::<Option<String>>(mci.user.id, "steamid", None, &data.local_pool)
+                .await?;
+            mci.create_response(
+                &ctx,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .content("Unlinked your steam. Do /link again if you change your mind ^-^")
                         .ephemeral(true),
                 ),
             )
@@ -378,6 +415,24 @@ where
     qb.push_bind(value.clone());
     qb.push(format!(") ON DUPLICATE KEY UPDATE `{column}` = "));
     qb.push_bind(value.clone());
+    let q = qb.build();
+    q.execute(pool).await?;
+    Ok(())
+}
+
+/// toggle a boolean field on the profile
+pub async fn toggle_bool_field(
+    pool: &Pool<MySql>,
+    profile_uid: serenity::UserId,
+    column: &str,
+) -> Result<(), Error> {
+    let mut qb = sqlx::QueryBuilder::new(format!(
+        "INSERT INTO `profiles` (`uid`, `{column}`) VALUES ("
+    ));
+    qb.push_bind(profile_uid.get());
+    qb.push(format!(
+        ", true) ON DUPLICATE KEY UPDATE `{column}` = NOT `{column}`"
+    ));
     let q = qb.build();
     q.execute(pool).await?;
     Ok(())

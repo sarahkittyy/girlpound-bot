@@ -25,6 +25,8 @@ pub struct UserProfile {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub hide_votes: i8,
+    pub hide_dominations: i8,
+    pub hide_stats: i8,
 }
 
 impl UserProfile {
@@ -41,6 +43,8 @@ impl UserProfile {
             favorite_map: None,
             color: None,
             hide_votes: 0,
+            hide_dominations: 0,
+            hide_stats: 0,
             created_at: Utc::now().naive_utc(),
             updated_at: Utc::now().naive_utc(),
         }
@@ -122,44 +126,48 @@ impl UserProfile {
                     true,
                 );
             };
-            match (steam_data.best_friend, steam_data.worst_enemy) {
-                (Some(best_friend), Some(worst_enemy)) => {
-                    e = e.field(
-                        "Dominations ⚔️",
-                        format!(
-                            "`{}` **(+{})**\n`{}` **(-{})**",
-                            best_friend.0.personaname,
-                            best_friend.1,
-                            worst_enemy.0.personaname,
-                            worst_enemy.1
-                        ),
-                        true,
-                    )
+            if self.hide_dominations == 0 {
+                match (steam_data.best_friend, steam_data.worst_enemy) {
+                    (Some(best_friend), Some(worst_enemy)) => {
+                        e = e.field(
+                            "Dominations ⚔️",
+                            format!(
+                                "`{}` **(+{})**\n`{}` **(-{})**",
+                                best_friend.0.personaname,
+                                best_friend.1,
+                                worst_enemy.0.personaname,
+                                worst_enemy.1
+                            ),
+                            true,
+                        )
+                    }
+                    _ => (),
                 }
-                _ => (),
             }
-            // stats field
-            let mut stats = vec![];
-            if let Some(tkgp4) = steam_data.stats.0 {
-                stats.push(format!(
-                    "[4. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
-                    tkgp4.rank,
-                    tkgp4.percentile,
-                    psychostats::BASEURL4,
-                    tkgp4.id
-                ))
-            }
-            if let Some(tkgp5) = steam_data.stats.1 {
-                stats.push(format!(
-                    "[5. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
-                    tkgp5.rank,
-                    tkgp5.percentile,
-                    psychostats::BASEURL5,
-                    tkgp5.id
-                ))
-            }
-            if !stats.is_empty() {
-                e = e.field("Stats 📈", format!("{}", stats.join("\n")), true);
+            if self.hide_stats == 0 {
+                // stats field
+                let mut stats = vec![];
+                if let Some(tkgp4) = steam_data.stats.0 {
+                    stats.push(format!(
+                        "[4. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
+                        tkgp4.rank,
+                        tkgp4.percentile,
+                        psychostats::BASEURL4,
+                        tkgp4.id
+                    ))
+                }
+                if let Some(tkgp5) = steam_data.stats.1 {
+                    stats.push(format!(
+                        "[5. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
+                        tkgp5.rank,
+                        tkgp5.percentile,
+                        psychostats::BASEURL5,
+                        tkgp5.id
+                    ))
+                }
+                if !stats.is_empty() {
+                    e = e.field("Stats 📈", format!("{}", stats.join("\n")), true);
+                }
             }
         } else {
             // link footer

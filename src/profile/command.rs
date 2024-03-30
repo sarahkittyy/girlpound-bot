@@ -5,7 +5,7 @@ use poise::{
         self as serenity, ButtonStyle, ComponentInteraction, ComponentInteractionCollector,
         CreateActionRow, CreateButton, CreateEmbed, CreateInteractionResponse,
         CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind,
-        CreateSelectMenuOption, GetMessages,
+        CreateSelectMenuOption, GetMessages, ReactionType,
     },
     CreateReply,
 };
@@ -265,6 +265,15 @@ async fn open_edit_menu(
         CreateSelectMenuOption::new("Toggle Vote Visibility", "toggle-vote")
             .description("Toggle if your profile votes are shown or not.")
             .emoji('🫣'),
+        CreateSelectMenuOption::new("Toggle Stats Visibility", "toggle-stats")
+            .description("Toggle if your steam user stats are shown.")
+            .emoji('📈'),
+        CreateSelectMenuOption::new("Toggle Domination Visibility", "toggle-domination")
+            .description("Toggle if your server domination records are shown.")
+            .emoji(ReactionType::Unicode("⚔️".to_owned())),
+        CreateSelectMenuOption::new("Unlink steam", "unlink-steam")
+            .description("Disconnects your steam account from your TKGP profile :(")
+            .emoji(ReactionType::Unicode("🗑️".to_owned())),
     ];
     if profile.steamid.is_none() {
         options.insert(
