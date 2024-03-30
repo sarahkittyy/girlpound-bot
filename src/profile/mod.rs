@@ -1,4 +1,4 @@
-use crate::{discord::Context, tf2class::TF2Class, util::hhmmss, Error};
+use crate::{discord::Context, psychostats, tf2class::TF2Class, util::hhmmss, Error};
 use chrono::{NaiveDateTime, Utc};
 use poise::serenity_prelude::{self as serenity, CreateEmbedFooter};
 use sqlx::{self, MySql, Pool};
@@ -132,6 +132,29 @@ impl UserProfile {
                     )
                 }
                 _ => (),
+            }
+            // stats field
+            let mut stats = vec![];
+            if let Some(tkgp4) = steam_data.stats.0 {
+                stats.push(format!(
+                    "[4. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
+                    tkgp4.rank,
+                    tkgp4.percentile,
+                    psychostats::BASEURL4,
+                    tkgp4.id
+                ))
+            }
+            if let Some(tkgp5) = steam_data.stats.1 {
+                stats.push(format!(
+                    "[5. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
+                    tkgp5.rank,
+                    tkgp5.percentile,
+                    psychostats::BASEURL5,
+                    tkgp5.id
+                ))
+            }
+            if !stats.is_empty() {
+                e = e.field("Stats 📈", format!("{}", stats.join("\n")), true);
             }
         } else {
             // link footer

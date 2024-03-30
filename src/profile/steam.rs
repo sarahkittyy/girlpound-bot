@@ -1,5 +1,10 @@
 use super::UserProfile;
-use crate::{discord::Context, steamid::SteamPlayerSummary, Error};
+use crate::{
+    discord::Context,
+    psychostats::{self, PsychoStats},
+    steamid::SteamPlayerSummary,
+    Error,
+};
 use sqlx;
 
 #[derive(Clone)]
@@ -8,13 +13,14 @@ pub struct SteamProfileData {
     pub seederboard: Option<(i64, i64)>,
     pub worst_enemy: Option<(SteamPlayerSummary, i64)>,
     pub best_friend: Option<(SteamPlayerSummary, i64)>,
+    pub stats: (Option<PsychoStats>, Option<PsychoStats>),
 }
 
 pub async fn get_steam_profile_data(
     ctx: &Context<'_>,
     profile: &UserProfile,
 ) -> Result<Option<SteamProfileData>, Error> {
-    let Some(steamid) = &profile.steamid else {
+    let Some(steamid3) = &profile.steamid else {
         return Ok(None);
     };
     // seederboard rank
@@ -24,19 +30,24 @@ pub async fn get_steam_profile_data(
 		FROM (select *, RANK() OVER (ORDER BY `seconds_seeded` DESC) AS `rank` from `seederboard`) t
 		WHERE `steamid` = ?
 		LIMIT 1"#,
-        steamid
+        steamid3
     )
     .fetch_optional(&ctx.data().local_pool)
     .await?;
 
+    let steamidprofiles = ctx.data().steamid_client.lookup(&steamid3).await?;
+    let steamidprofile = steamidprofiles.first().ok_or("Steam profile not found")?;
+
+    let stats = psychostats::find_plr(&steamidprofile.steamid).await?;
+
     let best_friend = sqlx::query!("select against, abs(score) as score from (select score, gt_steamid as against from domination where lt_steamid=? order by score asc limit 1) as lts
 	UNION ALL
 	select against, abs(score) as score from (select score, lt_steamid as against from domination where gt_steamid=? order by score desc limit 1) as gts
-	ORDER BY score DESC LIMIT 1;", steamid, steamid).fetch_optional(&ctx.data().local_pool).await?;
+	ORDER BY score DESC LIMIT 1;", steamid3, steamid3).fetch_optional(&ctx.data().local_pool).await?;
     let worst_enemy = sqlx::query!("select against, abs(score) as score from (select score, gt_steamid as against from domination where lt_steamid=? order by score desc limit 1) as lts
 	UNION ALL
 	select against, abs(score) as score from (select score, lt_steamid as against from domination where gt_steamid=? order by score asc limit 1) as gts
-	ORDER BY score DESC LIMIT 1;", steamid, steamid).fetch_optional(&ctx.data().local_pool).await?;
+	ORDER BY score DESC LIMIT 1;", steamid3, steamid3).fetch_optional(&ctx.data().local_pool).await?;
 
     let worst_enemy: Option<(SteamPlayerSummary, i64)> = match worst_enemy {
         Some(e) => ctx
@@ -65,5 +76,6 @@ pub async fn get_steam_profile_data(
         seederboard: seeding.map(|s| (s.rank, s.seconds_seeded.unwrap_or(0))),
         worst_enemy,
         best_friend,
+        stats,
     }))
 }

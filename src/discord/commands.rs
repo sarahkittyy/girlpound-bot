@@ -163,13 +163,29 @@ pub async fn stats(
         .get_player_summaries(&profile.steamid64)
         .await?;
     let summary = summary.first().ok_or("Profile not found.")?;
-    let (tkgp4id, tkgp5id) = psychostats::find_plr_ids(steamid).await?;
+    let (tkgp4s, tkgp5s) = psychostats::find_plr(steamid).await?;
 
-    let url4 = tkgp4id
-        .map(|id| format!("[#{}]({}player.php?id={})", id, psychostats::BASEURL4, id))
+    let url4 = tkgp4s
+        .map(|s| {
+            format!(
+                "[**#{}** _(Top {:.1}%)_]({}player.php?id={})",
+                s.rank,
+                s.percentile,
+                psychostats::BASEURL4,
+                s.id
+            )
+        })
         .unwrap_or("Not found.".to_owned());
-    let url5 = tkgp5id
-        .map(|id| format!("[#{}]({}player.php?id={})", id, psychostats::BASEURL5, id))
+    let url5 = tkgp5s
+        .map(|s| {
+            format!(
+                "[**#{}** _(Top {:.1}%)_]({}player.php?id={})",
+                s.rank,
+                s.percentile,
+                psychostats::BASEURL5,
+                s.id
+            )
+        })
         .unwrap_or("Not found.".to_owned());
     let embed = CreateEmbed::new()
         .title(format!("PStats lookup for {}", summary.personaname))
