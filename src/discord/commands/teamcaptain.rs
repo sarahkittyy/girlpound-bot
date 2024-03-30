@@ -6,7 +6,7 @@ use poise::{
     serenity_prelude::{
         self as serenity, ChannelType, ComponentInteractionCollector, ComponentInteractionDataKind,
         CreateActionRow, CreateEmbed, CreateInteractionResponse, CreateInteractionResponseMessage,
-        CreateSelectMenu, CreateSelectMenuOption, Member, Mentionable, UserId,
+        CreateMessage, CreateSelectMenu, CreateSelectMenuOption, Member, Mentionable, UserId,
     },
     CreateReply,
 };
@@ -27,7 +27,8 @@ async fn prompt(
         serenity::CreateSelectMenuKind::String { options },
     );
     let row = vec![CreateActionRow::SelectMenu(menu)];
-    ctx.send(CreateReply::default().components(row).content(msg))
+    ctx.channel_id()
+        .send_message(ctx, CreateMessage::new().components(row).content(msg))
         .await?;
 
     // listen for responses
@@ -82,6 +83,13 @@ pub async fn teamcaptain(
         return Ok(());
     }
     let invoker = ctx.author();
+
+    ctx.send(
+        CreateReply::default()
+            .content(":white_check_mark:")
+            .ephemeral(true),
+    )
+    .await?;
 
     // prompt for red captain
     let options = |members: &Vec<Member>| -> Vec<CreateSelectMenuOption> {
@@ -150,12 +158,14 @@ pub async fn teamcaptain(
             true,
         );
 
-    ctx.send(
-        CreateReply::default()
-            .content("Teams have been selected!")
-            .embed(embed),
-    )
-    .await?;
+    ctx.channel_id()
+        .send_message(
+            &ctx,
+            CreateMessage::default()
+                .content("Teams have been selected!")
+                .embed(embed),
+        )
+        .await?;
 
     Ok(())
 }

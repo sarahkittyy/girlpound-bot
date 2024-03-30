@@ -9,7 +9,7 @@ use emojito;
 use rand::prelude::*;
 use tokio::sync::mpsc::Sender;
 
-use super::{Cooldown, PoiseData};
+use super::{media_cooldown::CooldownMessage, PoiseData};
 
 const KATELYN_UID: u64 = 712534342445826078;
 pub async fn hi_cat(
@@ -45,15 +45,16 @@ pub async fn hi_cat(
     Ok(())
 }
 
+/// track emojis in messages
 pub async fn watch_emojis(
     _ctx: &serenity::Context,
     data: &PoiseData,
     new_message: &Message,
 ) -> Result<(), Error> {
     if new_message.author.bot {
-		return Ok(());
-	}
-	// find all unicode emoji
+        return Ok(());
+    }
+    // find all unicode emoji
     let uemojis: Vec<&'static emojito::Emoji> = emojito::find_emoji(&new_message.content);
     //			name 		eid 		is_discord		animated
     let mut rows: Vec<(String, String, bool, bool)> = vec![];
@@ -87,6 +88,7 @@ pub async fn watch_emojis(
     Ok(())
 }
 
+/// send silly reminders in the trial mod channel
 pub async fn trial_mod_reminders(
     ctx: &serenity::Context,
     data: &PoiseData,
@@ -111,10 +113,11 @@ pub async fn trial_mod_reminders(
     Ok(())
 }
 
+/// check the rate limit & send cooldown messages
 pub async fn handle_cooldowns(
     ctx: &serenity::Context,
     data: &PoiseData,
-    cooldown_handler: &Sender<Cooldown>,
+    cooldown_handler: &Sender<CooldownMessage>,
     new_message: &Message,
 ) -> Result<(), Error> {
     if let Some(_) = new_message.guild_id {
@@ -126,7 +129,7 @@ pub async fn handle_cooldowns(
             new_message.delete(ctx).await?;
             // send da cooldown msg
             let _ = cooldown_handler
-                .send(Cooldown {
+                .send(CooldownMessage {
                     channel: new_message.channel_id,
                     user: new_message.author.id,
                     delete_at: Utc::now() + time_left,

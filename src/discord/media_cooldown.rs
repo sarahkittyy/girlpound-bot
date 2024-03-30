@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Duration, Utc};
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, CreateMessage};
+use tokio::sync::mpsc::{error::TryRecvError, Sender};
 
 use crate::parse_env;
 
@@ -109,4 +110,65 @@ impl MediaCooldown {
         let uid = msg.author.id;
         self.try_remove_from_bucket(&cid, &uid)
     }
+}
+
+pub struct CooldownMessage {
+    pub user: serenity::UserId,
+    pub channel: serenity::ChannelId,
+    pub delete_at: DateTime<Utc>,
+}
+
+pub fn spawn_cooldown_manager(ctx: serenity::Context) -> Sender<CooldownMessage> {
+    let (cooldown_sender, mut cooldown_receiver) =
+        tokio::sync::mpsc::channel::<CooldownMessage>(64);
+
+    tokio::spawn(async move {
+        let mut queue: Vec<(CooldownMessage, serenity::Message)> = vec![];
+        loop {
+            match cooldown_receiver.try_recv() {
+                Err(TryRecvError::Disconnected) => break,
+                Err(_) => (),
+                // when a cooldown request is received...
+                Ok(
+                    cooldown @ CooldownMessage {
+                        user,
+                        channel,
+                        delete_at,
+                    },
+                ) if !queue
+                    .iter()
+                    .any(|(cd, _)| cd.user == user && cd.channel == channel) =>
+                {
+                    let msg_string = format!(
+                        "<@{}> guh!! >_<... post again <t:{}:R>",
+                        user.get(),
+                        delete_at.timestamp()
+                    );
+                    if let Ok(msg) = channel
+                        .send_message(&ctx, CreateMessage::new().content(msg_string))
+                        .await
+                    {
+                        queue.push((cooldown, msg));
+                    }
+                }
+                Ok(_) => (),
+            }
+            queue.retain(|(cooldown, msg)| {
+                let http = ctx.http.clone();
+                // if it should be deleted by now
+                let delete = Utc::now() - cooldown.delete_at > Duration::zero();
+                if delete {
+                    let mid = msg.id;
+                    let cid = msg.channel_id;
+                    tokio::task::spawn(async move {
+                        http.delete_message(cid, mid, Some("media cooldown")).await
+                    });
+                }
+                !delete
+            });
+            tokio::task::yield_now().await;
+        }
+    });
+
+    cooldown_sender
 }

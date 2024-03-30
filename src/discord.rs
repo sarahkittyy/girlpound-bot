@@ -14,7 +14,6 @@ use serenity::CreateMessage;
 use tokio_cron_scheduler::JobScheduler;
 
 use sqlx::{MySql, Pool, Row};
-use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::OnceCell;
 use tokio::{self, sync::RwLock};
@@ -23,6 +22,7 @@ mod commands;
 pub use commands::util;
 
 use self::commands::ReminderManager;
+use self::media_cooldown::CooldownMessage;
 mod emojirank;
 mod media_cooldown;
 mod new_user;
@@ -32,6 +32,9 @@ mod on_delete;
 mod on_message;
 mod on_react;
 mod player_count;
+
+pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
+pub type ApplicationContext<'a> = poise::ApplicationContext<'a, PoiseData, Error>;
 
 pub struct PoiseData {
     /// all tf2 servers known by the bot
@@ -44,7 +47,7 @@ pub struct PoiseData {
     pub pug_cfgs: Vec<String>,
     /// image spam prevention
     pub media_cooldown: Arc<RwLock<media_cooldown::MediaCooldown>>,
-    media_cooldown_thread: OnceCell<Sender<Cooldown>>,
+    media_cooldown_sender: OnceCell<Sender<CooldownMessage>>,
     /// Users that have already been called out for going into NSFW <1 hr after joining
     pub horny_callouts: Arc<RwLock<HashSet<u64>>>,
     /// Emoji ranking cache for tracking emoji usage
@@ -136,68 +139,6 @@ impl PoiseData {
         *last_used = chrono::Utc::now();
     }
 }
-pub type Context<'a> = poise::Context<'a, PoiseData, Error>;
-pub type ApplicationContext<'a> = poise::ApplicationContext<'a, PoiseData, Error>;
-
-struct Cooldown {
-    user: serenity::UserId,
-    channel: serenity::ChannelId,
-    delete_at: DateTime<Utc>,
-}
-
-fn spawn_cooldown_manager(ctx: serenity::Context) -> Sender<Cooldown> {
-    let (cooldown_sender, mut cooldown_receiver) = tokio::sync::mpsc::channel::<Cooldown>(64);
-
-    tokio::spawn(async move {
-        let mut queue: Vec<(Cooldown, serenity::Message)> = vec![];
-        loop {
-            match cooldown_receiver.try_recv() {
-                Err(TryRecvError::Disconnected) => break,
-                Err(_) => (),
-                // when a cooldown request is received...
-                Ok(
-                    cooldown @ Cooldown {
-                        user,
-                        channel,
-                        delete_at,
-                    },
-                ) if !queue
-                    .iter()
-                    .any(|(cd, _)| cd.user == user && cd.channel == channel) =>
-                {
-                    let msg_string = format!(
-                        "<@{}> guh!! >_<... post again <t:{}:R>",
-                        user.get(),
-                        delete_at.timestamp()
-                    );
-                    if let Ok(msg) = channel
-                        .send_message(&ctx, CreateMessage::new().content(msg_string))
-                        .await
-                    {
-                        queue.push((cooldown, msg));
-                    }
-                }
-                Ok(_) => (),
-            }
-            queue.retain(|(cooldown, msg)| {
-                let http = ctx.http.clone();
-                // if it should be deleted by now
-                let delete = Utc::now() - cooldown.delete_at > Duration::zero();
-                if delete {
-                    let mid = msg.id;
-                    let cid = msg.channel_id;
-                    tokio::task::spawn(async move {
-                        http.delete_message(cid, mid, Some("media cooldown")).await
-                    });
-                }
-                !delete
-            });
-            tokio::task::yield_now().await;
-        }
-    });
-
-    cooldown_sender
-}
 
 /// handle discord events
 async fn event_handler(
@@ -210,8 +151,8 @@ async fn event_handler(
 
     let cooldown_handler = {
         let ctx = ctx.clone();
-        data.media_cooldown_thread
-            .get_or_init(|| async { spawn_cooldown_manager(ctx) })
+        data.media_cooldown_sender
+            .get_or_init(|| async { media_cooldown::spawn_cooldown_manager(ctx) })
             .await
     };
     match event {
@@ -401,7 +342,7 @@ pub async fn start_bot(
                         mod_channel: serenity::ChannelId::new(mod_channel_id),
                         trial_mod_channel: serenity::ChannelId::new(trial_mod_channel_id),
                         birthday_channel: serenity::ChannelId::new(birthday_channel_id),
-                        media_cooldown_thread: OnceCell::new(),
+                        media_cooldown_sender: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
                         local_pool,
                         sb_pool,
