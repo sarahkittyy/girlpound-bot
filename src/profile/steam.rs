@@ -20,8 +20,10 @@ pub async fn get_steam_profile_data(
     // seederboard rank
     let seeding = sqlx::query!(
         r#"
-		SELECT `seconds_seeded`, RANK() OVER (ORDER BY `seconds_seeded` DESC) AS `rank`
-		FROM `seederboard` WHERE `steamid` = ? LIMIT 1"#,
+		SELECT `seconds_seeded`, `rank`
+		FROM (select *, RANK() OVER (ORDER BY `seconds_seeded` DESC) AS `rank` from `seederboard`) t
+		WHERE `steamid` = ?
+		LIMIT 1"#,
         steamid
     )
     .fetch_optional(&ctx.data().local_pool)
