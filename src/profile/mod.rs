@@ -105,6 +105,11 @@ impl UserProfile {
             e = e.field("Classes 🔨", classes.join(""), true);
         }
         if let Some(steam_data) = steam_data {
+            // steam account
+            e = e.footer(
+                CreateEmbedFooter::new(format!("{}", steam_data.summary.personaname))
+                    .icon_url(steam_data.summary.avatarmedium),
+            );
             // steam fields
             if let Some((rank, seconds)) = steam_data.seederboard {
                 e = e.field(

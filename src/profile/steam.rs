@@ -14,6 +14,7 @@ pub struct SteamProfileData {
     pub worst_enemy: Option<(SteamPlayerSummary, i64)>,
     pub best_friend: Option<(SteamPlayerSummary, i64)>,
     pub stats: (Option<PsychoStats>, Option<PsychoStats>),
+    pub summary: SteamPlayerSummary,
 }
 
 pub async fn get_steam_profile_data(
@@ -36,7 +37,13 @@ pub async fn get_steam_profile_data(
     .await?;
 
     let steamidprofiles = ctx.data().steamid_client.lookup(&steamid3).await?;
-    let steamidprofile = steamidprofiles.first().ok_or("Steam profile not found")?;
+    let steamidprofile = steamidprofiles.first().ok_or("Steam lookup failed.")?;
+    let summaries = ctx
+        .data()
+        .steamid_client
+        .get_player_summaries(&steamidprofile.steamid64)
+        .await?;
+    let summary = summaries.first().ok_or("Steam profile not found")?;
 
     let stats = psychostats::find_plr(&steamidprofile.steamid).await?;
 
@@ -77,5 +84,6 @@ pub async fn get_steam_profile_data(
         worst_enemy,
         best_friend,
         stats,
+        summary: summary.clone(),
     }))
 }
