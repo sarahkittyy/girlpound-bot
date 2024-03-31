@@ -10,7 +10,7 @@ use serenity::ComponentInteraction;
 use crate::{
     profile::{
         command::SteamLinkCodeModal,
-        edits::{dispatch_profile_edit, toggle_class},
+        edits::{dispatch_profile_edit, toggle_class, update_profile_column},
     },
     Error,
 };
@@ -41,6 +41,31 @@ pub async fn dispatch(
                 toggle_class(&data.local_pool, mci.user.id, choice.parse()?).await?;
                 mci.create_response(&ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
+            }
+            _ => {
+                mci.create_response(&ctx, CreateInteractionResponse::Acknowledge)
+                    .await?;
+            }
+        },
+        "profile.edit.favorite.select" => match &mci.data.kind {
+            ComponentInteractionDataKind::UserSelect { values } => {
+                let choice = values.first().ok_or("No choice")?;
+                update_profile_column(
+                    mci.user.id,
+                    "favorite_user",
+                    choice.to_string(),
+                    &data.local_pool,
+                )
+                .await?;
+                mci.create_response(
+                    ctx,
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::new()
+                            .content(format!("Selected <@{}> as your favorite.", choice))
+                            .ephemeral(true),
+                    ),
+                )
+                .await?;
             }
             _ => {
                 mci.create_response(&ctx, CreateInteractionResponse::Acknowledge)

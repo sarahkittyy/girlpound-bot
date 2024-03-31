@@ -161,6 +161,30 @@ pub async fn toggle_class(
     Ok(())
 }
 
+pub async fn prompt_favorite_user(
+    ctx: &serenity::Context,
+    mci: &ComponentInteraction,
+) -> Result<(), Error> {
+    let components = vec![CreateActionRow::SelectMenu(CreateSelectMenu::new(
+        "profile.edit.favorite.select",
+        serenity::CreateSelectMenuKind::User {
+            default_users: None,
+        },
+    ))];
+    mci.create_response(
+        &ctx,
+        CreateInteractionResponse::Message(
+            CreateInteractionResponseMessage::new()
+                .components(components)
+                .ephemeral(true)
+                .content("Choose your favorite user 💖"),
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
 pub async fn dispatch_profile_edit(
     ctx: &serenity::Context,
     mci: &ComponentInteraction,
@@ -271,6 +295,27 @@ pub async fn dispatch_profile_edit(
                 ctx,
                 mci,
                 data,
+            )
+            .await?;
+        }
+        "favorite-user" => {
+            prompt_favorite_user(ctx, mci).await?;
+        }
+        "remove-favorite-user" => {
+            update_profile_column::<Option<String>>(
+                mci.user.id,
+                "favorite_user",
+                None,
+                &data.local_pool,
+            )
+            .await?;
+            mci.create_response(
+                &ctx,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .ephemeral(true)
+                        .content("Favorite user unset. 💔"),
+                ),
             )
             .await?;
         }
@@ -398,7 +443,7 @@ where
     Ok(())
 }
 
-async fn update_profile_column<'a, T>(
+pub async fn update_profile_column<'a, T>(
     uid: serenity::UserId,
     column: &str,
     value: T,

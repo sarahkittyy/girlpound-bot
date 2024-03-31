@@ -76,11 +76,14 @@ pub fn get_steam_link_content(link_url: &str) -> (CreateEmbed, Vec<CreateActionR
     let embed = CreateEmbed::new() //
         .title("Click here to get a link code, then click the button below.")
         .url(link_url);
-    let row = vec![CreateActionRow::Buttons(vec![CreateButton::new(
-        "steam.link",
-    )
-    .label("Enter Link Code")
-    .emoji('🔗')])];
+    let row = vec![CreateActionRow::Buttons(vec![
+        CreateButton::new("steam.link")
+            .label("Enter Link Code")
+            .emoji('🔗'),
+        CreateButton::new_link(link_url)
+            .label("Get Link Code")
+            .emoji(ReactionType::Unicode("☁️".to_owned())),
+    ])];
     (embed, row)
 }
 
@@ -146,8 +149,8 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
             .emoji('🔃'),
         // delete
         CreateButton::new(delete_id.clone())
-            .style(ButtonStyle::Secondary)
-            .emoji('❌'),
+            .style(ButtonStyle::Danger)
+            .emoji(ReactionType::Unicode("🗑️".to_owned())),
     ];
     let components = vec![CreateActionRow::Buttons(buttons)];
     let msg = ctx
@@ -256,6 +259,12 @@ async fn open_edit_menu(
         CreateSelectMenuOption::new("Title", "title")
             .description("Customize the header of your profile")
             .emoji('🐈'),
+        CreateSelectMenuOption::new("Favorite User", "favorite-user")
+            .description("Choose your favorite user!")
+            .emoji('💝'),
+        CreateSelectMenuOption::new("Remove Favorite User", "remove-favorite-user")
+            .description("Remove your favorite user")
+            .emoji('💔'),
         CreateSelectMenuOption::new("Image", "image")
             .description("Link an image to your profile")
             .emoji('📷'),
@@ -271,9 +280,6 @@ async fn open_edit_menu(
         CreateSelectMenuOption::new("Toggle Domination Visibility", "toggle-domination")
             .description("Toggle if your server domination records are shown.")
             .emoji(ReactionType::Unicode("⚔️".to_owned())),
-        CreateSelectMenuOption::new("Unlink steam", "unlink-steam")
-            .description("Disconnects your steam account from your TKGP profile :(")
-            .emoji(ReactionType::Unicode("🗑️".to_owned())),
     ];
     if profile.steamid.is_none() {
         options.insert(
@@ -281,6 +287,12 @@ async fn open_edit_menu(
             CreateSelectMenuOption::new("Link steam", "link-steam")
                 .description("Link your profile to your steam account")
                 .emoji('🔗'),
+        );
+    } else {
+        options.push(
+            CreateSelectMenuOption::new("Unlink steam", "unlink-steam")
+                .description("Disconnects your steam account from your TKGP profile :(")
+                .emoji(ReactionType::Unicode("🗑️".to_owned())),
         );
     }
 

@@ -1,6 +1,6 @@
 use crate::{discord::Context, psychostats, tf2class::TF2Class, util::hhmmss, Error};
 use chrono::{NaiveDateTime, Utc};
-use poise::serenity_prelude::{self as serenity, CreateEmbedFooter};
+use poise::serenity_prelude::{self as serenity, CreateEmbedFooter, Mentionable};
 use sqlx::{self, MySql, Pool};
 
 use self::{steam::SteamProfileData, vote::Votes};
@@ -27,6 +27,7 @@ pub struct UserProfile {
     pub hide_votes: i8,
     pub hide_dominations: i8,
     pub hide_stats: i8,
+    pub favorite_user: Option<String>,
 }
 
 impl UserProfile {
@@ -47,6 +48,7 @@ impl UserProfile {
             hide_stats: 0,
             created_at: Utc::now().naive_utc(),
             updated_at: Utc::now().naive_utc(),
+            favorite_user: None,
         }
     }
 
@@ -86,7 +88,7 @@ impl UserProfile {
         // votes
         if self.hide_votes == 0 {
             e = e.field(
-                "Votes 🗳️",
+                "🗳️ Votes",
                 format!("👍`{}`|`{}`👎", votes.likes, votes.dislikes),
                 true,
             );
@@ -106,7 +108,7 @@ impl UserProfile {
             }
         }
         if classes.len() > 0 {
-            e = e.field("Classes 🔨", classes.join(""), true);
+            e = e.field("Classes", classes.join(""), true);
         }
         if let Some(steam_data) = steam_data {
             // steam account
@@ -117,7 +119,7 @@ impl UserProfile {
             // steam fields
             if let Some((rank, seconds)) = steam_data.seederboard {
                 e = e.field(
-                    "Time Seeded ❤️",
+                    "Seeding",
                     format!(
                         "`{}` **(#{})**",
                         hhmmss(seconds.try_into().unwrap_or(0)),
@@ -130,7 +132,7 @@ impl UserProfile {
                 match (steam_data.best_friend, steam_data.worst_enemy) {
                     (Some(best_friend), Some(worst_enemy)) => {
                         e = e.field(
-                            "Dominations ⚔️",
+                            "⚔️ Dominations",
                             format!(
                                 "`{}` **(+{})**\n`{}` **(-{})**",
                                 best_friend.0.personaname,
@@ -177,7 +179,14 @@ impl UserProfile {
         }
         // fav map
         if let Some(map) = &self.favorite_map {
-            e = e.field("Favorite Map 🗺️", map, true);
+            e = e.field("Favorite Map", format!("🗺️ {map}"), true);
+        }
+        // fav user
+        if let Some(fav_uid) = &self.favorite_user {
+            let fav_uid: serenity::UserId = fav_uid.parse()?;
+            if let Ok(user) = fav_uid.to_user(ctx).await {
+                e = e.field("Best Friend", user.mention().to_string(), true);
+            }
         }
         // color
         if let Some(color) = &self.color {
