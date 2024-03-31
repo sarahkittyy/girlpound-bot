@@ -35,6 +35,15 @@ pub async fn dispatch(
                     .await?;
             }
         },
+        "delete.msg" => match &mci.data.kind {
+            ComponentInteractionDataKind::Button => {
+                let _ =
+                    mci.message.delete(ctx).await.inspect_err(|e| {
+                        eprintln!("Could not delete from component interaction: {e}")
+                    });
+            }
+            _ => (),
+        },
         "profile.edit.class.select" => match &mci.data.kind {
             ComponentInteractionDataKind::StringSelect { values } => {
                 let choice = values.first().ok_or("No choice")?;

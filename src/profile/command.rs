@@ -100,7 +100,6 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
     let dislike_id = format!("{uuid}-dislike");
     let edit_id = format!("{uuid}-edit");
     let reload_id = format!("{uuid}-reload");
-    let delete_id = format!("{uuid}-delete");
 
     // delete last profile msg
     let msgs = ctx
@@ -148,7 +147,7 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
             .style(ButtonStyle::Secondary)
             .emoji('🔃'),
         // delete
-        CreateButton::new(delete_id.clone())
+        CreateButton::new("delete.msg")
             .style(ButtonStyle::Danger)
             .emoji(ReactionType::Unicode("🗑️".to_owned())),
     ];
@@ -218,13 +217,7 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
                 ),
             )
             .await?;
-        } else if mci.data.custom_id == delete_id {
-            let _ = msg
-                .delete(ctx)
-                .await
-                .inspect_err(|e| eprintln!("Could not delete profile msg: {e}"));
-            return Ok(());
-        };
+        }
     }
 
     let _ = msg
