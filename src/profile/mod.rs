@@ -185,7 +185,7 @@ impl UserProfile {
         if let Some(fav_uid) = &self.favorite_user {
             let fav_uid: serenity::UserId = fav_uid.parse()?;
             if let Ok(user) = fav_uid.to_user(ctx).await {
-                e = e.field("Best Friend", user.mention().to_string(), true);
+                e = e.field("Favorite User 💖", user.mention().to_string(), true);
             }
         }
         // color
