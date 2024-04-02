@@ -6,7 +6,7 @@ use rand::prelude::*;
 
 /// Sends a welcome message when a user joins the server
 pub async fn welcome_user(ctx: &serenity::Context, new_member: &Member) -> Result<(), Error> {
-    const INTROS: [&str; 8] = [
+    const INTROS: &'static [&'static str] = &[
         "welcome to tiny kitty's girl pound",
         "haiiiii ^_^ hi!! hiiiiii <3 haiiiiii hii :3",
         "gweetings fwom tiny kitty's girl pound",
@@ -14,7 +14,8 @@ pub async fn welcome_user(ctx: &serenity::Context, new_member: &Member) -> Resul
         "welcome to da girl pound <3",
         "hello girl pounder",
         "hii lol >w<",
-        "whale cum to the girl pound",
+        "can we run these dogshit ass pugs",
+        "heyyyyyyyyyyy... <3",
     ];
 
     if let Some(guild) = new_member.guild_id.to_guild_cached(ctx).map(|g| g.clone()) {
