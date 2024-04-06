@@ -16,6 +16,9 @@ pub async fn welcome_user(ctx: &serenity::Context, new_member: &Member) -> Resul
         "hii lol >w<",
         "can we run these dogshit ass pugs",
         "heyyyyyyyyyyy... <3",
+        "bounce up and down on it",
+        "rtv for puppy pawjob with a twist",
+        "!!! meow~<3",
     ];
 
     if let Some(guild) = new_member.guild_id.to_guild_cached(ctx).map(|g| g.clone()) {
