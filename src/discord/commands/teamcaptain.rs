@@ -1,24 +1,39 @@
 use rand::prelude::*;
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use poise::{
     self,
     serenity_prelude::{
-        self as serenity, ChannelType, ComponentInteractionCollector, ComponentInteractionDataKind,
-        CreateActionRow, CreateEmbed, CreateInteractionResponse, CreateInteractionResponseMessage,
-        CreateMessage, CreateSelectMenu, CreateSelectMenuOption, Member, Mentionable, UserId,
+        self as serenity, ChannelType, ComponentInteraction, ComponentInteractionCollector,
+        ComponentInteractionDataKind, CreateActionRow, CreateEmbed, CreateInteractionResponse,
+        CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu, CreateSelectMenuOption,
+        Member, Mentionable, UserId,
     },
     CreateReply,
 };
 
 use crate::{discord::Context, Error};
 
+struct PromptResponse<T> {
+    pub mci: ComponentInteraction,
+    pub data: T,
+}
+
+impl PromptResponse<String> {
+    pub fn parse<F: FromStr>(self) -> Result<PromptResponse<F>, <F as FromStr>::Err> {
+        Ok(PromptResponse {
+            data: self.data.parse::<F>()?,
+            mci: self.mci,
+        })
+    }
+}
+
 async fn prompt(
     ctx: &Context<'_>,
     msg: &str,
     user: UserId,
     options: Vec<CreateSelectMenuOption>,
-) -> Result<String, Error> {
+) -> Result<PromptResponse<String>, Error> {
     let uuid = ctx.id();
 
     // send msg
@@ -56,9 +71,7 @@ async fn prompt(
             }
             _ => Err("Invalid interaction data kind.".into()),
         };
-        mci.create_response(ctx, CreateInteractionResponse::Acknowledge)
-            .await?;
-        return res;
+        return res.map(|data| PromptResponse { data, mci });
     }
     return Err("/teamcaptain response missing, aborted.".into());
 }
@@ -91,6 +104,22 @@ pub async fn teamcaptain(
     )
     .await?;
 
+    async fn update_after_choice(
+        ctx: &Context<'_>,
+        mci: &ComponentInteraction,
+        msg: String,
+    ) -> Result<(), serenity::prelude::SerenityError> {
+        mci.create_response(
+            ctx,
+            CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::new()
+                    .content(msg)
+                    .components(vec![]),
+            ),
+        )
+        .await
+    }
+
     // prompt for red captain
     let options = |members: &Vec<Member>| -> Vec<CreateSelectMenuOption> {
         members
@@ -98,7 +127,7 @@ pub async fn teamcaptain(
             .map(|m| CreateSelectMenuOption::new(m.display_name(), m.user.id.to_string()))
             .collect()
     };
-    let red_captain: UserId = prompt(
+    let red_captain: PromptResponse<UserId> = prompt(
         &ctx,
         &format!("<@{}> Pick the RED team captain.", invoker.id),
         invoker.id,
@@ -106,8 +135,14 @@ pub async fn teamcaptain(
     )
     .await?
     .parse()?;
-    members.retain(|m| m.user.id != red_captain);
-    let blu_captain: UserId = prompt(
+    update_after_choice(
+        &ctx,
+        &red_captain.mci,
+        format!("🔴 RED team captain: <@{}>", red_captain.data.clone()),
+    )
+    .await?;
+    members.retain(|m| m.user.id != red_captain.data);
+    let blu_captain: PromptResponse<UserId> = prompt(
         &ctx,
         &format!("<@{}> Pick the BLU team captain.", invoker.id),
         invoker.id,
@@ -115,19 +150,30 @@ pub async fn teamcaptain(
     )
     .await?
     .parse()?;
-    members.retain(|m| m.user.id != blu_captain);
+    update_after_choice(
+        &ctx,
+        &blu_captain.mci,
+        format!("🔵 BLU team captain: <@{}>", blu_captain.data.clone()),
+    )
+    .await?;
+    members.retain(|m| m.user.id != blu_captain.data);
 
-    let mut red: Vec<UserId> = vec![red_captain.clone()];
-    let mut blu: Vec<UserId> = vec![blu_captain.clone()];
+    let mut red: Vec<UserId> = vec![red_captain.data.clone()];
+    let mut blu: Vec<UserId> = vec![blu_captain.data.clone()];
     let mut pick_red: bool = random();
 
     loop {
         if members.len() == 0 {
             break;
         }
-        let captain = if pick_red { red_captain } else { blu_captain };
+        let captain = if pick_red {
+            red_captain.data
+        } else {
+            blu_captain.data
+        };
+        let color = if pick_red { "🔴 RED" } else { "🔵 BLU" };
         let team: &mut Vec<UserId> = if pick_red { &mut red } else { &mut blu };
-        let pick: UserId = prompt(
+        let pick: PromptResponse<UserId> = prompt(
             &ctx,
             &format!("<@{}> Your pick! :3", captain),
             captain,
@@ -135,8 +181,14 @@ pub async fn teamcaptain(
         )
         .await?
         .parse()?;
-        members.retain(|m| m.user.id != pick);
-        team.push(pick);
+        update_after_choice(
+            &ctx,
+            &pick.mci,
+            format!("<@{}> ({}) chose: <@{}>", captain, color, pick.data.clone()),
+        )
+        .await?;
+        members.retain(|m| m.user.id != pick.data);
+        team.push(pick.data);
         pick_red = !pick_red;
     }
 
