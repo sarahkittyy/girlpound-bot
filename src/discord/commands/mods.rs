@@ -49,7 +49,10 @@ pub async fn tf2banid(
         return Ok(());
     };
     let reason = reason.unwrap_or("undesirable".to_owned());
-    let cmd = format!("sm_addban {} {} {}", minutes, &profile.steamid, reason);
+    let cmd = format!(
+        "sm_addban {} {} {}; kickid \"{}\" {}",
+        minutes, &profile.steamid, reason, &profile.steam3, reason
+    );
     let _ = rcon_user_output(&[ctx.data().servers.values().next().unwrap()], cmd).await;
     ctx.send(CreateReply::default().content(format!(
         "Banned https://steamcommunity.com/profiles/{}",
@@ -67,8 +70,6 @@ pub async fn tf2unban(
     #[description = "The steamid / ip to unban."] steamid: String,
     #[description = "The reason for the unban"] reason: Option<String>,
 ) -> Result<(), Error> {
-    let server = ctx.data().servers.keys().next().unwrap();
-
     let Ok(profile) = ctx
         .data()
         .steamid_client
@@ -85,12 +86,19 @@ pub async fn tf2unban(
     };
 
     let reason = reason.unwrap_or("chill".to_owned());
-    rcon_and_reply(
-        ctx,
-        Some(server.clone()),
+    let _ = rcon_user_output(
+        &[ctx.data().servers.values().next().unwrap()],
         format!("sm_unban {} {}", profile.steamid, reason),
     )
-    .await
+    .await;
+
+    ctx.send(CreateReply::default().content(format!(
+        "Unbanned https://steamcommunity.com/profiles/{}",
+        &profile.steamid64
+    )))
+    .await?;
+
+    Ok(())
 }
 
 /// Kick a user from the tf2 server

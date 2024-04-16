@@ -2,6 +2,7 @@ use std::{net::SocketAddr, time};
 
 use crate::{logs::safe_strip, util::hhmmss, Error, Server};
 
+use chrono::{DateTime, TimeDelta, Utc};
 use rcon::Connection;
 use regex::Regex;
 use tokio::net::TcpStream;
@@ -102,6 +103,7 @@ pub struct RconController {
     pub connection: Connection<TcpStream>,
     pub address: SocketAddr,
     pub password: String,
+    pub gamestate_cache: Option<(DateTime<Utc>, GameState)>,
 }
 
 impl RconController {
@@ -115,6 +117,7 @@ impl RconController {
             connection,
             address,
             password: password.to_owned(),
+            gamestate_cache: None,
         };
         Ok(rc)
     }
@@ -152,6 +155,16 @@ impl RconController {
 
     /// fetch the results of the status command
     pub async fn status(&mut self) -> Result<GameState, Error> {
+        if self
+            .gamestate_cache
+            .as_ref()
+            .is_some_and(|(last_updated, _)| {
+                last_updated.signed_duration_since(Utc::now()).abs()
+                    < TimeDelta::try_seconds(4).unwrap()
+            })
+        {
+            return Ok(self.gamestate_cache.as_ref().unwrap().1.clone());
+        }
         let status_msg = self.run("status").await?;
         let max_players_cvar = self.convar("sv_visiblemaxplayers").await?;
         let max_players: i32 = max_players_cvar.parse()?;
@@ -170,6 +183,7 @@ impl RconController {
             timeleft,
             nextmap,
         };
+        self.gamestate_cache = Some((Utc::now(), gs.clone()));
         Ok(gs)
     }
 
