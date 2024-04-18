@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use crate::{discord::Context, Error};
+use crate::{discord::Context, Error, Server};
 use poise;
 use poise::CreateReply;
 
@@ -53,7 +53,11 @@ pub async fn tf2banid(
         "sm_addban {} {} {}; kickid \"{}\" {}",
         minutes, &profile.steamid, reason, &profile.steam3, reason
     );
-    let _ = rcon_user_output(&[ctx.data().servers.values().next().unwrap()], cmd).await;
+    let _ = rcon_user_output(
+        ctx.data().servers.values().collect::<Vec<_>>().as_slice(),
+        cmd,
+    )
+    .await;
     ctx.send(CreateReply::default().content(format!(
         "Banned https://steamcommunity.com/profiles/{}",
         &profile.steamid64
