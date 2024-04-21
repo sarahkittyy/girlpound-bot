@@ -37,10 +37,6 @@ pub async fn hi_cat(
         )
         .execute(&data.local_pool)
         .await?;
-
-        new_message
-            .reply(&ctx, format!("\"hi cat\" counter: {}", count))
-            .await?;
     }
     Ok(())
 }
