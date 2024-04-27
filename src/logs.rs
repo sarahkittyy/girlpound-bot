@@ -9,7 +9,7 @@ use tokio::{net::UdpSocket, sync::RwLock};
 use srcds_log_parser::{LogMessage, MessageType};
 
 mod util;
-pub use util::{as_discord_message, safe_strip};
+pub use util::{as_discord_message, remove_backticks};
 
 mod discord;
 pub use discord::spawn_log_thread;

@@ -3,7 +3,7 @@ use poise::{self, CreateReply};
 use serenity::{CreateAttachment, CreateMessage};
 
 use super::Context;
-use crate::logs::safe_strip;
+use crate::logs::remove_backticks;
 use crate::Error;
 
 /// says something on behalf of the bot
@@ -18,7 +18,7 @@ pub async fn botsay(
 
     // content
     if let Some(content) = content {
-        message = message.content(safe_strip(&content));
+        message = message.content(remove_backticks(&content));
     }
 
     // attachments

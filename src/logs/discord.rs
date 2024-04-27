@@ -1,6 +1,6 @@
 use super::{as_discord_message, LogReceiver};
 use crate::{Error, Server};
-use poise::serenity_prelude::{self as serenity};
+use poise::serenity_prelude::{self as serenity, CreateAllowedMentions};
 use serenity::CreateMessage;
 use sqlx::{MySql, Pool};
 use std::collections::HashMap;
@@ -82,7 +82,12 @@ pub async fn spawn_log_thread(
                 }
                 // post it
                 if let Err(e) = logs_channel
-                    .send_message(ctx.as_ref(), CreateMessage::new().content(msg))
+                    .send_message(
+                        ctx.as_ref(),
+                        CreateMessage::new().content(msg).allowed_mentions(
+                            CreateAllowedMentions::new().empty_roles().empty_users(),
+                        ),
+                    )
                     .await
                 {
                     println!("Could not send message to logs channel: {:?}", e);

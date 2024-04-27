@@ -8,17 +8,23 @@ pub fn as_discord_message(msg: &MessageType, dom_score: Option<i32>) -> Option<S
         .map(|s| format!(" **({})**", s * -1))
         .unwrap_or("".to_owned());
     match msg {
-        MessageType::ChatMessage { from, message, .. } => {
-            format!("`{}: {}`", safe_strip(&from.name), safe_strip(&message)).into()
-        }
-        MessageType::Connected { user, .. } => {
-            format!("+ `{} {} connected.`", safe_strip(&user.name), user.steamid).into()
-        }
+        MessageType::ChatMessage { from, message, .. } => format!(
+            "**{}** :  {}",
+            strip_markdown(&from.name),
+            strip_markdown(&message)
+        )
+        .into(),
+        MessageType::Connected { user, .. } => format!(
+            "+ **{}** `{}` connected.",
+            strip_markdown(&user.name),
+            user.steamid
+        )
+        .into(),
         MessageType::Disconnected { user, reason } => format!(
-            "\\- `{} {} disconnected: {}`",
-            safe_strip(&user.name),
+            "\\- **{}** `{}` disconnected: {}",
+            strip_markdown(&user.name),
             user.steamid,
-            reason
+            strip_markdown(reason)
         )
         .into(),
         /*MessageType::JoinedTeam { user, team } => format!(
@@ -35,16 +41,16 @@ pub fn as_discord_message(msg: &MessageType, dom_score: Option<i32>) -> Option<S
             action,
         } => match action.as_str() {
             "domination" => Some(format!(
-                ":crossed_swords: `{}`{} is DOMINATING `{}!`{}",
-                safe_strip(&from.name),
+                ":crossed_swords: **{}**{} is DOMINATING **{}!**{}",
+                strip_markdown(&from.name),
                 dominator_dom_score,
-                safe_strip(&against.name),
+                strip_markdown(&against.name),
                 victim_dom_score
             )),
             "revenge" => Some(format!(
-                ":crossed_swords: `{}` got REVENGE on `{}!`",
-                safe_strip(&from.name),
-                safe_strip(&against.name)
+                ":crossed_swords: **{}** got REVENGE on **{}!**",
+                strip_markdown(&from.name),
+                strip_markdown(&against.name)
             )),
             _ => None,
         },
@@ -53,6 +59,17 @@ pub fn as_discord_message(msg: &MessageType, dom_score: Option<i32>) -> Option<S
     }
 }
 
-pub fn safe_strip(s: &str) -> String {
+pub fn remove_backticks(s: &str) -> String {
     s.replace("`", "")
+}
+
+pub fn strip_markdown(s: &str) -> String {
+    s.replace("*", "\\*")
+        .replace(">", "\\>")
+        .replace("_", "\\_")
+        .replace("-", "\\-")
+        .replace("#", "\\#")
+        .replace("~", "\\~")
+        .replace("`", "\\`")
+        .replace("[", "\\[")
 }

@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, time};
 
-use crate::{logs::safe_strip, util::hhmmss, Error, Server};
+use crate::{logs::remove_backticks, util::hhmmss, Error, Server};
 
 use chrono::{DateTime, TimeDelta, Utc};
 use rcon::Connection;
@@ -46,7 +46,7 @@ impl GameState {
             .map(|p| {
                 format!(
                     "{}{}",
-                    safe_strip(&p.name),
+                    remove_backticks(&p.name),
                     &if show_uids {
                         " ".to_owned() + &p.id
                     } else {
@@ -84,7 +84,7 @@ impl GameState {
             if let Some(longest_online) = longest_online {
                 format!(
                     "Oldest player: `{}` for `{}`\n",
-                    safe_strip(&longest_online.name),
+                    remove_backticks(&longest_online.name),
                     hhmmss(longest_online.connected.as_secs())
                 )
             } else {

@@ -8,7 +8,7 @@ use sqlx::{FromRow, MySql, Pool};
 
 use tokio::{self, time};
 
-use crate::logs::safe_strip;
+use crate::logs::remove_backticks;
 
 #[allow(unused)]
 #[derive(FromRow)]
@@ -45,7 +45,7 @@ impl BanProtest {
 		.author(CreateEmbedAuthor::new(format!("{} ({})", self.name, self.email)).url(idfinder))
 		.title("Ban Appeal")
 		.url(protests)
-		.description(format!("`{}`", safe_strip(&self.reason)))
+		.description(format!("`{}`", remove_backticks(&self.reason)))
 		.color(Color::from_rgb(random(), random(), random()))
 		.fields([
 			("Banned", format!("<t:{}:f>", self.created), true),

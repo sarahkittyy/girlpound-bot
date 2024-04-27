@@ -2,7 +2,7 @@ use std::env;
 use std::net::SocketAddr;
 
 use super::{Context, PoiseData};
-use crate::logs::safe_strip;
+use crate::logs::remove_backticks;
 use crate::profile::command::{get_profile, link, profile};
 use crate::seederboard::command::seederboard;
 use crate::{Error, Server};
@@ -417,7 +417,7 @@ pub async fn seeder(
             .content(format!(
                 "{}<@&{}> come fwag on {} :3\nraowquested by: <@{}>\n{}",
                 if let Some(msg) = message {
-                    safe_strip(&(msg + "\n"))
+                    remove_backticks(&(msg + "\n"))
                 } else {
                     "".to_owned()
                 },
