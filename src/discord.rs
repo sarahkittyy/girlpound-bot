@@ -183,6 +183,9 @@ async fn event_handler(
             let _ = on_message::hi_cat(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("hi cat error: {e}"));
+            let _ = on_message::praise_the_lord(ctx, data, new_message)
+                .await
+                .inspect_err(|e| eprintln!("satan's bidding: {e}"));
         }
         Event::MessageDelete {
             channel_id,
