@@ -59,6 +59,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
         ..remindme()
     },
     seederboard,
+    bhop,
     profile,
     get_profile,
     link,
@@ -289,6 +290,40 @@ pub async fn snipers(
     let hide_reply = hide_reply.unwrap_or(false);
     ctx.send(CreateReply::default().ephemeral(hide_reply).content(reply))
         .await?;
+
+    Ok(())
+}
+
+/// Toggle bhop on a server (with or without autohop)
+#[poise::command(slash_command)]
+pub async fn bhop(
+    ctx: Context<'_>,
+    #[description = "The server to query"]
+    #[autocomplete = "servers_autocomplete"]
+    server: SocketAddr,
+    #[description = "Whether you can bhop or not"] enabled: bool,
+    #[description = "Allow autohop? (Default: True) (hold space vs timed jumps)"] autohop: Option<
+        bool,
+    >,
+) -> Result<(), Error> {
+    let autohop = autohop.unwrap_or(true);
+    let cmd = format!(
+        "cm_enabled {}; cm_allow_autohop {}",
+        if enabled { 1 } else { 0 },
+        if autohop { 1 } else { 0 }
+    );
+    let server = ctx.data().server(server)?;
+    let _ = rcon_user_output(&[server], cmd).await;
+    let reply = if enabled {
+        format!(
+            "{} `Enabled BHOP {} autohop`",
+            server.emoji,
+            if autohop { "with" } else { "without" }
+        )
+    } else {
+        format!("{} `Disabled BHOP`", server.emoji)
+    };
+    ctx.send(CreateReply::default().content(reply)).await?;
 
     Ok(())
 }
