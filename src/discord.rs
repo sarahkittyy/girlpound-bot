@@ -73,6 +73,8 @@ pub struct PoiseData {
     pub general_channel: serenity::ChannelId,
     /// channel where deleted messages are logged
     pub deleted_message_log_channel: serenity::ChannelId,
+    /// channel where users who left are logged
+    pub leaver_log_channel: serenity::ChannelId,
     /// mod channel id
     pub mod_channel: serenity::ChannelId,
     /// "trial mod" channel, for "helpful reminders"
@@ -212,7 +214,7 @@ async fn event_handler(
             }
         }
         Event::GuildMemberRemoval { user, .. } => {
-            data.deleted_message_log_channel
+            data.leaver_log_channel
                 .send_message(
                     &ctx,
                     CreateMessage::new().content(format!(
@@ -237,6 +239,7 @@ pub async fn start_bot(
     let bot_token: String = parse_env("BOT_TOKEN");
     let guild_id: u64 = parse_env("GUILD_ID");
     let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
+    let leaver_log_channel_id: u64 = parse_env("LEAVER_LOG_CHANNEL_ID");
     let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
     let horny_role_id: u64 = parse_env("HORNY_ROLE");
     let member_role_id: u64 = parse_env("MEMBER_ROLE");
@@ -348,6 +351,7 @@ pub async fn start_bot(
                         deleted_message_log_channel: serenity::ChannelId::new(
                             deleted_messages_log_channel_id,
                         ),
+                        leaver_log_channel: serenity::ChannelId::new(leaver_log_channel_id),
                         mod_channel: serenity::ChannelId::new(mod_channel_id),
                         trial_mod_channel: serenity::ChannelId::new(trial_mod_channel_id),
                         birthday_channel: serenity::ChannelId::new(birthday_channel_id),
