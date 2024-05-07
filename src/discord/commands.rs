@@ -302,11 +302,11 @@ pub async fn bhop(
     #[autocomplete = "servers_autocomplete"]
     server: SocketAddr,
     #[description = "Whether you can bhop or not"] enabled: bool,
-    #[description = "Allow autohop? (Default: True) (hold space vs timed jumps)"] autohop: Option<
+    #[description = "Allow autohop? (Default: False) (hold space vs timed jumps)"] autohop: Option<
         bool,
     >,
 ) -> Result<(), Error> {
-    let autohop = autohop.unwrap_or(true);
+    let autohop = autohop.unwrap_or(false);
     let cmd = format!(
         "cm_enabled {}; cm_allow_autohop {}",
         if enabled { 1 } else { 0 },
