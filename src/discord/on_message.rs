@@ -47,7 +47,7 @@ pub async fn praise_the_lord(
     data: &PoiseData,
     new_message: &Message,
 ) -> Result<(), Error> {
-    if new_message.author.id.get() == REX_UID && random::<f32>() < 0.2 {
+    if new_message.author.id.get() == REX_UID && random::<f32>() < 0.05 {
         new_message.react(ctx, '🙏').await?;
     }
     Ok(())
