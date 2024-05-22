@@ -11,7 +11,6 @@ use poise::serenity_prelude as serenity;
 use tokio;
 
 mod api;
-mod bptf;
 mod catcoin;
 mod discord;
 mod ftp;
@@ -190,8 +189,6 @@ async fn main() -> Result<(), Error> {
 
     println!("Spawning HTTP API listener...");
     let api_state = api::init().await.expect("Could not spawn api.");
-
-    bptf::spawn_backpack_checker(log_receiver.clone());
 
     println!("Starting discord bot...");
     discord::start_bot(log_receiver, servers, api_state).await

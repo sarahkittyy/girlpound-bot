@@ -1,7 +1,13 @@
-use crate::{discord::Context, psychostats, tf2class::TF2Class, util::hhmmss, Error};
+use crate::{
+    discord::Context,
+    psychostats,
+    tf2class::TF2Class,
+    util::{get_bit, hhmmss},
+    Error,
+};
 use chrono::{NaiveDateTime, Utc};
 use poise::serenity_prelude::{self as serenity, CreateEmbedFooter, Mentionable};
-use sqlx::{self, MySql, Pool};
+use sqlx::{self, FromRow, MySql, Pool};
 
 use self::{steam::SteamProfileData, vote::Votes};
 
@@ -199,10 +205,6 @@ impl UserProfile {
     }
 }
 
-fn get_bit(value: u16, bit: u8) -> bool {
-    value & (1 << bit) > 0
-}
-
 /// add a view to the profile
 pub async fn view_profile(pool: &Pool<MySql>, uid: serenity::UserId) -> Result<(), Error> {
     sqlx::query!(
@@ -233,4 +235,24 @@ pub async fn get_user_profile(
     .await?;
 
     Ok(prof.unwrap_or_else(|| UserProfile::new(uid.get().to_string())))
+}
+
+pub async fn get_user_profiles(
+    pool: &Pool<MySql>,
+    uids: Vec<serenity::UserId>,
+) -> Result<Vec<UserProfile>, Error> {
+    let params = format!("?{}", ", ?".repeat(uids.len() - 1));
+    let query_str = format!("SELECT * FROM `profiles` WHERE `uid` IN ( {} )", params);
+    let mut query = sqlx::query(&query_str);
+    for id in uids {
+        query = query.bind(id.get());
+    }
+    let profs: Vec<UserProfile> = query
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|v| UserProfile::from_row(&v).unwrap())
+        .collect();
+
+    Ok(profs)
 }

@@ -1,5 +1,5 @@
 use chrono::Utc;
-use poise::serenity_prelude::{self as serenity, ReactionType};
+use poise::serenity_prelude::{self as serenity};
 use regex::Regex;
 use serenity::{CreateMessage, Message};
 
@@ -14,7 +14,7 @@ use super::{media_cooldown::CooldownMessage, PoiseData};
 const KATELYN_UID: u64 = 712534342445826078;
 const REX_UID: u64 = 925594695906779176;
 pub async fn hi_cat(
-    ctx: &serenity::Context,
+    _ctx: &serenity::Context,
     data: &PoiseData,
     new_message: &Message,
 ) -> Result<(), Error> {
@@ -44,7 +44,7 @@ pub async fn hi_cat(
 
 pub async fn praise_the_lord(
     ctx: &serenity::Context,
-    data: &PoiseData,
+    _data: &PoiseData,
     new_message: &Message,
 ) -> Result<(), Error> {
     if new_message.author.id.get() == REX_UID && random::<f32>() < 0.05 {

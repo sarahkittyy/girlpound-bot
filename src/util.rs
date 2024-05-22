@@ -4,3 +4,7 @@ pub fn hhmmss(secs: u64) -> String {
     let seconds = secs % 60;
     format!("{:0>2}:{:0>2}:{:0>2}", hours, minutes, seconds)
 }
+
+pub fn get_bit(value: u16, bit: u8) -> bool {
+    value & (1 << bit) > 0
+}

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use crate::{discord::Context, Error, Server};
+use crate::{discord::Context, Error};
 use poise;
 use poise::CreateReply;
 

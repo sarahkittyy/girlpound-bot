@@ -1,10 +1,14 @@
+use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 
 use super::{Context, PoiseData};
 use crate::logs::remove_backticks;
 use crate::profile::command::{get_profile, link, profile};
+use crate::profile::{get_user_profiles, UserProfile};
 use crate::seederboard::command::seederboard;
+use crate::tf2class::TF2Class;
+use crate::util::get_bit;
 use crate::{Error, Server};
 
 pub mod util;
@@ -44,7 +48,7 @@ use crate::catcoin::command::catcoin;
 use crate::psychostats;
 
 use poise;
-use poise::serenity_prelude::{self as serenity};
+use poise::serenity_prelude::{self as serenity, ChannelType, Mentionable};
 use poise::CreateReply;
 use serenity::{CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, CreateMessage, GetMessages};
 
@@ -53,6 +57,7 @@ use regex::Regex;
 
 pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     bibleverse,
+    classes,
     catcoin,
     || poise::Command {
         slash_action: remindme_slash().slash_action,
@@ -93,6 +98,119 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2gag,
     tf2ungag,
 ];
+
+/// View everyone's preferred classes from a voice chat.
+#[poise::command(slash_command, global_cooldown = 5)]
+pub async fn classes(
+    ctx: Context<'_>,
+    #[description = "The voice channel with users"] channel: serenity::GuildChannel,
+) -> Result<(), Error> {
+    if !matches!(channel.kind, ChannelType::Voice) {
+        ctx.reply(format!("Channel {} is not a voice channel!", channel.name))
+            .await?;
+        return Ok(());
+    }
+    let members = channel.members(ctx)?;
+    let profiles = get_user_profiles(
+        &ctx.data().local_pool,
+        members.iter().map(|m| m.user.id).collect(),
+    )
+    .await?;
+    let member_profiles: HashMap<serenity::UserId, (serenity::Member, Option<UserProfile>)> =
+        members
+            .iter()
+            .map(|m| {
+                let profile = profiles
+                    .iter()
+                    .find(|profile| profile.uid.parse::<u64>().unwrap() == m.user.id.get());
+                (m.user.id, (m.clone(), profile.cloned()))
+            })
+            .collect();
+
+    let classes = vec![
+        TF2Class::Scout,
+        TF2Class::Soldier,
+        TF2Class::Demo,
+        TF2Class::Medic,
+    ];
+
+    let mut embed = CreateEmbed::new().title("Class availability");
+
+    for class in &classes {
+        let bitno = class.as_number();
+        let class_players: Vec<(&serenity::Member, &UserProfile)> = member_profiles
+            .values()
+            .filter_map(|(member, profile)| {
+                let Some(profile) = profile else {
+                    return None;
+                };
+                if get_bit(profile.classes, bitno) {
+                    Some((member, profile))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        embed = embed.field(
+            ctx.data().class_emojis.get(class).unwrap(),
+            class_players
+                .iter()
+                .map(|(member, _)| member.mention().to_string())
+                .collect::<Vec<String>>()
+                .join(","),
+            true,
+        );
+    }
+    embed = embed.footer(CreateEmbedFooter::new(
+        "Edit the classes you like to play with /profile.",
+    ));
+
+    let baiters: Vec<&serenity::Member> = member_profiles
+        .values()
+        .filter_map(|(m, p)| if p.is_none() { Some(m) } else { None })
+        .collect();
+
+    let unmatched: Vec<String> = member_profiles
+        .values()
+        .filter_map(|(member, profile)| {
+            let Some(profile) = profile else {
+                return Some(member.mention().to_string());
+            };
+            // if all necessary class bits are false, this user is unmatched
+            if !classes
+                .iter()
+                .all(|class| get_bit(profile.classes, class.as_number()) == false)
+            {
+                None
+            } else {
+                Some(member.mention().to_string())
+            }
+        })
+        .collect();
+    if unmatched.len() > 0 {
+        embed = embed.field(
+            "None of the above",
+            format!("{}", unmatched.join(",")),
+            true,
+        );
+    }
+
+    let mut reply = CreateReply::default().embed(embed);
+    if baiters.len() > 0 {
+        reply = reply.content(format!(
+            "Users without /profile: {}",
+            baiters
+                .iter()
+                .map(|m| m.display_name().to_string())
+                .collect::<Vec<String>>()
+                .join(",")
+        ));
+    }
+
+    ctx.send(reply).await?;
+
+    Ok(())
+}
 
 /// Toggle the pro role on a user
 #[poise::command(
