@@ -10,7 +10,11 @@ use serenity::ComponentInteraction;
 use crate::{
     profile::{
         command::SteamLinkCodeModal,
-        edits::{dispatch_profile_edit, toggle_class, update_profile_column},
+        edits::{
+            create_class_select_components, dispatch_profile_edit, open_class_select_menu,
+            toggle_class, update_profile_column,
+        },
+        get_user_profile,
     },
     Error,
 };
@@ -44,11 +48,33 @@ pub async fn dispatch(
             }
             _ => (),
         },
+        // the direct class edit button
+        "profile.edit.classes" => match &mci.data.kind {
+            ComponentInteractionDataKind::Button => open_class_select_menu(ctx, data, mci).await?,
+            _ => (),
+        },
         "profile.edit.class.select" => match &mci.data.kind {
             ComponentInteractionDataKind::StringSelect { values } => {
                 let choice = values.first().ok_or("No choice")?;
                 toggle_class(&data.local_pool, mci.user.id, choice.parse()?).await?;
-                mci.create_response(&ctx, CreateInteractionResponse::Acknowledge)
+                let classes: String = get_user_profile(&data.local_pool, mci.user.id)
+                    .await?
+                    .get_classes()
+                    .iter()
+                    .map(|c| data.class_emojis.get(c).unwrap().clone())
+                    .collect::<Vec<String>>()
+                    .join("");
+                let components = create_class_select_components(data);
+                let _ = mci
+                    .create_response(
+                        &ctx,
+                        CreateInteractionResponse::UpdateMessage(
+                            CreateInteractionResponseMessage::new()
+                                .components(components)
+                                .content(format!("{} | Select each class to toggle it.", classes))
+                                .ephemeral(true),
+                        ),
+                    )
                     .await?;
             }
             _ => {

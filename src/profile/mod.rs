@@ -58,6 +58,16 @@ impl UserProfile {
         }
     }
 
+    pub fn get_classes(&self) -> Vec<TF2Class> {
+        let mut classes = vec![];
+        for i in 0..9u8 {
+            if get_bit(self.classes, i) {
+                classes.push(TF2Class::from_number(i));
+            }
+        }
+        classes
+    }
+
     pub async fn to_embed(
         &self,
         ctx: &Context<'_>,
@@ -101,18 +111,11 @@ impl UserProfile {
         }
 
         // classes
-        let mut classes = vec![];
-        for i in 0..9u8 {
-            if get_bit(self.classes, i) {
-                let emoji = ctx
-                    .data()
-                    .class_emojis
-                    .get(&TF2Class::from_number(i))
-                    .cloned()
-                    .unwrap();
-                classes.push(emoji);
-            }
-        }
+        let classes: Vec<String> = self
+            .get_classes()
+            .into_iter()
+            .map(|c| ctx.data().class_emojis.get(&c).unwrap().clone())
+            .collect();
         if classes.len() > 0 {
             e = e.field("Classes", classes.join(""), true);
         }

@@ -16,7 +16,7 @@ use crate::{
     Error,
 };
 
-use super::command::get_steam_link_content;
+use super::{command::get_steam_link_content, get_user_profile};
 
 #[derive(Debug, Modal)]
 #[name = "Edit user description"]
@@ -75,11 +75,7 @@ pub struct ColorModal {
     pub color: String,
 }
 
-async fn open_class_select_menu(
-    ctx: &serenity::Context,
-    data: &PoiseData,
-    mci: &ComponentInteraction,
-) -> Result<(), Error> {
+pub fn create_class_select_components(data: &PoiseData) -> Vec<CreateActionRow> {
     let emoji = Regex::new(r#"<(a?):([A-Za-z0-9_-]+):(\d+)>"#).unwrap();
     let emojis: HashMap<TF2Class, EmojiId> = data
         .class_emojis
@@ -127,16 +123,33 @@ async fn open_class_select_menu(
         serenity::CreateSelectMenuKind::String { options },
     ))];
 
-    mci.create_response(
-        &ctx,
-        CreateInteractionResponse::Message(
-            CreateInteractionResponseMessage::new()
-                .components(components)
-                .content("Select each class to toggle it.")
-                .ephemeral(true),
-        ),
-    )
-    .await?;
+    components
+}
+
+pub async fn open_class_select_menu(
+    ctx: &serenity::Context,
+    data: &PoiseData,
+    mci: &ComponentInteraction,
+) -> Result<(), Error> {
+    let components = create_class_select_components(data);
+    let classes: String = get_user_profile(&data.local_pool, mci.user.id)
+        .await?
+        .get_classes()
+        .iter()
+        .map(|c| data.class_emojis.get(c).unwrap().clone())
+        .collect::<Vec<String>>()
+        .join("");
+    let _ = mci
+        .create_response(
+            &ctx,
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
+                    .components(components)
+                    .content(format!("{} | Select each class to toggle it.", classes))
+                    .ephemeral(true),
+            ),
+        )
+        .await?;
 
     Ok(())
 }

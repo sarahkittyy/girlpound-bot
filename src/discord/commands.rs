@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use super::{Context, PoiseData};
 use crate::logs::remove_backticks;
@@ -48,7 +49,10 @@ use crate::catcoin::command::catcoin;
 use crate::psychostats;
 
 use poise;
-use poise::serenity_prelude::{self as serenity, ChannelType, Mentionable};
+use poise::serenity_prelude::{
+    self as serenity, ButtonStyle, ChannelType, ComponentInteractionCollector, CreateActionRow,
+    CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, Mentionable,
+};
 use poise::CreateReply;
 use serenity::{CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, CreateMessage, GetMessages};
 
@@ -99,18 +103,10 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2ungag,
 ];
 
-/// View everyone's preferred classes from a voice chat.
-#[poise::command(slash_command, global_cooldown = 5)]
-pub async fn classes(
-    ctx: Context<'_>,
-    #[description = "The voice channel with users"] channel: serenity::GuildChannel,
-) -> Result<(), Error> {
-    if !matches!(channel.kind, ChannelType::Voice) {
-        ctx.reply(format!("Channel {} is not a voice channel!", channel.name))
-            .await?;
-        return Ok(());
-    }
-    let members = channel.members(ctx)?;
+async fn generate_classes_embed(
+    ctx: &Context<'_>,
+    members: &Vec<serenity::Member>,
+) -> Result<CreateEmbed, Error> {
     let profiles = get_user_profiles(
         &ctx.data().local_pool,
         members.iter().map(|m| m.user.id).collect(),
@@ -161,9 +157,6 @@ pub async fn classes(
             true,
         );
     }
-    embed = embed.footer(CreateEmbedFooter::new(
-        "Edit the classes you like to play with /profile.",
-    ));
 
     let baiters: Vec<&serenity::Member> = member_profiles
         .values()
@@ -194,20 +187,74 @@ pub async fn classes(
             true,
         );
     }
-
-    let mut reply = CreateReply::default().embed(embed);
     if baiters.len() > 0 {
-        reply = reply.content(format!(
-            "Users without /profile: {}",
+        embed = embed.field(
+            "No /profile",
             baiters
                 .iter()
                 .map(|m| m.display_name().to_string())
                 .collect::<Vec<String>>()
-                .join(",")
-        ));
+                .join(","),
+            true,
+        );
     }
 
+    Ok(embed)
+}
+
+/// View everyone's preferred classes from a voice chat.
+#[poise::command(slash_command, global_cooldown = 5)]
+pub async fn classes(
+    ctx: Context<'_>,
+    #[description = "The voice channel with users"] channel: serenity::GuildChannel,
+) -> Result<(), Error> {
+    ctx.defer().await?;
+    let uuid = ctx.id();
+
+    if !matches!(channel.kind, ChannelType::Voice) {
+        ctx.reply(format!("Channel {} is not a voice channel!", channel.name))
+            .await?;
+        return Ok(());
+    }
+    let members = channel.members(ctx)?;
+
+    let mut embed = generate_classes_embed(&ctx, &members).await?;
+
+    let mut reply = CreateReply::default().embed(embed);
+
+    let reload_id = format!("{uuid}-reload");
+
+    let components = vec![CreateActionRow::Buttons(vec![
+        CreateButton::new("profile.edit.classes")
+            .label("Edit Classes")
+            .emoji('🔫'),
+        CreateButton::new(reload_id.clone())
+            .style(ButtonStyle::Secondary)
+            .emoji('🔃'),
+    ])];
+
+    reply = reply.components(components);
+
     ctx.send(reply).await?;
+
+    while let Some(mci) = ComponentInteractionCollector::new(ctx)
+        .channel_id(ctx.channel_id())
+        .timeout(Duration::from_secs(200))
+        .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
+        .await
+    {
+        if mci.data.custom_id != reload_id {
+            continue;
+        }
+        embed = generate_classes_embed(&ctx, &members).await?;
+        mci.create_response(
+            &ctx,
+            CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::new().embed(embed),
+            ),
+        )
+        .await?;
+    }
 
     Ok(())
 }
