@@ -153,7 +153,7 @@ async fn generate_classes_embed(
                 .iter()
                 .map(|(member, _)| member.mention().to_string())
                 .collect::<Vec<String>>()
-                .join(","),
+                .join("\n"),
             true,
         );
     }
@@ -183,7 +183,7 @@ async fn generate_classes_embed(
     if unmatched.len() > 0 {
         embed = embed.field(
             "None of the above",
-            format!("{}", unmatched.join(",")),
+            format!("{}", unmatched.join("\n")),
             true,
         );
     }
@@ -194,7 +194,7 @@ async fn generate_classes_embed(
                 .iter()
                 .map(|m| m.display_name().to_string())
                 .collect::<Vec<String>>()
-                .join(","),
+                .join("\n"),
             true,
         );
     }
