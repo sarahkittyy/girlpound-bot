@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fmt::Display};
 
-use chrono::Utc;
 use poise::serenity_prelude::{
     Context, CreateAttachment, CreateEmbed, CreateEmbedFooter, CreateMessage, Message, UserId,
 };

@@ -52,6 +52,35 @@ pub async fn get_drops(pool: &Pool<MySql>) -> Result<Vec<Reward>, Error> {
     Ok(rewards)
 }
 
+/// Give catcoin from one user to another, returns false if you don't have enough.
+pub async fn transact(
+    pool: &Pool<MySql>,
+    from: serenity::UserId,
+    to: serenity::UserId,
+    amount: u64,
+) -> Result<bool, Error> {
+    let mut tx = pool.begin().await?;
+    let rc = sqlx::query!(
+        "UPDATE `catcoin` SET `catcoin` = `catcoin` - ? WHERE `uid` = ? AND `catcoin` >= ?",
+        amount,
+        from.get(),
+        amount
+    )
+    .execute(&mut *tx)
+    .await?;
+    if rc.rows_affected() == 0 {
+        tx.rollback().await?;
+        return Ok(false);
+    }
+    sqlx::query!(
+        "INSERT INTO `catcoin` (`uid`, `catcoin`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `catcoin` = `catcoin` + ?", to.get(), amount, amount)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+
+    Ok(true)
+}
+
 pub async fn increment_and_get_pulls(pool: &Pool<MySql>, reward_id: i32) -> Result<i32, Error> {
     sqlx::query!(
         r#"

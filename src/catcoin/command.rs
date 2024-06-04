@@ -1,11 +1,54 @@
-use poise::{self, serenity_prelude::CreateEmbed, CreateReply};
+use poise::{
+    self,
+    serenity_prelude::{self as serenity, CreateAllowedMentions, CreateEmbed, Mentionable},
+    CreateReply,
+};
 
-use super::{get_catcoin, get_top, CatcoinWallet};
+use super::{get_catcoin, get_top, transact, CatcoinWallet};
 use crate::{discord::Context, Error};
 
 /// TKGP catcoin related stuff :3
-#[poise::command(slash_command, subcommands("balance", "top"))]
+#[poise::command(slash_command, subcommands("balance", "top", "pay"))]
 pub async fn catcoin(_: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
+
+/// Pay a user some catcoin
+#[poise::command(slash_command, user_cooldown = 60)]
+async fn pay(
+    ctx: Context<'_>,
+    #[description = "The catcoin recipient."] to: serenity::User,
+    #[description = "The amount to send."] amount: u64,
+) -> Result<(), Error> {
+    let (reply, ephemeral) =
+        match transact(&ctx.data().local_pool, ctx.author().id, to.id, amount).await {
+            Ok(true) => (
+                format!(
+                    "Sent **{}** {} to {}.",
+                    amount,
+                    ctx.data().catcoin_emoji,
+                    to.mention()
+                ),
+                false,
+            ),
+            Ok(false) => (
+                format!(
+                    "You do not have enough catcoin {}.",
+                    ctx.data().catcoin_emoji
+                ),
+                true,
+            ),
+            Err(e) => (format!("Internal payment error: `{:?}`", e), true),
+        };
+
+    ctx.send(
+        CreateReply::default()
+            .content(reply)
+            .ephemeral(ephemeral)
+            .allowed_mentions(CreateAllowedMentions::new().all_users(true)),
+    )
+    .await?;
+
     Ok(())
 }
 
