@@ -101,6 +101,8 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> R
         (rarity, catcoins, reward)
     };
 
+    println!("Got pull: {} {}", rarity, &reward.name);
+
     let pulls = increment_and_get_pulls(&data.local_pool, reward.id).await?;
     grant_catcoin(&data.local_pool, message.author.id, catcoins).await?;
 
