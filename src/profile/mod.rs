@@ -1,4 +1,5 @@
 use crate::{
+    catcoin::CatcoinWallet,
     discord::Context,
     psychostats,
     tf2class::TF2Class,
@@ -73,6 +74,7 @@ impl UserProfile {
         ctx: &Context<'_>,
         votes: Votes,
         steam_data: Option<SteamProfileData>,
+        catcoin: CatcoinWallet,
     ) -> Result<serenity::CreateEmbed, Error> {
         let user = serenity::UserId::new(self.uid.parse()?)
             .to_user(&ctx)
@@ -197,6 +199,12 @@ impl UserProfile {
                 e = e.field("Favorite User 💖", user.mention().to_string(), true);
             }
         }
+        // catcoins
+        e = e.field(
+            format!("Catcoin {}", ctx.data().catcoin_emoji),
+            catcoin.catcoin.to_string(),
+            true,
+        );
         // color
         if let Some(color) = &self.color {
             e = e.color(*color);

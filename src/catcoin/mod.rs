@@ -9,8 +9,8 @@ use sqlx::{self, MySql, Pool};
 
 #[derive(Clone, sqlx::FromRow)]
 pub struct CatcoinWallet {
-    uid: String,
-    catcoin: i64,
+    pub uid: String,
+    pub catcoin: i64,
 }
 
 /// get a user's catcoin count.

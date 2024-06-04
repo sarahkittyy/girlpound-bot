@@ -12,6 +12,7 @@ use poise::{
 
 use super::{steam::get_steam_profile_data, view_profile, vote::vote_on, UserProfile};
 use crate::{
+    catcoin::get_catcoin,
     discord::Context,
     profile::{get_user_profile, vote::get_profile_votes},
     Error,
@@ -126,6 +127,7 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
     let mut profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
     let mut votes = get_profile_votes(&ctx.data().local_pool, member.user.id).await?;
     let mut steam_data = get_steam_profile_data(&ctx, &profile).await?;
+    let mut catcoin = get_catcoin(&ctx.data().local_pool, member.user.id).await?;
 
     // buttons
     let buttons = vec![
@@ -157,7 +159,7 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
             CreateReply::default()
                 .embed(
                     profile
-                        .to_embed(&ctx, votes.clone(), steam_data.clone())
+                        .to_embed(&ctx, votes.clone(), steam_data.clone(), catcoin.clone())
                         .await?,
                 )
                 .components(components),
@@ -186,8 +188,11 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
             mci.create_response(
                 &ctx,
                 CreateInteractionResponse::UpdateMessage(
-                    CreateInteractionResponseMessage::new()
-                        .embed(profile.to_embed(&ctx, votes, steam_data.clone()).await?),
+                    CreateInteractionResponseMessage::new().embed(
+                        profile
+                            .to_embed(&ctx, votes, steam_data.clone(), catcoin.clone())
+                            .await?,
+                    ),
                 ),
             )
             .await?;
@@ -209,11 +214,15 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
             profile = get_user_profile(&ctx.data().local_pool, member.user.id).await?;
             votes = get_profile_votes(&ctx.data().local_pool, member.user.id).await?;
             steam_data = get_steam_profile_data(&ctx, &profile).await?;
+            catcoin = get_catcoin(&ctx.data().local_pool, member.user.id).await?;
             mci.create_response(
                 &ctx,
                 CreateInteractionResponse::UpdateMessage(
-                    CreateInteractionResponseMessage::new()
-                        .embed(profile.to_embed(&ctx, votes, steam_data.clone()).await?),
+                    CreateInteractionResponseMessage::new().embed(
+                        profile
+                            .to_embed(&ctx, votes, steam_data.clone(), catcoin.clone())
+                            .await?,
+                    ),
                 ),
             )
             .await?;
