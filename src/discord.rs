@@ -3,6 +3,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::api::ApiState;
+use crate::catcoin::random_drops::SpamFilter;
 use crate::steamid::SteamIDClient;
 use crate::tf2class::TF2Class;
 use crate::{catcoin, logs, seederboard, sourcebans, wacky_wednesday, Error};
@@ -64,6 +65,7 @@ pub struct PoiseData {
 
     /// All possible random catcoin drops
     pub catcoin_drops: Vec<catcoin::random_drops::Reward>,
+    pub catcoin_spam_filter: Arc<RwLock<catcoin::random_drops::SpamFilter>>,
 
     /// NSFW role
     pub horny_role: serenity::RoleId,
@@ -325,9 +327,7 @@ pub async fn start_bot(
                     )
                     .await?;
 
-                    ctx.set_activity(Some(serenity::ActivityData::playing(
-                        "!add 5 ultracide.net",
-                    )));
+                    ctx.set_activity(Some(serenity::ActivityData::playing("with touys ^-^")));
 
                     Ok(PoiseData {
                         servers,
@@ -349,6 +349,7 @@ pub async fn start_bot(
                         .into_iter()
                         .map(str::to_owned)
                         .collect(),
+                        catcoin_spam_filter: Arc::new(RwLock::new(SpamFilter::new())),
                         pug_server,
                         api_state,
                         emoji_rank: watcher.clone(),

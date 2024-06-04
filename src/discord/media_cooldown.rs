@@ -4,58 +4,7 @@ use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, CreateMessage};
 use tokio::sync::mpsc::{error::TryRecvError, Sender};
 
-use crate::parse_env;
-
-struct LeakyBucket {
-    pub max: f64,
-    pub per_minute: f64,
-    pub cost: f64,
-    pub last: DateTime<Utc>,
-    pub prev: f64,
-}
-
-impl Default for LeakyBucket {
-    fn default() -> Self {
-        Self::new(15., 3., 4.)
-    }
-}
-
-impl LeakyBucket {
-    pub fn new(max: f64, per_minute: f64, cost: f64) -> Self {
-        Self {
-            max,
-            per_minute,
-            cost,
-            last: Utc::now(),
-            prev: max,
-        }
-    }
-
-    /// tries to subtract an action from the bucket, returns Ok if successful or Err with the time until the bucket can afford the action
-    pub fn try_afford_one(&mut self) -> Result<(), Duration> {
-        let now = chrono::Utc::now();
-        let diff = now - self.last;
-        let diff_mins: f64 = diff.num_milliseconds() as f64 / (1000. * 60.);
-        // last remaining tokens + gained since last run, capped to max
-        let current = (self.prev as f64 + self.per_minute as f64 * diff_mins).min(self.max as f64);
-        // if we can afford it ....
-        if current >= self.cost {
-            self.prev = current - self.cost;
-            self.last = now;
-            Ok(())
-        } else {
-            // otherwise
-            // calculate how many tokens we need
-            let needed = self.cost - current;
-            // convert to minutes
-            let needed_mins = needed / self.per_minute;
-            Err(
-                Duration::try_milliseconds((needed_mins * 60. * 1000.).floor() as i64)
-                    .ok_or(Duration::zero())?,
-            )
-        }
-    }
-}
+use crate::{parse_env, util::LeakyBucket};
 
 pub struct MediaCooldown {
     pub channels: Vec<serenity::ChannelId>,
