@@ -8,3 +8,10 @@ pub fn hhmmss(secs: u64) -> String {
 pub fn get_bit(value: u16, bit: u8) -> bool {
     value & (1 << bit) > 0
 }
+
+pub fn truncate(s: &str, max_chars: usize) -> &str {
+    match s.char_indices().nth(max_chars) {
+        None => s,
+        Some((idx, _)) => &s[..idx],
+    }
+}

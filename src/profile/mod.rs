@@ -2,7 +2,7 @@ use crate::{
     discord::Context,
     psychostats,
     tf2class::TF2Class,
-    util::{get_bit, hhmmss},
+    util::{get_bit, hhmmss, truncate},
     Error,
 };
 use chrono::{NaiveDateTime, Utc};
@@ -89,7 +89,7 @@ impl UserProfile {
         );
         let pfp = user.avatar_url().unwrap_or(user.default_avatar_url());
         let mut e = serenity::CreateEmbed::new() //
-            .title(self.title.replace("%", &nickname))
+            .title(truncate(&self.title.replace("%", &nickname), 255))
             .thumbnail(pfp)
             .description(description);
         // link
