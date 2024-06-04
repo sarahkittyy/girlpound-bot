@@ -7,13 +7,41 @@ use poise::serenity_prelude as serenity;
 use random_drops::Reward;
 use sqlx::{self, MySql, Pool};
 
-/// get a user's catcoin count.
-pub async fn get_catcoin(pool: &Pool<MySql>, uid: serenity::UserId) -> Result<i64, Error> {
-    let record = sqlx::query!(r#"SELECT * FROM `catcoin` WHERE uid=?"#, uid.get())
-        .fetch_optional(pool)
-        .await?;
+#[derive(Clone, sqlx::FromRow)]
+pub struct CatcoinWallet {
+    uid: String,
+    catcoin: i64,
+}
 
-    Ok(record.map(|r| r.catcoin).unwrap_or(0))
+/// get a user's catcoin count.
+pub async fn get_catcoin(
+    pool: &Pool<MySql>,
+    uid: serenity::UserId,
+) -> Result<CatcoinWallet, Error> {
+    let record = sqlx::query_as!(
+        CatcoinWallet,
+        r#"SELECT * FROM `catcoin` WHERE uid=?"#,
+        uid.get()
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(record.unwrap_or(CatcoinWallet {
+        uid: uid.to_string(),
+        catcoin: 0,
+    }))
+}
+
+/// get the top catcoin wallets
+pub async fn get_top(pool: &Pool<MySql>) -> Result<Vec<CatcoinWallet>, Error> {
+    let record: Vec<CatcoinWallet> = sqlx::query_as!(
+        CatcoinWallet,
+        r#"SELECT * FROM `catcoin` ORDER BY `catcoin` DESC LIMIT 5"#
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(record)
 }
 
 /// Grab all catcoin rewards
