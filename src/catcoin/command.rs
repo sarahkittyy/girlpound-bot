@@ -14,12 +14,21 @@ pub async fn catcoin(_: Context<'_>) -> Result<(), Error> {
 }
 
 /// Pay a user some catcoin
-#[poise::command(slash_command, user_cooldown = 60)]
+#[poise::command(slash_command, user_cooldown = 10)]
 async fn pay(
     ctx: Context<'_>,
     #[description = "The catcoin recipient."] to: serenity::User,
     #[description = "The amount to send."] amount: u64,
 ) -> Result<(), Error> {
+    if to.id == ctx.author().id {
+        ctx.send(
+            CreateReply::default()
+                .content("Cannot send yourself catcoin!")
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    }
     let (reply, ephemeral) =
         match transact(&ctx.data().local_pool, ctx.author().id, to.id, amount).await {
             Ok(true) => (
