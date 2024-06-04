@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::api::ApiState;
 use crate::steamid::SteamIDClient;
 use crate::tf2class::TF2Class;
-use crate::{logs, seederboard, sourcebans, wacky_wednesday, Error};
+use crate::{catcoin, logs, seederboard, sourcebans, wacky_wednesday, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
@@ -59,6 +59,11 @@ pub struct PoiseData {
 
     /// Emojis for each of the 9 tf2 classes
     pub class_emojis: HashMap<TF2Class, String>,
+    /// Catcoin emoji
+    pub catcoin_emoji: String,
+
+    /// All possible random catcoin drops
+    pub catcoin_drops: Vec<catcoin::random_drops::Reward>,
 
     /// NSFW role
     pub horny_role: serenity::RoleId,
@@ -188,6 +193,9 @@ async fn event_handler(
             let _ = on_message::praise_the_lord(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("satan's bidding: {e}"));
+            let _ = catcoin::random_drops::on_message(ctx, data, new_message)
+                .await
+                .inspect_err(|e| eprintln!("Random drop fail: {e}"));
         }
         Event::MessageDelete {
             channel_id,
@@ -248,6 +256,7 @@ pub async fn start_bot(
     let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
     let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
     let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
+    let catcoin_emoji: String = parse_env("CATCOIN_EMOJI");
 
     let db_url: String = parse_env("DATABASE_URL");
     let sb_db_url: String = parse_env("SB_DATABASE_URL");
@@ -269,6 +278,8 @@ pub async fn start_bot(
 
     let sb_pool = Pool::<MySql>::connect(&sb_db_url).await?;
     println!("Connected to sourcebans pool.");
+
+    let catcoin_drops = catcoin::get_drops(&local_pool).await?;
 
     let intents = serenity::GatewayIntents::non_privileged()
         | serenity::GatewayIntents::MESSAGE_CONTENT
@@ -346,8 +357,10 @@ pub async fn start_bot(
                         member_role: serenity::RoleId::new(member_role_id),
                         scrim_role: serenity::RoleId::new(scrim_role_id),
                         class_emojis,
+                        catcoin_emoji,
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
                         general_channel: serenity::ChannelId::new(general_channel_id),
+                        catcoin_drops,
                         deleted_message_log_channel: serenity::ChannelId::new(
                             deleted_messages_log_channel_id,
                         ),
