@@ -36,7 +36,7 @@ pub async fn get_catcoin(
 pub async fn get_top(pool: &Pool<MySql>) -> Result<Vec<CatcoinWallet>, Error> {
     let record: Vec<CatcoinWallet> = sqlx::query_as!(
         CatcoinWallet,
-        r#"SELECT * FROM `catcoin` ORDER BY `catcoin` DESC LIMIT 5"#
+        r#"SELECT * FROM `catcoin` ORDER BY `catcoin` DESC LIMIT 10"#
     )
     .fetch_all(pool)
     .await?;
