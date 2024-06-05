@@ -114,7 +114,7 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> R
         let mut rng = thread_rng();
 
         // chance to pull
-        if !rng.gen_ratio(1, 400) {
+        if !rng.gen_ratio(1, 500) {
             return Ok(());
         }
 
