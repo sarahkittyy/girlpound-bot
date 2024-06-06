@@ -61,8 +61,8 @@ impl Rarity {
         match self {
             Rarity::Common => Normal::new(2.0, 0.5).unwrap(),
             Rarity::Rare => Normal::new(10.0, 2.0).unwrap(),
-            Rarity::Fluffy => Normal::new(50.0, 5.0).unwrap(),
-            Rarity::Peak => Normal::new(150.0, 10.0).unwrap(),
+            Rarity::Fluffy => Normal::new(80.0, 5.0).unwrap(),
+            Rarity::Peak => Normal::new(300.0, 50.0).unwrap(),
         }
     }
 }
