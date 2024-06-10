@@ -1,9 +1,7 @@
 use futures::TryFutureExt;
 use poise::{
     self,
-    serenity_prelude::{
-        self as serenity, CacheHttp, CreateAllowedMentions, CreateEmbed, Member, Mentionable,
-    },
+    serenity_prelude::{self as serenity, CreateAllowedMentions, CreateEmbed, Mentionable},
     CreateReply,
 };
 

@@ -30,3 +30,6 @@ humantime = "2.1.0"
 steam-connect = { version = "1.3.0" }
 axum = { version = "0.7.5", features = ["tokio", "query", "macros"] }
 rand_distr = "0.4.3"
+
+[patch.crates-io]
+serenity = { git = "https://github.com/sarahkittyy/serenity.git" }
