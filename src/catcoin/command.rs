@@ -1,7 +1,9 @@
 use futures::TryFutureExt;
 use poise::{
     self,
-    serenity_prelude::{self as serenity, CreateAllowedMentions, CreateEmbed, Mentionable},
+    serenity_prelude::{
+        self as serenity, CacheHttp, CreateAllowedMentions, CreateEmbed, Member, Mentionable,
+    },
     CreateReply,
 };
 
@@ -85,8 +87,9 @@ async fn top(ctx: Context<'_>) -> Result<(), Error> {
     let fetches = top.into_iter().enumerate().flat_map(|(i, wallet)| {
         let user = wallet.uid.parse::<serenity::UserId>().ok()?;
         Some(
-            ctx.http()
-                .get_member(ctx.data().guild_id, user)
+            ctx.data()
+                .guild_id
+                .member(&ctx, user)
                 .map_ok(move |member| {
                     format!(
                         "**{}**. **{}** - {} {}",
