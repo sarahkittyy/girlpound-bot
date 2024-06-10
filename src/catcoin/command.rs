@@ -1,3 +1,4 @@
+use futures::TryFutureExt;
 use poise::{
     self,
     serenity_prelude::{self as serenity, CreateAllowedMentions, CreateEmbed, Mentionable},
@@ -80,23 +81,28 @@ async fn balance(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command)]
 async fn top(ctx: Context<'_>) -> Result<(), Error> {
     let top: Vec<CatcoinWallet> = get_top(&ctx.data().local_pool).await?;
-    let list = top
-        .into_iter()
-        .enumerate()
-        .map(|(i, wallet)| {
+    let fetches = top.into_iter().enumerate().flat_map(|(i, wallet)| {
+        let user = wallet.uid.parse::<serenity::UserId>().ok()?;
+        Some(user.to_user(&ctx).map_ok(move |user| {
             format!(
-                "**{}**. <@{}> - {} {}",
+                "**{}**. **{}** - {} {}",
                 i + 1,
-                wallet.uid,
+                user.global_name.unwrap_or(user.name),
                 wallet.catcoin,
                 ctx.data().catcoin_emoji
             )
-        })
+        }))
+    });
+    let list = futures::future::join_all(fetches).await;
+    let output = list
+        .into_iter()
+        .flatten()
+        .take(10)
         .collect::<Vec<String>>()
         .join("\n");
     let embed = CreateEmbed::new()
         .title("Top Catcoin Holders 🚀🌕")
-        .description(list);
+        .description(output);
     ctx.send(CreateReply::default().embed(embed)).await?;
     Ok(())
 }
