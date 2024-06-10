@@ -83,15 +83,19 @@ async fn top(ctx: Context<'_>) -> Result<(), Error> {
     let top: Vec<CatcoinWallet> = get_top(&ctx.data().local_pool).await?;
     let fetches = top.into_iter().enumerate().flat_map(|(i, wallet)| {
         let user = wallet.uid.parse::<serenity::UserId>().ok()?;
-        Some(user.to_user(&ctx).map_ok(move |user| {
-            format!(
-                "**{}**. **{}** - {} {}",
-                i + 1,
-                user.global_name.unwrap_or(user.name),
-                wallet.catcoin,
-                ctx.data().catcoin_emoji
-            )
-        }))
+        Some(
+            ctx.http()
+                .get_member(ctx.data().guild_id, user)
+                .map_ok(move |member| {
+                    format!(
+                        "**{}**. **{}** - {} {}",
+                        i + 1,
+                        member.display_name(),
+                        wallet.catcoin,
+                        ctx.data().catcoin_emoji
+                    )
+                }),
+        )
     });
     let list = futures::future::join_all(fetches).await;
     let output = list
