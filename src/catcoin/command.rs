@@ -80,6 +80,7 @@ async fn balance(ctx: Context<'_>) -> Result<(), Error> {
 /// Check top catcoin wallets
 #[poise::command(slash_command)]
 async fn top(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.defer().await?;
     let top: Vec<CatcoinWallet> = get_top(&ctx.data().local_pool).await?;
     let fetches = top.into_iter().enumerate().flat_map(|(i, wallet)| {
         let user = wallet.uid.parse::<serenity::UserId>().ok()?;
