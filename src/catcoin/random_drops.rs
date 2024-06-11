@@ -1,7 +1,8 @@
 use std::{collections::HashMap, fmt::Display};
 
 use poise::serenity_prelude::{
-    Context, CreateAttachment, CreateEmbed, CreateEmbedFooter, CreateMessage, Message, UserId,
+    Color, Context, CreateAttachment, CreateEmbed, CreateEmbedFooter, CreateMessage, Message,
+    UserId,
 };
 
 use crate::{discord::PoiseData, util::LeakyBucket, Error};
@@ -54,6 +55,15 @@ impl Rarity {
             69..=94 => Rarity::Rare,
             95..=99 => Rarity::Fluffy,
             _ => Rarity::Peak,
+        }
+    }
+
+    pub fn color(&self) -> Color {
+        match self {
+            Rarity::Common => Color::from_rgb(205, 127, 50),
+            Rarity::Rare => Color::from_rgb(192, 192, 192),
+            Rarity::Fluffy => Color::from_rgb(255, 215, 0),
+            Rarity::Peak => Color::from_rgb(233, 138, 153),
         }
     }
 
@@ -143,7 +153,8 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> R
         ))
         .description(format!("{} **+{}**", data.catcoin_emoji, catcoins))
         .footer(CreateEmbedFooter::new("/catcoin balance"))
-        .attachment(&attachment.filename);
+        .attachment(&attachment.filename)
+        .color(reward.rarity.color());
 
     message
         .channel_id
