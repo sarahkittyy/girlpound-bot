@@ -1,7 +1,7 @@
 use chrono::Utc;
 use poise::serenity_prelude::{self as serenity};
 use regex::Regex;
-use serenity::{CreateMessage, Message};
+use serenity::Message;
 
 use crate::Error;
 

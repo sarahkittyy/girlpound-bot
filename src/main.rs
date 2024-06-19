@@ -14,6 +14,7 @@ mod api;
 mod catcoin;
 mod discord;
 mod ftp;
+mod gameme;
 mod logs;
 mod profile;
 mod psychostats;

@@ -6,8 +6,9 @@ use std::time::Duration;
 use super::{Context, PoiseData};
 use crate::logs::remove_backticks;
 use crate::profile::command::{get_profile, link, profile};
-use crate::profile::{get_user_profiles, UserProfile};
+use crate::profile::{get_user_profile, get_user_profiles, UserProfile};
 use crate::seederboard::command::seederboard;
+use crate::steamid::SteamIDProfile;
 use crate::tf2class::TF2Class;
 use crate::util::get_bit;
 use crate::{Error, Server};
@@ -75,7 +76,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     teamcaptain,
     wacky,
     givepro,
-    stats,
+    psychostats,
     bark,
     botsay,
     emojitop,
@@ -307,12 +308,12 @@ pub async fn givepro(
     Ok(())
 }
 
-/// Lookup your tkgp stats with your steamcommunity.com profile url.
+/// Lookup your LEGACY tkgp psychostats (deprecated 6/18/24 in favor of gameME -> /profile)
 #[poise::command(slash_command, user_cooldown = 15)]
-pub async fn stats(
+pub async fn psychostats(
     ctx: Context<'_>,
     #[description = "Steam profile url, eg. https://steamcommunity.com/id/sarahkitty/"]
-    profile: String,
+    profile: Option<String>,
     #[description = "Hide the resulting output"] hide_reply: Option<bool>,
 ) -> Result<(), Error> {
     if hide_reply.unwrap_or(true) {
@@ -320,16 +321,28 @@ pub async fn stats(
     } else {
         ctx.defer().await?;
     };
-    let profiles = ctx.data().steamid_client.lookup(&profile).await?;
-    let profile = profiles.first().ok_or("Profile not found")?;
-    let steamid = &profile.steamid;
+    let profile: SteamIDProfile = match profile {
+        None => {
+            let profile = get_user_profile(&ctx.data().local_pool, ctx.author().id).await?;
+            let Some(steamid) = profile.steamid else {
+                ctx.send(CreateReply::default().content("No profile URL specified and no steam profile /link'd to this discord account.")).await?;
+                return Ok(());
+            };
+            let profiles = ctx.data().steamid_client.lookup(&steamid).await?;
+            profiles.into_iter().next().ok_or("Profile not found")?
+        }
+        Some(profile) => {
+            let profiles = ctx.data().steamid_client.lookup(&profile).await?;
+            profiles.into_iter().next().ok_or("Profile not found")?
+        }
+    };
     let summary = ctx
         .data()
         .steamid_client
         .get_player_summaries(&profile.steamid64)
         .await?;
     let summary = summary.first().ok_or("Profile not found.")?;
-    let (tkgp4s, tkgp5s) = psychostats::find_plr(steamid).await?;
+    let (tkgp4s, tkgp5s) = psychostats::find_plr(&profile.steamid).await?;
 
     let url4 = tkgp4s
         .map(|s| {

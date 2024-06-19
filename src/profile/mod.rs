@@ -1,7 +1,7 @@
 use crate::{
     catcoin::CatcoinWallet,
     discord::Context,
-    psychostats,
+    gameme,
     tf2class::TF2Class,
     util::{get_bit, hhmmss, truncate},
     Error,
@@ -9,8 +9,9 @@ use crate::{
 use chrono::{NaiveDateTime, Utc};
 use poise::serenity_prelude::{self as serenity, CreateEmbedFooter, Mentionable};
 use sqlx::{self, FromRow, MySql, Pool};
+use steam::SteamProfileData;
 
-use self::{steam::SteamProfileData, vote::Votes};
+use self::vote::Votes;
 
 pub mod command;
 pub mod edits;
@@ -158,29 +159,21 @@ impl UserProfile {
                 }
             }
             if self.hide_stats == 0 {
-                // stats field
-                let mut stats = vec![];
-                if let Some(tkgp4) = steam_data.stats.0 {
-                    stats.push(format!(
-                        "[4. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
-                        tkgp4.rank,
-                        tkgp4.percentile,
-                        psychostats::BASEURL4,
-                        tkgp4.id
-                    ))
-                }
-                if let Some(tkgp5) = steam_data.stats.1 {
-                    stats.push(format!(
-                        "[5. **#{}** _(Top {:.1}%)_]({}player.php?id={})",
-                        tkgp5.rank,
-                        tkgp5.percentile,
-                        psychostats::BASEURL5,
-                        tkgp5.id
-                    ))
-                }
-                if !stats.is_empty() {
-                    e = e.field("Stats 📈", format!("{}", stats.join("\n")), true);
-                }
+                if let Some(player) = steam_data.stats.get_first_player() {
+                    let percentile =
+                        player.rank as f32 / steam_data.stats.rankinginfo.activeplayers as f32;
+                    // stats field
+                    let output = format!(
+                        "[**#{}** _(Top {:.1}%)_]({}playerinfo/{})",
+                        player.rank,
+                        percentile * 100.,
+                        gameme::BASEURL,
+                        player.id
+                    );
+                    e = e.field("Stats 📈", output, true);
+                } else {
+                    e = e.field("Stats 📈", "`Not Found`", true);
+                };
             }
         } else {
             // link footer
