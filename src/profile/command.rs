@@ -75,14 +75,14 @@ pub async fn link(ctx: Context<'_>) -> Result<(), Error> {
 
 pub fn get_steam_link_content(link_url: &str) -> (CreateEmbed, Vec<CreateActionRow>) {
     let embed = CreateEmbed::new() //
-        .title("Get a link code at https://api.fluffycat.gay/steam-link, then enter it below.")
+        .title("Get a code from https://api.fluffycat.gay/steam-link & enter it below.")
         .url(link_url);
     let row = vec![CreateActionRow::Buttons(vec![
         CreateButton::new_link(link_url)
-            .label("Get Link Code")
+            .label("Get Code")
             .emoji(ReactionType::Unicode("☁️".to_owned())),
         CreateButton::new("steam.link")
-            .label("Enter Link Code")
+            .label("Enter Code")
             .emoji('🔗'),
     ])];
     (embed, row)

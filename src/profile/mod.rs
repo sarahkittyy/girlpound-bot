@@ -175,7 +175,7 @@ impl UserProfile {
                     );
                     e = e.field("Stats 📈", output, true);
                 } else {
-                    e = e.field("Stats 📈", "`Not Found`", true);
+                    e = e.field("Stats 📈", "`No Data`", true);
                 };
             }
         } else {
