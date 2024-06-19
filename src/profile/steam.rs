@@ -8,7 +8,7 @@ pub struct SteamProfileData {
     pub seederboard: Option<(i64, i64)>,
     pub worst_enemy: Option<(SteamPlayerSummary, i64)>,
     pub best_friend: Option<(SteamPlayerSummary, i64)>,
-    pub stats: gameme::PlayerLookupData,
+    pub stats: Option<gameme::PlayerLookupData>,
     pub summary: SteamPlayerSummary,
 }
 
@@ -40,7 +40,7 @@ pub async fn get_steam_profile_data(
         .await?;
     let summary = summaries.first().ok_or("Steam profile not found")?;
 
-    let stats = gameme::get_player(&steamidprofile.steamid).await?;
+    let stats = gameme::get_player(&steamidprofile.steamid).await.ok();
 
     let best_friend = sqlx::query!("select against, abs(score) as score from (select score, gt_steamid as against from domination where lt_steamid=? order by score asc limit 1) as lts
 	UNION ALL

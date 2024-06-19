@@ -159,9 +159,12 @@ impl UserProfile {
                 }
             }
             if self.hide_stats == 0 {
-                if let Some(player) = steam_data.stats.get_first_player() {
-                    let percentile =
-                        player.rank as f32 / steam_data.stats.rankinginfo.activeplayers as f32;
+                if let Some((stats, player)) = steam_data
+                    .stats
+                    .as_ref()
+                    .and_then(|stats| Some((stats, stats.get_first_player()?)))
+                {
+                    let percentile = player.rank as f32 / stats.rankinginfo.activeplayers as f32;
                     // stats field
                     let output = format!(
                         "[**#{}** _(Top {:.1}%)_]({}playerinfo/{})",
