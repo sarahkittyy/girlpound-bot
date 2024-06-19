@@ -96,31 +96,6 @@ pub async fn watch_emojis(
     Ok(())
 }
 
-/// send silly reminders in the trial mod channel
-pub async fn trial_mod_reminders(
-    ctx: &serenity::Context,
-    data: &PoiseData,
-    new_message: &Message,
-) -> Result<(), Error> {
-    const HELPFUL_REMINDERS: [&str; 2] = [
-        "keep up the good work :white_check_mark:",
-        "Please be respectful to all players on the server :thumbs_up:",
-    ];
-
-    if new_message.channel_id == data.trial_mod_channel {
-        let r: f32 = random();
-        if r < 0.1 {
-            let g = (random::<f32>() * HELPFUL_REMINDERS.len() as f32).floor() as usize;
-            new_message
-                .channel_id
-                .send_message(ctx, CreateMessage::new().content(HELPFUL_REMINDERS[g]))
-                .await?;
-        }
-    }
-
-    Ok(())
-}
-
 /// check the rate limit & send cooldown messages
 pub async fn handle_cooldowns(
     ctx: &serenity::Context,

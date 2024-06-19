@@ -84,8 +84,6 @@ pub struct PoiseData {
     pub leaver_log_channel: serenity::ChannelId,
     /// mod channel id
     pub mod_channel: serenity::ChannelId,
-    /// "trial mod" channel, for "helpful reminders"
-    pub trial_mod_channel: serenity::ChannelId,
     /// age verification channel
     pub birthday_channel: serenity::ChannelId,
 
@@ -183,9 +181,6 @@ async fn event_handler(
             let _ = on_message::watch_emojis(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("watch emojis fail: {e}"));
-            let _ = on_message::trial_mod_reminders(ctx, data, new_message)
-                .await
-                .inspect_err(|e| eprintln!("trial mod reminder fail: {e}"));
             let _ = on_message::handle_cooldowns(ctx, data, cooldown_handler, new_message)
                 .await
                 .inspect_err(|e| eprintln!("media cooldown error: {e}"));
@@ -256,7 +251,6 @@ pub async fn start_bot(
     let scrim_role_id: u64 = parse_env("SCRIM_ROLE");
     let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
     let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
-    let trial_mod_channel_id: u64 = parse_env("TRIAL_MOD_CHANNEL_ID");
     let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
     let catcoin_emoji: String = parse_env("CATCOIN_EMOJI");
 
@@ -367,7 +361,6 @@ pub async fn start_bot(
                         ),
                         leaver_log_channel: serenity::ChannelId::new(leaver_log_channel_id),
                         mod_channel: serenity::ChannelId::new(mod_channel_id),
-                        trial_mod_channel: serenity::ChannelId::new(trial_mod_channel_id),
                         birthday_channel: serenity::ChannelId::new(birthday_channel_id),
                         media_cooldown_sender: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
