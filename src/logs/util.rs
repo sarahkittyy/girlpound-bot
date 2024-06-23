@@ -72,4 +72,5 @@ pub fn strip_markdown(s: &str) -> String {
         .replace("~", "\\~")
         .replace("`", "\\`")
         .replace("[", "\\[")
+        .replace("\\", "\\\\")
 }
