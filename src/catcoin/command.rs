@@ -82,30 +82,34 @@ async fn balance(ctx: Context<'_>) -> Result<(), Error> {
 async fn top(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer().await?;
     let top: Vec<CatcoinWallet> = get_top(&ctx.data().local_pool).await?;
-    let fetches = top.into_iter().enumerate().flat_map(|(i, wallet)| {
-        let user = wallet.uid.parse::<serenity::UserId>().ok()?;
-        Some(
-            ctx.data()
-                .guild_id
-                .member(&ctx, user)
-                .map_ok(move |member| {
-                    format!(
-                        "**{}**. **{}** - {} {}",
-                        i + 1,
-                        member.display_name(),
-                        wallet.catcoin,
-                        ctx.data().catcoin_emoji
-                    )
-                }),
-        )
-    });
-    let list = futures::future::join_all(fetches).await;
-    let output = list
+    let members = futures::future::join_all(top.into_iter().map(|wallet: CatcoinWallet| {
+        let user = wallet
+            .uid
+            .parse::<serenity::UserId>()
+            .ok()
+            .expect("Invalid userID in catcoin db");
+        ctx.data()
+            .guild_id
+            .member(&ctx, user)
+            .map_ok(|member| (wallet, member))
+    }))
+    .await;
+
+    let list = members
         .into_iter()
         .flatten()
         .take(10)
-        .collect::<Vec<String>>()
-        .join("\n");
+        .enumerate()
+        .map(|(i, (wallet, member))| {
+            format!(
+                "**{}**. **{}** - {} {}",
+                i + 1,
+                member.display_name(),
+                wallet.catcoin,
+                ctx.data().catcoin_emoji
+            )
+        });
+    let output = list.into_iter().collect::<Vec<String>>().join("\n");
     let embed = CreateEmbed::new()
         .title("Top Catcoin Holders 🚀🌕")
         .description(output);
