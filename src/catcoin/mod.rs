@@ -2,11 +2,35 @@ pub mod command;
 pub mod drops;
 pub mod random_pulls;
 
-use crate::Error;
-use poise::serenity_prelude as serenity;
+use std::collections::HashMap;
+
+use crate::{util::LeakyBucket, Error};
+use poise::serenity_prelude::{self as serenity, UserId};
 
 use random_pulls::Reward;
 use sqlx::{self, MySql, Pool};
+
+/// For preventing message spam
+pub struct SpamFilter {
+    buckets: HashMap<UserId, LeakyBucket>,
+}
+
+impl SpamFilter {
+    pub fn new() -> Self {
+        Self {
+            buckets: HashMap::new(),
+        }
+    }
+
+    /// Checks if the user's message should roll
+    pub fn try_roll(&mut self, uid: UserId) -> bool {
+        let bucket: &mut LeakyBucket = self
+            .buckets
+            .entry(uid)
+            .or_insert_with(|| LeakyBucket::new(80.0, 20.0, 1.0));
+        bucket.try_afford_one().is_ok()
+    }
+}
 
 #[derive(Clone, sqlx::FromRow)]
 pub struct CatcoinWallet {

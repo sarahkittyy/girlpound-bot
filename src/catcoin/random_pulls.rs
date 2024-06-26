@@ -1,11 +1,10 @@
-use std::{collections::HashMap, fmt::Display};
+use std::fmt::Display;
 
 use poise::serenity_prelude::{
     Color, Context, CreateAttachment, CreateEmbed, CreateEmbedFooter, CreateMessage, Message,
-    UserId,
 };
 
-use crate::{discord::PoiseData, util::LeakyBucket, Error};
+use crate::{discord::PoiseData, Error};
 use rand::prelude::*;
 use rand_distr::Normal;
 
@@ -85,40 +84,11 @@ pub struct Reward {
     pub rarity: Rarity,
 }
 
-pub struct SpamFilter {
-    buckets: HashMap<UserId, LeakyBucket>,
-}
-
-impl SpamFilter {
-    pub fn new() -> Self {
-        Self {
-            buckets: HashMap::new(),
-        }
-    }
-
-    /// Checks if the user's message should roll
-    pub fn try_roll(&mut self, uid: UserId) -> bool {
-        let bucket: &mut LeakyBucket = self
-            .buckets
-            .entry(uid)
-            .or_insert_with(|| LeakyBucket::new(80.0, 20.0, 1.0));
-        bucket.try_afford_one().is_ok()
-    }
-}
-
 /// Rarely drops goodies
 pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> Result<(), Error> {
     if message.author.bot {
         return Ok(());
     };
-    if !data
-        .catcoin_spam_filter
-        .write()
-        .await
-        .try_roll(message.author.id)
-    {
-        return Ok(());
-    }
 
     let (rarity, catcoins, reward) = {
         let mut rng = thread_rng();

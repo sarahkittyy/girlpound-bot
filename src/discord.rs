@@ -3,7 +3,6 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::api::ApiState;
-use crate::catcoin::random_pulls::SpamFilter;
 use crate::steamid::SteamIDClient;
 use crate::tf2class::TF2Class;
 use crate::{catcoin, logs, seederboard, sourcebans, wacky_wednesday, Error};
@@ -65,7 +64,7 @@ pub struct PoiseData {
 
     /// All possible random catcoin drops
     pub catcoin_drops: Vec<catcoin::random_pulls::Reward>,
-    pub catcoin_spam_filter: Arc<RwLock<catcoin::random_pulls::SpamFilter>>,
+    pub catcoin_spam_filter: Arc<RwLock<catcoin::SpamFilter>>,
 
     /// NSFW role
     pub horny_role: serenity::RoleId,
@@ -190,12 +189,20 @@ async fn event_handler(
             let _ = on_message::praise_the_lord(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("satan's bidding: {e}"));
-            let _ = catcoin::random_pulls::on_message(ctx, data, new_message)
+            // rate limit catcoin rng
+            if data
+                .catcoin_spam_filter
+                .write()
                 .await
-                .inspect_err(|e| eprintln!("Random pull fail: {e}"));
-            let _ = catcoin::drops::on_message(ctx, data, new_message)
-                .await
-                .inspect_err(|e| eprintln!("Drop fail: {e}"));
+                .try_roll(new_message.author.id)
+            {
+                let _ = catcoin::random_pulls::on_message(ctx, data, new_message)
+                    .await
+                    .inspect_err(|e| eprintln!("Random pull fail: {e}"));
+                let _ = catcoin::drops::on_message(ctx, data, new_message)
+                    .await
+                    .inspect_err(|e| eprintln!("Drop fail: {e}"));
+            }
         }
         Event::MessageDelete {
             channel_id,
@@ -346,7 +353,7 @@ pub async fn start_bot(
                         .into_iter()
                         .map(str::to_owned)
                         .collect(),
-                        catcoin_spam_filter: Arc::new(RwLock::new(SpamFilter::new())),
+                        catcoin_spam_filter: Arc::new(RwLock::new(catcoin::SpamFilter::new())),
                         pug_server,
                         api_state,
                         emoji_rank: watcher.clone(),
