@@ -52,6 +52,25 @@ pub async fn get_drops(pool: &Pool<MySql>) -> Result<Vec<Reward>, Error> {
     Ok(rewards)
 }
 
+/// Try taking `amount` catcoin from the user's wallet. return false if not enough funds.
+pub async fn try_spend_catcoin(pool: &Pool<MySql>, from: serenity::UserId, amount: u64) -> Result<bool, Error> {
+    let mut tx = pool.begin().await?;
+    let rc = sqlx::query!(
+        "UPDATE `catcoin` SET `catcoin` = `catcoin` - ? WHERE `uid` = ? AND `catcoin` >= ?",
+        amount,
+        from.get(),
+        amount
+    )
+    .execute(&mut *tx)
+    .await?;
+    if rc.rows_affected() == 0 {
+        tx.rollback().await?;
+        return Ok(false);
+    }
+	tx.commit().await?;
+	Ok(true)
+}
+
 /// Give catcoin from one user to another, returns false if you don't have enough.
 pub async fn transact(
     pool: &Pool<MySql>,
@@ -106,7 +125,7 @@ pub async fn increment_and_get_pulls(pool: &Pool<MySql>, reward_id: i32) -> Resu
 pub async fn grant_catcoin(
     pool: &Pool<MySql>,
     uid: serenity::UserId,
-    catcoin: i64,
+    catcoin: u64,
 ) -> Result<(), Error> {
     sqlx::query!(r#"INSERT INTO `catcoin` (`uid`, `catcoin`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `catcoin` = `catcoin` + ?"#, uid.get(), catcoin, catcoin)
         .execute(pool)

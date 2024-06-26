@@ -1,16 +1,147 @@
+use rand::prelude::*;
+use std::time::Duration;
+
 use futures::TryFutureExt;
 use poise::{
     self,
-    serenity_prelude::{self as serenity, CreateAllowedMentions, CreateEmbed, Mentionable},
+    serenity_prelude::{
+        self as serenity, ComponentInteractionCollector, CreateActionRow, CreateAllowedMentions,
+        CreateButton, CreateEmbed, CreateInteractionResponseMessage, CreateMessage, Mentionable,
+        ReactionType,
+    },
     CreateReply,
 };
 
-use super::{get_catcoin, get_top, transact, CatcoinWallet};
+use super::{get_catcoin, get_top, grant_catcoin, transact, try_spend_catcoin, CatcoinWallet};
 use crate::{discord::Context, Error};
 
 /// TKGP catcoin related stuff :3
-#[poise::command(slash_command, subcommands("balance", "top", "pay"))]
+#[poise::command(slash_command, subcommands("balance", "top", "pay", "drop"))]
 pub async fn catcoin(_: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
+
+/// Drop catcoin in the chat for anyone fast enough to claim.
+#[poise::command(slash_command, user_cooldown = 30)]
+async fn drop(
+    ctx: Context<'_>,
+    #[description = "The amount of catcoin to drop."] amount: u64,
+    #[description = "The message to include with the drop."] message: Option<String>,
+) -> Result<(), Error> {
+    // zero catcoin check
+    if amount == 0 {
+        ctx.send(
+            CreateReply::default()
+                .content(format!("Cannot drop **0** {}", ctx.data().catcoin_emoji))
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    }
+
+    let uuid = ctx.id();
+
+    // first expend the catcoin
+    match try_spend_catcoin(&ctx.data().local_pool, ctx.author().id, amount).await {
+        Ok(false) => {
+            ctx.send(CreateReply::default().ephemeral(true).content(format!(
+                "You do not have **{}** {}",
+                amount,
+                ctx.data().catcoin_emoji
+            )))
+            .await?;
+            return Ok(());
+        }
+        Err(e) => {
+            ctx.send(
+                CreateReply::default()
+                    .ephemeral(true)
+                    .content(format!("Internal error dropping catcoin: `{:?}`", e)),
+            )
+            .await?;
+            return Ok(());
+        }
+        Ok(true) => (),
+    };
+
+    // user specified message, or a default
+    let msg = message.unwrap_or_else(|| {
+        format!(
+            "{} dropped **{}** {} on the ground!",
+            ctx.author().mention(),
+            amount,
+            ctx.data().catcoin_emoji
+        )
+    });
+    // then drop it in chat
+    let embed = CreateEmbed::new()
+        .color(serenity::Color::from_rgb(random(), random(), random()))
+        .title(msg);
+    let button = CreateActionRow::Buttons(vec![CreateButton::new(format!("{uuid}-claim"))
+        .label(format!("{amount}"))
+        .emoji(
+            ctx.data()
+                .catcoin_emoji
+                .parse::<ReactionType>()
+                .expect("Could not parse catcoin emoji as ReactionType"),
+        )]);
+
+    let rh = ctx
+        .send(CreateReply::default().embed(embed).components(vec![button]))
+        .await?;
+
+    // wait for first interaction
+    while let Some(mci) = ComponentInteractionCollector::new(ctx)
+        .channel_id(ctx.channel_id())
+        .timeout(Duration::from_secs(120))
+        .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
+        .await
+    {
+        if ctx.author().id == mci.user.id {
+            mci.create_response(
+                &ctx,
+                serenity::CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .ephemeral(true)
+                        .content("Cannot claim your own catcoin drop!"),
+                ),
+            )
+            .await?;
+            continue;
+        }
+        rh.edit(
+            ctx,
+            CreateReply::default()
+                .content(format!(
+                    "{} picked up {}'s **{}** {}.",
+                    mci.user.mention(),
+                    ctx.author().mention(),
+                    amount,
+                    ctx.data().catcoin_emoji
+                ))
+                .components(vec![]),
+        )
+        .await?;
+        grant_catcoin(&ctx.data().local_pool, mci.user.id, amount).await?;
+        mci.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
+            .await?;
+        return Ok(());
+    }
+
+    rh.delete(ctx).await?;
+    ctx.channel_id()
+        .send_message(
+            &ctx,
+            CreateMessage::new().content(format!(
+                "{} Your drop has expired. Refunding **{}** {}",
+                ctx.author().mention(),
+                amount,
+                ctx.data().catcoin_emoji
+            )),
+        )
+        .await?;
+    grant_catcoin(&ctx.data().local_pool, ctx.author().id, amount).await?;
+
     Ok(())
 }
 
@@ -25,6 +156,15 @@ async fn pay(
         ctx.send(
             CreateReply::default()
                 .content("Cannot send yourself catcoin!")
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    }
+    if amount == 0 {
+        ctx.send(
+            CreateReply::default()
+                .content(format!("Cannot send **0** {}", ctx.data().catcoin_emoji))
                 .ephemeral(true),
         )
         .await?;

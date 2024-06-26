@@ -136,7 +136,7 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> R
             .choose(&mut rng)
             .ok_or("No rewards available")?;
 
-        let catcoins = rarity.reward_dist().sample(&mut rng).round() as i64;
+        let catcoins = rarity.reward_dist().sample(&mut rng).round().abs() as u64;
         (rarity, catcoins, reward)
     };
 
