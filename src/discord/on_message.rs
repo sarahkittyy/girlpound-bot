@@ -59,9 +59,6 @@ pub async fn watch_emojis(
     data: &PoiseData,
     new_message: &Message,
 ) -> Result<(), Error> {
-    if new_message.author.bot {
-        return Ok(());
-    }
     // find all unicode emoji
     let uemojis: Vec<&'static emojito::Emoji> = emojito::find_emoji(&new_message.content);
     //			name 		eid 		is_discord		animated

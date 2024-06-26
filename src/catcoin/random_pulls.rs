@@ -86,10 +86,6 @@ pub struct Reward {
 
 /// Rarely drops goodies
 pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> Result<(), Error> {
-    if message.author.bot {
-        return Ok(());
-    };
-
     let (rarity, catcoins, reward) = {
         let mut rng = thread_rng();
 

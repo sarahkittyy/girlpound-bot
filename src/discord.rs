@@ -177,6 +177,10 @@ async fn event_handler(
             new_user::welcome_user(ctx, new_member).await?;
         }
         Event::Message { new_message } => {
+            // ignore bots
+            if new_message.author.bot {
+                return Ok(());
+            }
             let _ = on_message::watch_emojis(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("watch emojis fail: {e}"));

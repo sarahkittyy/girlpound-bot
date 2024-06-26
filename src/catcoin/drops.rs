@@ -30,9 +30,6 @@ fn random_trip_msg(uid: UserId, amount: u64, catcoin_emoji: &str) -> String {
 use super::{get_catcoin, grant_catcoin, try_spend_catcoin};
 /// Users rarely trip and drop some of their catcoin
 pub async fn on_message(ctx: &Context, data: &PoiseData, msg: &Message) -> Result<(), Error> {
-    if msg.author.bot {
-        return Ok(());
-    };
     let uuid = msg.id.get();
 
     // check if drop should occur
