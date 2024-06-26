@@ -40,7 +40,7 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, msg: &Message) -> Resul
         let mut rng = thread_rng();
 
         // chance to trip
-        if !rng.gen_ratio(1, 1) {
+        if !rng.gen_ratio(1, 3000) {
             return Ok(());
         }
     };
