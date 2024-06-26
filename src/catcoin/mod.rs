@@ -1,10 +1,11 @@
 pub mod command;
-pub mod random_drops;
+pub mod drops;
+pub mod random_pulls;
 
 use crate::Error;
 use poise::serenity_prelude as serenity;
 
-use random_drops::Reward;
+use random_pulls::Reward;
 use sqlx::{self, MySql, Pool};
 
 #[derive(Clone, sqlx::FromRow)]
@@ -53,7 +54,11 @@ pub async fn get_drops(pool: &Pool<MySql>) -> Result<Vec<Reward>, Error> {
 }
 
 /// Try taking `amount` catcoin from the user's wallet. return false if not enough funds.
-pub async fn try_spend_catcoin(pool: &Pool<MySql>, from: serenity::UserId, amount: u64) -> Result<bool, Error> {
+pub async fn try_spend_catcoin(
+    pool: &Pool<MySql>,
+    from: serenity::UserId,
+    amount: u64,
+) -> Result<bool, Error> {
     let mut tx = pool.begin().await?;
     let rc = sqlx::query!(
         "UPDATE `catcoin` SET `catcoin` = `catcoin` - ? WHERE `uid` = ? AND `catcoin` >= ?",
@@ -67,8 +72,8 @@ pub async fn try_spend_catcoin(pool: &Pool<MySql>, from: serenity::UserId, amoun
         tx.rollback().await?;
         return Ok(false);
     }
-	tx.commit().await?;
-	Ok(true)
+    tx.commit().await?;
+    Ok(true)
 }
 
 /// Give catcoin from one user to another, returns false if you don't have enough.

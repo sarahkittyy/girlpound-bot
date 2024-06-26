@@ -73,6 +73,7 @@ async fn drop(
             ctx.data().catcoin_emoji
         )
     });
+
     // then drop it in chat
     let embed = CreateEmbed::new()
         .color(serenity::Color::from_rgb(random(), random(), random()))

@@ -3,7 +3,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use crate::api::ApiState;
-use crate::catcoin::random_drops::SpamFilter;
+use crate::catcoin::random_pulls::SpamFilter;
 use crate::steamid::SteamIDClient;
 use crate::tf2class::TF2Class;
 use crate::{catcoin, logs, seederboard, sourcebans, wacky_wednesday, Error};
@@ -64,8 +64,8 @@ pub struct PoiseData {
     pub catcoin_emoji: String,
 
     /// All possible random catcoin drops
-    pub catcoin_drops: Vec<catcoin::random_drops::Reward>,
-    pub catcoin_spam_filter: Arc<RwLock<catcoin::random_drops::SpamFilter>>,
+    pub catcoin_drops: Vec<catcoin::random_pulls::Reward>,
+    pub catcoin_spam_filter: Arc<RwLock<catcoin::random_pulls::SpamFilter>>,
 
     /// NSFW role
     pub horny_role: serenity::RoleId,
@@ -190,9 +190,12 @@ async fn event_handler(
             let _ = on_message::praise_the_lord(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("satan's bidding: {e}"));
-            let _ = catcoin::random_drops::on_message(ctx, data, new_message)
+            let _ = catcoin::random_pulls::on_message(ctx, data, new_message)
                 .await
-                .inspect_err(|e| eprintln!("Random drop fail: {e}"));
+                .inspect_err(|e| eprintln!("Random pull fail: {e}"));
+            let _ = catcoin::drops::on_message(ctx, data, new_message)
+                .await
+                .inspect_err(|e| eprintln!("Drop fail: {e}"));
         }
         Event::MessageDelete {
             channel_id,
