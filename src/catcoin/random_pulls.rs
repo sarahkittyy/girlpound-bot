@@ -96,7 +96,7 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> R
         let mut rng = thread_rng();
 
         // chance to pull
-        if !rng.gen_ratio(1, 1) {
+        if !rng.gen_ratio(1, 500) {
             return Ok(());
         }
 
@@ -115,14 +115,14 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> R
     println!("Got pull: {} {}", rarity, &reward.name);
 
     let pulls = increment_and_get_pulls(&data.local_pool, reward.id).await?;
-    /*add_to_inventory(
+    add_to_inventory(
         &data.local_pool,
         message.author.id,
         reward.id,
         pulls,
         catcoins,
     )
-    .await?;*/
+    .await?;
     grant_catcoin(&data.local_pool, message.author.id, catcoins).await?;
 
     let attachment = CreateAttachment::path(&reward.file).await?;
