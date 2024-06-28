@@ -69,7 +69,6 @@ pub async fn inv(
 
     while let Some(mci) = ComponentInteractionCollector::new(ctx)
         .channel_id(ctx.channel_id())
-        .author_id(ctx.author().id)
         .timeout(Duration::from_secs(120))
         .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
         .await
