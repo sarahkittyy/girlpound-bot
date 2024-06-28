@@ -1,8 +1,9 @@
 use chrono::NaiveDateTime;
-use poise::serenity_prelude::{self as serenity, Color, CreateEmbed, CreateEmbedAuthor};
+use poise::serenity_prelude::{self as serenity, Color, CreateEmbed, CreateEmbedAuthor, Message};
+use regex::Regex;
 use sqlx::{MySql, Pool};
 
-use crate::{discord::Context, Error};
+use crate::{catcoin::random_pulls::Rarity, discord::Context, Error};
 
 use super::random_pulls::Reward;
 
@@ -15,6 +16,51 @@ pub struct CatcoinPull {
     pub catcoin: i32,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct CatcoinPullMessageData {
+    pub uid: serenity::UserId,
+    pub name: String,
+    pub rarity: Rarity,
+    pub number: i32,
+    pub catcoin: i32,
+    pub created_at: NaiveDateTime,
+}
+
+impl TryFrom<Message> for CatcoinPullMessageData {
+    type Error = Error;
+    /// Returns as id 0
+    fn try_from(msg: Message) -> Result<Self, Self::Error> {
+        let embed = msg.embeds.first().ok_or("No embed.")?;
+        let uid = msg
+            .referenced_message
+            .map(|msg| msg.author.id)
+            .ok_or("Not replying to anyone.")?;
+
+        let title_re = Regex::new(r#":bangbang: (\w+) Pull: ([\w ()]+) #(\d+)"#).unwrap();
+        let title = embed.title.as_deref().ok_or("No title.")?;
+        let title_matches = title_re.captures(title).ok_or("No title match.")?;
+        let rarity: Rarity = title_matches.get(1).ok_or("No rarity.")?.as_str().into();
+        let name = title_matches.get(2).ok_or("No name.")?.as_str();
+        let number: i32 = title_matches.get(3).ok_or("No number.")?.as_str().parse()?;
+
+        let desc_re = Regex::new(r#"\*\*\+(\d+)\*\*"#).unwrap();
+        let desc = embed.description.as_deref().ok_or("No desc.")?;
+        let desc_matches = desc_re.captures(desc).ok_or("No desc match.")?;
+        let catcoin: i32 = desc_matches.get(1).ok_or("No catcoin.")?.as_str().parse()?;
+
+        let created_at = msg.timestamp.naive_utc();
+
+        Ok(CatcoinPullMessageData {
+            uid,
+            catcoin,
+            created_at,
+            number,
+            name: name.to_owned(),
+            rarity,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -146,6 +192,54 @@ impl PaginatedInventory {
             pulls: pulls.into_iter().take(10).collect(),
         }))
     }
+}
+
+pub async fn get_reward_by_name(
+    pool: &Pool<MySql>,
+    reward_name: &str,
+) -> Result<Option<Reward>, Error> {
+    let res: Option<Reward> = sqlx::query_as!(
+        Reward,
+        r#"
+		SELECT * FROM `catcoin_reward`
+		WHERE `name` = ?
+	"#,
+        reward_name
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(res)
+}
+
+/// Redeem old pull
+pub async fn claim_old_pull(
+    pool: &Pool<MySql>,
+    data: &CatcoinPullMessageData,
+) -> Result<bool, Error> {
+    let Some(reward) = get_reward_by_name(pool, &data.name).await? else {
+        return Err("No reward.".into());
+    };
+
+    let r = sqlx::query!(
+        r#"
+		IF NOT EXISTS (SELECT * FROM `catcoin_inv` WHERE `rid` = ? AND `number` = ?) THEN
+			INSERT INTO `catcoin_inv` (`uid`, `rid`, `number`, `catcoin`, `created_at`)
+			VALUES (?, ?, ?, ?, ?);
+		END IF
+	"#,
+        reward.id,
+        data.number,
+        data.uid.get(),
+        reward.id,
+        data.number,
+        data.catcoin,
+        data.created_at
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(r.rows_affected() > 0)
 }
 
 /// Add pull to user inventory

@@ -5,16 +5,16 @@ use futures::TryFutureExt;
 use poise::{
     self,
     serenity_prelude::{
-        self as serenity, ComponentInteractionCollector, CreateActionRow, CreateAllowedMentions,
-        CreateButton, CreateEmbed, CreateEmbedFooter, CreateInteractionResponseMessage,
-        CreateMessage, Mentionable, ReactionType,
+        self as serenity, parse_message_url, ComponentInteractionCollector, CreateActionRow,
+        CreateAllowedMentions, CreateButton, CreateEmbed, CreateEmbedFooter,
+        CreateInteractionResponseMessage, CreateMessage, Mentionable, ReactionType,
     },
     CreateReply,
 };
 
 use super::{
-    get_catcoin, get_top, grant_catcoin, inv::PaginatedInventory, transact, try_spend_catcoin,
-    CatcoinWallet,
+    get_catcoin, get_top, grant_catcoin, inv::claim_old_pull, inv::CatcoinPullMessageData,
+    inv::PaginatedInventory, transact, try_spend_catcoin, CatcoinWallet,
 };
 use crate::{discord::Context, Error};
 
@@ -134,8 +134,61 @@ async fn claim(
     ctx: Context<'_>,
     #[description = "The link to the pull message"] message_link: String,
 ) -> Result<(), Error> {
-    dbg!(message_link);
-    unimplemented!()
+    let Some((_gid, cid, mid)) = parse_message_url(&message_link) else {
+        ctx.send(
+            CreateReply::default()
+                .content("Invalid message url")
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    };
+    let msg = cid.message(ctx, mid).await?;
+    if msg.author.id != ctx.framework().bot_id {
+        ctx.send(
+            CreateReply::default()
+                .content("Not a bot message!")
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    }
+    // try and get a catcoin pull from the message
+    let Ok(pull) = CatcoinPullMessageData::try_from(msg) else {
+        ctx.send(
+            CreateReply::default()
+                .content("Not a catcoin pull!")
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    };
+
+    let inserted = claim_old_pull(&ctx.data().local_pool, &pull).await?;
+
+    if inserted {
+        ctx.send(
+            CreateReply::default()
+                .content(format!(
+                    "Added `{} | {} #{}` to <@{}>'s inventory.",
+                    pull.rarity,
+                    pull.name,
+                    pull.number,
+                    pull.uid.get()
+                ))
+                .ephemeral(true),
+        )
+        .await?;
+    } else {
+        ctx.send(
+            CreateReply::default()
+                .content("That reward has already been claimed!")
+                .ephemeral(true),
+        )
+        .await?;
+    }
+
+    Ok(())
 }
 
 /// Drop catcoin in the chat for anyone fast enough to claim.
