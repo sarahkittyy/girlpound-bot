@@ -1,5 +1,6 @@
 pub mod command;
 pub mod drops;
+pub mod inv;
 pub mod random_pulls;
 
 use std::collections::HashMap;
@@ -129,6 +130,7 @@ pub async fn transact(
     Ok(true)
 }
 
+/// Add 1 to the amount of times this reward has been pulled
 pub async fn increment_and_get_pulls(pool: &Pool<MySql>, reward_id: i32) -> Result<i32, Error> {
     sqlx::query!(
         r#"

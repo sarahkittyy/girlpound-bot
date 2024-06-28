@@ -6,19 +6,136 @@ use poise::{
     self,
     serenity_prelude::{
         self as serenity, ComponentInteractionCollector, CreateActionRow, CreateAllowedMentions,
-        CreateButton, CreateEmbed, CreateInteractionResponseMessage, CreateMessage, Mentionable,
-        ReactionType,
+        CreateButton, CreateEmbed, CreateEmbedFooter, CreateInteractionResponseMessage,
+        CreateMessage, Mentionable, ReactionType,
     },
     CreateReply,
 };
 
-use super::{get_catcoin, get_top, grant_catcoin, transact, try_spend_catcoin, CatcoinWallet};
+use super::{
+    get_catcoin, get_top, grant_catcoin, inv::PaginatedInventory, transact, try_spend_catcoin,
+    CatcoinWallet,
+};
 use crate::{discord::Context, Error};
 
 /// TKGP catcoin related stuff :3
-#[poise::command(slash_command, subcommands("balance", "top", "pay", "drop"))]
+#[poise::command(slash_command, subcommands("balance", "top", "pay", "drop", "inv"))]
 pub async fn catcoin(_: Context<'_>) -> Result<(), Error> {
     Ok(())
+}
+
+/// Catcoin pull inventory management
+#[poise::command(slash_command, subcommands("get", "claim"))]
+async fn inv(_: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
+
+/// Display your inventory, or someone else's.
+#[poise::command(slash_command, user_cooldown = 10)]
+async fn get(
+    ctx: Context<'_>,
+    #[description = "The user who's inventory to fetch"] user: Option<serenity::User>,
+) -> Result<(), Error> {
+    let uuid = ctx.id();
+
+    let user: &serenity::User = user.as_ref().unwrap_or(ctx.author());
+
+    let mut pages: Vec<PaginatedInventory> =
+        vec![PaginatedInventory::get(&ctx.data().local_pool, user.id).await?];
+    let mut page: usize = 0;
+
+    let prev_id = format!("{uuid}-prev");
+    let next_id = format!("{uuid}-next");
+    let close_id = format!("{uuid}-close");
+    let page_buttons = |pages: &Vec<PaginatedInventory>, page: usize| {
+        let mut v = vec![];
+        if page > 0 {
+            v.push(CreateButton::new(prev_id.clone()).emoji(ReactionType::Unicode("⬅️".to_owned())));
+        }
+        if pages[page].has_next() {
+            v.push(CreateButton::new(next_id.clone()).emoji(ReactionType::Unicode("➡️".to_owned())));
+        }
+        v.push(CreateButton::new(close_id.clone()).emoji(ReactionType::Unicode("❌".to_owned())));
+        vec![CreateActionRow::Buttons(v)]
+    };
+
+    // initial response
+    let rh = ctx
+        .send(
+            CreateReply::default()
+                .embed(
+                    pages[page]
+                        .to_embed(&ctx)
+                        .await?
+                        .footer(CreateEmbedFooter::new(format!("Page {}", page + 1))),
+                )
+                .components(page_buttons(&pages, page)),
+        )
+        .await?;
+
+    while let Some(mci) = ComponentInteractionCollector::new(ctx)
+        .channel_id(ctx.channel_id())
+        .author_id(ctx.author().id)
+        .timeout(Duration::from_secs(120))
+        .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
+        .await
+    {
+        if mci.data.custom_id == prev_id {
+            page = (page - 1).max(0);
+            rh.edit(
+                ctx,
+                CreateReply::default()
+                    .embed(
+                        pages[page]
+                            .to_embed(&ctx)
+                            .await?
+                            .footer(CreateEmbedFooter::new(format!("Page {}", page + 1))),
+                    )
+                    .components(page_buttons(&pages, page)),
+            )
+            .await?;
+            mci.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
+                .await?;
+        } else if mci.data.custom_id == next_id {
+            // if page is not fetched yet,
+            if (page + 1) >= pages.len() {
+                // fetch it
+                pages.push(pages[page].next(&ctx.data().local_pool).await?.unwrap());
+            }
+            page = page + 1;
+            rh.edit(
+                ctx,
+                CreateReply::default()
+                    .embed(
+                        pages[page]
+                            .to_embed(&ctx)
+                            .await?
+                            .footer(CreateEmbedFooter::new(format!("Page {}", page + 1))),
+                    )
+                    .components(page_buttons(&pages, page)),
+            )
+            .await?;
+            mci.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
+                .await?;
+        } else if mci.data.custom_id == close_id {
+            rh.delete(ctx).await?;
+            mci.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge)
+                .await?;
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+/// Claim an old pull
+#[poise::command(slash_command, user_cooldown = 3)]
+async fn claim(
+    ctx: Context<'_>,
+    #[description = "The link to the pull message"] message_link: String,
+) -> Result<(), Error> {
+    dbg!(message_link);
+    unimplemented!()
 }
 
 /// Drop catcoin in the chat for anyone fast enough to claim.

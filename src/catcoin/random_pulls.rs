@@ -4,14 +4,14 @@ use poise::serenity_prelude::{
     Color, Context, CreateAttachment, CreateEmbed, CreateEmbedFooter, CreateMessage, Message,
 };
 
-use crate::{discord::PoiseData, Error};
+use crate::{catcoin::inv::add_to_inventory, discord::PoiseData, Error};
 use rand::prelude::*;
 use rand_distr::Normal;
 
 use super::{grant_catcoin, increment_and_get_pulls};
 
 /// Reward rarities
-#[derive(PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Clone, Copy, Debug)]
 pub enum Rarity {
     Common,
     Rare,
@@ -76,7 +76,7 @@ impl Rarity {
     }
 }
 
-#[derive(Clone, sqlx::FromRow)]
+#[derive(Clone, Debug, sqlx::FromRow)]
 pub struct Reward {
     pub id: i32,
     pub name: String,
@@ -109,6 +109,14 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, message: &Message) -> R
     println!("Got pull: {} {}", rarity, &reward.name);
 
     let pulls = increment_and_get_pulls(&data.local_pool, reward.id).await?;
+    add_to_inventory(
+        &data.local_pool,
+        message.author.id,
+        reward.id,
+        pulls,
+        catcoins,
+    )
+    .await?;
     grant_catcoin(&data.local_pool, message.author.id, catcoins).await?;
 
     let attachment = CreateAttachment::path(&reward.file).await?;
