@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use super::{Context, PoiseData};
+use crate::catcoin::inv::{claim_old_pull, CatcoinPullMessageData};
 use crate::logs::remove_backticks;
 use crate::profile::command::{get_profile, link, profile};
 use crate::profile::{get_user_profile, get_user_profiles, UserProfile};
@@ -14,6 +15,7 @@ use crate::util::get_bit;
 use crate::{Error, Server};
 
 pub mod util;
+use futures::StreamExt;
 use util::*;
 
 mod map;
@@ -73,6 +75,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     profile,
     get_profile,
     link,
+    fixpulls,
     teamcaptain,
     wacky,
     givepro,
@@ -201,6 +204,62 @@ async fn generate_classes_embed(
     }
 
     Ok(embed)
+}
+
+/// Scour the channel for pulls
+#[poise::command(slash_command, global_cooldown = 5)]
+pub async fn fixpulls(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.send(
+        CreateReply::default()
+            .ephemeral(true)
+            .content("Beginning scan..."),
+    )
+    .await?;
+
+    let mut iter = ctx.channel_id().messages_iter(ctx).boxed();
+    let mut count: usize = 0;
+
+    let mut existing: usize = 0;
+    let mut new: usize = 0;
+    while let Some(next) = iter.next().await {
+        count += 1;
+        if count % 100 == 0 {
+            println!(
+                "Scanning pulls in channel <#{}>: {} done. ({} new, {} existing)",
+                ctx.channel_id(),
+                count,
+                new,
+                existing
+            );
+        }
+        match next {
+            Ok(msg) if msg.author.id == ctx.framework().bot_id => {
+                if let Ok(pull) = CatcoinPullMessageData::try_from(msg) {
+                    let _ = claim_old_pull(&ctx.data().local_pool, &pull)
+                        .await
+                        .inspect_err(|e| println!("claim fail: {e:?}"))
+                        .inspect(|inserted| {
+                            if *inserted {
+                                new += 1;
+                            } else {
+                                existing += 1;
+                            }
+                        });
+                }
+            }
+            _ => (),
+        }
+    }
+
+    println!(
+        "Done scanning <#{}>: {} done. ({} new, {} existing)",
+        ctx.channel_id(),
+        count,
+        new,
+        existing
+    );
+
+    Ok(())
 }
 
 /// View everyone's preferred classes from a voice chat.

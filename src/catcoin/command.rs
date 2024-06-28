@@ -24,15 +24,9 @@ pub async fn catcoin(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Catcoin pull inventory management
-#[poise::command(slash_command, subcommands("get", "claim"))]
-async fn inv(_: Context<'_>) -> Result<(), Error> {
-    Ok(())
-}
-
 /// Display your inventory, or someone else's.
 #[poise::command(slash_command, user_cooldown = 10)]
-async fn get(
+pub async fn inv(
     ctx: Context<'_>,
     #[description = "The user who's inventory to fetch"] user: Option<serenity::User>,
 ) -> Result<(), Error> {
@@ -130,7 +124,7 @@ async fn get(
 
 /// Claim an old pull
 #[poise::command(slash_command, user_cooldown = 3)]
-async fn claim(
+async fn _claim(
     ctx: Context<'_>,
     #[description = "The link to the pull message"] message_link: String,
 ) -> Result<(), Error> {
