@@ -78,6 +78,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     fixpulls,
     teamcaptain,
     wacky,
+    purge,
     givepro,
     psychostats,
     bark,
@@ -106,6 +107,42 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2gag,
     tf2ungag,
 ];
+
+/// Purge a user's messages
+#[poise::command(slash_command)]
+pub async fn purge(
+    ctx: Context<'_>,
+    #[description = "The user ID to purge"] user: serenity::UserId,
+    #[description = "Messages to go back"] limit: Option<usize>,
+) -> Result<(), Error> {
+    ctx.send(
+        CreateReply::default()
+            .content(format!("Deleting <@{}>'s messages", user.get()))
+            .ephemeral(true),
+    )
+    .await?;
+    let channel = ctx.channel_id();
+    let limit = limit.unwrap_or(100);
+    let mut msgs = channel.messages_iter(&ctx).boxed();
+    let mut count = 0;
+    while let Some(message) = msgs.next().await {
+        count += 1;
+        if count > limit {
+            break;
+        }
+        let Ok(message) = message else {
+            continue;
+        };
+        if message.author.id == user {
+            let _ = message
+                .delete(&ctx)
+                .await
+                .inspect_err(|e| eprintln!("Could not delete user's message: {:?}", e));
+        }
+    }
+    println!("Deleted {count} messages from <@{}>", user.get());
+    Ok(())
+}
 
 async fn generate_classes_embed(
     ctx: &Context<'_>,
