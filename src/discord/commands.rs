@@ -825,6 +825,7 @@ pub async fn reacted_users(
     #[description = "The message's channel"] channel_id: String,
     #[description = "The message to fetch reactions from"] message_id: String,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     let mut total = vec![];
     let mut after: Option<serenity::UserId> = None;
     let channel: u64 = channel_id.parse()?;
