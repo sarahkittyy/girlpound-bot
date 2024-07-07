@@ -231,7 +231,10 @@ async fn drop(
     let msg = message.unwrap_or_else(|| {
         format!(
             "{} dropped **{}** {} on the ground!",
-            ctx.author().mention(),
+            ctx.author()
+                .nick_in(ctx, Some(ctx.guild_id()))
+                .await
+                .unwrap_or_else(ctx.author().global_name.unwrap_or(ctx.author().name)),
             amount,
             ctx.data().catcoin_emoji
         )
