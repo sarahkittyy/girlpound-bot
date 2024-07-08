@@ -173,22 +173,39 @@ pub async fn teamcaptain(
         };
         let color = if pick_red { "🔴 RED" } else { "🔵 BLU" };
         let team: &mut Vec<UserId> = if pick_red { &mut red } else { &mut blu };
-        let pick: PromptResponse<UserId> = prompt(
-            &ctx,
-            &format!("<@{}> Your pick! :3", captain),
-            captain,
-            options(&members),
-        )
-        .await?
-        .parse()?;
-        update_after_choice(
-            &ctx,
-            &pick.mci,
-            format!("<@{}> ({}) chose: <@{}>", captain, color, pick.data.clone()),
-        )
-        .await?;
-        members.retain(|m| m.user.id != pick.data);
-        team.push(pick.data);
+        if members.len() == 1 {
+            let pick = members.first().unwrap().user.id;
+            ctx.channel_id()
+                .send_message(
+                    ctx,
+                    CreateMessage::new().content(format!(
+                        "<@{}> ({}) chose: <@{}>",
+                        captain,
+                        color,
+                        pick.clone()
+                    )),
+                )
+                .await?;
+            team.push(pick);
+            members.clear();
+        } else {
+            let pick: PromptResponse<UserId> = prompt(
+                &ctx,
+                &format!("<@{}> Your pick! :3", captain),
+                captain,
+                options(&members),
+            )
+            .await?
+            .parse()?;
+            update_after_choice(
+                &ctx,
+                &pick.mci,
+                format!("<@{}> ({}) chose: <@{}>", captain, color, pick.data.clone()),
+            )
+            .await?;
+            members.retain(|m| m.user.id != pick.data);
+            team.push(pick.data);
+        };
         pick_red = !pick_red;
     }
 

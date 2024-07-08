@@ -232,9 +232,9 @@ async fn drop(
         format!(
             "{} dropped **{}** {} on the ground!",
             ctx.author()
-                .nick_in(ctx, Some(ctx.guild_id()))
-                .await
-                .unwrap_or_else(ctx.author().global_name.unwrap_or(ctx.author().name)),
+                .global_name
+                .as_deref()
+                .unwrap_or(ctx.author().name.as_ref()),
             amount,
             ctx.data().catcoin_emoji
         )
