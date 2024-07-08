@@ -21,6 +21,7 @@ mod psychostats;
 mod seederboard;
 mod sourcebans;
 mod steamid;
+mod stocks;
 mod tf2_rcon;
 mod tf2class;
 mod util;

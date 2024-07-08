@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::api::ApiState;
 use crate::steamid::SteamIDClient;
 use crate::tf2class::TF2Class;
-use crate::{catcoin, logs, seederboard, sourcebans, wacky_wednesday, Error};
+use crate::{catcoin, logs, seederboard, sourcebans, stocks, wacky_wednesday, Error};
 use crate::{parse_env, Server};
 use chrono::{DateTime, Duration, Utc};
 use poise::serenity_prelude::{self as serenity, Mentionable};
@@ -85,6 +85,8 @@ pub struct PoiseData {
     pub mod_channel: serenity::ChannelId,
     /// age verification channel
     pub birthday_channel: serenity::ChannelId,
+    /// for posting stock market info daily
+    pub stock_market_channel: serenity::ChannelId,
 
     /// /seeder cooldown
     pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
@@ -266,6 +268,7 @@ pub async fn start_bot(
     let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
     let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
     let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
+    let stock_market_channel_id: u64 = parse_env("STOCK_MARKET_CHANNEL_ID");
     let catcoin_emoji: String = parse_env("CATCOIN_EMOJI");
 
     let db_url: String = parse_env("DATABASE_URL");
@@ -376,6 +379,7 @@ pub async fn start_bot(
                         leaver_log_channel: serenity::ChannelId::new(leaver_log_channel_id),
                         mod_channel: serenity::ChannelId::new(mod_channel_id),
                         birthday_channel: serenity::ChannelId::new(birthday_channel_id),
+                        stock_market_channel: serenity::ChannelId::new(stock_market_channel_id),
                         media_cooldown_sender: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
                         local_pool,
@@ -453,6 +457,7 @@ pub async fn start_bot(
     sched
         .add(wacky_wednesday::ww_end_job(wacky_server.clone()))
         .await?;
+    stocks::init(&sched, &local_pool).await?;
 
     sched.start().await?;
 

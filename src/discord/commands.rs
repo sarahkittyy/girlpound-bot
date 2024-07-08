@@ -10,6 +10,7 @@ use crate::profile::command::{get_profile, link, profile};
 use crate::profile::{get_user_profile, get_user_profiles, UserProfile};
 use crate::seederboard::command::seederboard;
 use crate::steamid::SteamIDProfile;
+use crate::stocks;
 use crate::tf2class::TF2Class;
 use crate::util::get_bit;
 use crate::{Error, Server};
@@ -71,6 +72,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
         ..remindme()
     },
     seederboard,
+    stocks::stocks,
     bhop,
     profile,
     get_profile,
