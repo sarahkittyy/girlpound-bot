@@ -74,6 +74,7 @@ pub async fn tf2unban(
     #[description = "The steamid / ip to unban."] steamid: String,
     #[description = "The reason for the unban"] reason: Option<String>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     let Ok(profile) = ctx
         .data()
         .steamid_client
