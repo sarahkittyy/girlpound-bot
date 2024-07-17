@@ -18,11 +18,11 @@ const TRIP_MESSAGES: &'static [&'static str] = &[
     "%u slips on a banana peel, dropping **%c** %e",
 ];
 
-fn random_trip_msg(uid: UserId, amount: u64, catcoin_emoji: &str) -> String {
+fn random_trip_msg(name: &str, amount: u64, catcoin_emoji: &str) -> String {
     TRIP_MESSAGES
         .choose(&mut thread_rng())
         .unwrap() //
-        .replace("%u", &uid.mention().to_string())
+        .replace("%u", name)
         .replace("%c", &amount.to_string())
         .replace("%e", catcoin_emoji)
 }
@@ -66,7 +66,11 @@ pub async fn on_message(ctx: &Context, data: &PoiseData, msg: &Message) -> Resul
     // post in chat
     let embed = CreateEmbed::new()
         .color(serenity::Color::from_rgb(random(), random(), random()))
-        .title(random_trip_msg(msg.author.id, amount, &data.catcoin_emoji));
+        .title(random_trip_msg(
+            msg.author.global_name.as_ref().unwrap_or(&msg.author.name),
+            amount,
+            &data.catcoin_emoji,
+        ));
     let button = CreateActionRow::Buttons(vec![CreateButton::new(format!("{uuid}-spilled-coin"))
         .label(format!("{amount}"))
         .emoji(
