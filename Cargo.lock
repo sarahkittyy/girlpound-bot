@@ -1434,7 +1434,7 @@ dependencies = [
  "ftp",
  "futures",
  "humantime",
- "image 0.25.1",
+ "image",
  "plotters",
  "poise",
  "rand 0.8.5",
@@ -1769,20 +1769,6 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.24.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5690139d2f55868e080017335e4b94cb7414274c74f1669c84fb5feba2c9f69d"
-dependencies = [
- "bytemuck",
- "byteorder",
- "color_quant",
- "jpeg-decoder",
- "num-traits",
- "png",
-]
-
-[[package]]
-name = "image"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd54d660e773627692c524beaad361aca785a4f9f5730ce91f42aabe5bce3d11"
@@ -1791,6 +1777,8 @@ dependencies = [
  "byteorder",
  "num-traits",
  "png",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -1841,12 +1829,6 @@ checksum = "d2b099aaa34a9751c5bf0878add70444e1ed2dd73f347be99003d4577277de6e"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "jpeg-decoder"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5d4a7da358eff58addd2877a45865158f0d78c911d43a5784ceb7bbf52833b0"
 
 [[package]]
 name = "js-sys"
@@ -2556,12 +2538,11 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 [[package]]
 name = "plotters"
 version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a15b6eccb8484002195a3e44fe65a4ce8e93a625797a063735536fd59cb01cf3"
+source = "git+https://github.com/plotters-rs/plotters?branch=dependabot/cargo/image-0.25.1#02bf2e0b43bbc7fe6a55c1f8e18626fe8edfac58"
 dependencies = [
  "chrono 0.4.38",
  "font-kit",
- "image 0.24.9",
+ "image",
  "lazy_static 1.5.0",
  "num-traits",
  "pathfinder_geometry",
@@ -2576,25 +2557,22 @@ dependencies = [
 [[package]]
 name = "plotters-backend"
 version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "414cec62c6634ae900ea1c56128dfe87cf63e7caece0852ec76aba307cebadb7"
+source = "git+https://github.com/plotters-rs/plotters?branch=dependabot/cargo/image-0.25.1#02bf2e0b43bbc7fe6a55c1f8e18626fe8edfac58"
 
 [[package]]
 name = "plotters-bitmap"
 version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7e7f6fb8302456d7c264a94dada86f76d76e1a03e2294ee86ca7da92983b0a6"
+source = "git+https://github.com/plotters-rs/plotters?branch=dependabot/cargo/image-0.25.1#02bf2e0b43bbc7fe6a55c1f8e18626fe8edfac58"
 dependencies = [
  "gif",
- "image 0.24.9",
+ "image",
  "plotters-backend",
 ]
 
 [[package]]
 name = "plotters-svg"
 version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81b30686a7d9c3e010b84284bdd26a29f2138574f52f5eb6f794fc0ad924e705"
+source = "git+https://github.com/plotters-rs/plotters?branch=dependabot/cargo/image-0.25.1#02bf2e0b43bbc7fe6a55c1f8e18626fe8edfac58"
 dependencies = [
  "plotters-backend",
 ]
@@ -4822,4 +4800,19 @@ checksum = "75652c55c0b6f3e6f12eb786fe1bc960396bf05a1eb3bf1f3691c3610ac2e6d4"
 dependencies = [
  "cc",
  "pkg-config",
+]
+
+[[package]]
+name = "zune-core"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f423a2c17029964870cfaabb1f13dfab7d092a62a29a89264f4d36990ca414a"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec866b44a2a1fd6133d363f073ca1b179f438f99e7e5bfb1e33f7181facfe448"
+dependencies = [
+ "zune-core",
 ]

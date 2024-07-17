@@ -1,10 +1,9 @@
 use std::sync::OnceLock;
 
-use chrono::{DateTime, Days, NaiveDateTime, Utc};
-use image::codecs::png::PngEncoder;
-use poise::serenity_prelude::{self as serenity, CreateAttachment, CreateMessage};
-use sqlx::{pool, MySql, Pool, QueryBuilder};
-use tokio::sync::{Mutex, RwLock};
+use chrono::{Days, NaiveDateTime, Utc};
+use poise::serenity_prelude::{self as serenity, CreateAttachment, CreateEmbed, CreateMessage};
+use sqlx::{MySql, Pool, QueryBuilder};
+use tokio::sync::RwLock;
 use tokio_cron_scheduler::{Job, JobBuilder, JobScheduler};
 
 use crate::{
@@ -23,6 +22,7 @@ pub struct Company {
     pub name: String,
     pub tag: String,
     pub total_shares: i32,
+    pub logo: String,
     pub price: i32,
 }
 
@@ -55,7 +55,6 @@ pub async fn init(sched: &JobScheduler, pool: &Pool<MySql>) -> Result<(), Error>
 /// update the market one full day.
 async fn step_market(ctx: &serenity::Context, data: &PoiseData) -> Result<(), Error> {
     update_price_history(data).await?;
-    post_market_floor(ctx, data).await?;
 
     let mut time = market_time().write().await;
     println!("Updating market for {}", time);
@@ -91,19 +90,55 @@ async fn update_price_history(data: &PoiseData) -> Result<(), Error> {
 /// post the trading floor where users can buy and sell stocks.
 async fn post_market_floor(ctx: &serenity::Context, data: &PoiseData) -> Result<(), Error> {
     let companies = get_all_companies(&data.local_pool).await?;
-    let c = companies.first().unwrap();
-    let ph: Vec<PriceHistory> =
-        sqlx::query_as!(PriceHistory, "SELECT * FROM `catcoin_price_history`")
-            .fetch_all(&data.local_pool)
-            .await?;
-    let buf = draw_stock_trends(c, &ph)?;
-    let attachment = CreateAttachment::bytes(buf, &format!("{}.png", c.tag));
+
+    // precursor post
+    let content = format!(
+        "# State of the market {}",
+        market_time().read().await.format("%m-%d")
+    );
     data.stock_market_channel
-        .send_message(
-            ctx,
-            CreateMessage::new().add_file(attachment).content("meow"),
-        )
+        .send_message(ctx, CreateMessage::new().content(content))
         .await?;
+
+    // all companies' price histories for the last 30 days.
+    let ph: Vec<PriceHistory> = sqlx::query_as!(
+		PriceHistory,
+		"SELECT * FROM `catcoin_price_history` WHERE `timestamp` > CURRENT_DATE() - INTERVAL 1 MONTH",
+	)
+    .fetch_all(&data.local_pool)
+    .await?;
+
+    // bulk post 4 stock graphs at a time
+    let mut bulk_post: Vec<CreateAttachment> = vec![];
+    const BULK_AMNT: i32 = 4;
+    let mut bulk_counter: i32 = BULK_AMNT;
+    for company in &companies {
+        // get company price history
+        let ph = ph
+            .iter()
+            .cloned()
+            .filter(|ph| ph.company_id == company.id)
+            .collect();
+        // draw chart
+        let buf = draw_stock_trends(company, ph).await?;
+        // post
+        let attachment = CreateAttachment::bytes(buf, &format!("{}.png", company.tag));
+        bulk_post.push(attachment);
+        bulk_counter -= 1;
+        if bulk_counter == 0 {
+            data.stock_market_channel
+                .send_message(ctx, CreateMessage::new().add_files(bulk_post))
+                .await?;
+            bulk_post = vec![];
+            bulk_counter = BULK_AMNT;
+        }
+    }
+    // send residual posts
+    if bulk_post.len() > 0 {
+        data.stock_market_channel
+            .send_message(ctx, CreateMessage::new().add_files(bulk_post))
+            .await?;
+    }
     Ok(())
 }
 
@@ -122,14 +157,17 @@ pub async fn stocks(_: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command)]
 async fn write(ctx: Context<'_>) -> Result<(), Error> {
-    post_market_floor(ctx.serenity_context(), ctx.data()).await?;
     ctx.reply("ok").await?;
+    post_market_floor(ctx.serenity_context(), ctx.data()).await?;
     Ok(())
 }
 
 #[poise::command(slash_command)]
 async fn step(ctx: Context<'_>) -> Result<(), Error> {
-    step_market(ctx.serenity_context(), ctx.data()).await?;
     ctx.reply("ok").await?;
+    for _ in 0..=30 {
+        step_market(ctx.serenity_context(), ctx.data()).await?;
+    }
+    post_market_floor(ctx.serenity_context(), ctx.data()).await?;
     Ok(())
 }

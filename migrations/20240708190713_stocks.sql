@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS `catcoin_company` (
 	`name` TEXT NOT NULL,
 	`tag` varchar(10) NOT NULL,
 	`total_shares` INT NOT NULL,
+	`logo` TEXT NOT NULL,
 	`price` INT NOT NULL
 );
 
