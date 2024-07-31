@@ -1,0 +1,18 @@
+[package]
+name = "tf2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rcon = { path = "../rust-rcon", features = ["rt-tokio"] }
+common = { path = "../common" }
+
+regex = "1.9.6"
+tokio = { version = "1", features = ["full"] }
+srcds_log_parser = { git = "https://github.com/sarahkittyy/srcds-log-parser", branch = "main" }
+poise = "0.6.1"
+ftp = "3.0.1"
+sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
+chrono = "0.4.31"
+chrono-tz = "0.8.6"
+tokio-cron-scheduler = "0.10.0"

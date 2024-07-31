@@ -1,38 +1,7 @@
-[package]
-name = "girlpound-bot"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-chrono = "0.4.31"
-dotenv = "0.15.0"
-ftp = "3.0.1"
-poise = "0.6.1"
-rand = "0.8.5"
-# rcon = { version = "0.6.0", features = ["rt-tokio"] }
-rcon = { path = "rust-rcon", features = ["rt-tokio"] }
-regex = "1.9.6"
-reqwest = { version = "0.11.22", features = ["json"] }
-serde = {version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
-sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
-tokio = { version = "1", features = ["full"] }
-srcds_log_parser = { git = "https://github.com/sarahkittyy/srcds-log-parser", branch = "main" }
-futures = "0.3.30"
-scraper = "0.19.0"
-uwuify = "0.2.2"
-emojito = "0.3.5"
-tokio-cron-scheduler = "0.10.0"
-chrono-tz = "0.8.6"
-humantime = "2.1.0"
-steam-connect = { version = "1.3.0" }
-axum = { version = "0.7.5", features = ["tokio", "query", "macros"] }
-rand_distr = "0.4.3"
-serde-xml-rs = "0.6.0"
-plotters = { git = "https://github.com/plotters-rs/plotters", branch = "dependabot/cargo/image-0.25.1", features = ["image"] }
-image = { version = "0.25.1", default-features = false, features = ["png"] }
+[workspace]
+members = ["tf2", "bot", "common", "stats", "api", "catcoin", "steam", "sourcebans", "seederboard", "profile", "stocks"]
+default-members = ["bot"]
+resolver = "2"
 
 [patch.crates-io]
 serenity = { git = "https://github.com/sarahkittyy/serenity.git" }

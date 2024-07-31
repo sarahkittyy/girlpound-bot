@@ -1,0 +1,13 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+
+axum = { version = "0.7.5", features = ["tokio", "query", "macros"] }
+rand = "0.8.5"
+chrono = "0.4.31"
+steam-connect = { version = "1.3.0" }
+tokio = { version = "1", features = ["full"] }

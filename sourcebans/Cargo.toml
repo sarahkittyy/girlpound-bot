@@ -1,0 +1,12 @@
+[package]
+name = "sourcebans"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+
+sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
+tokio = { version = "1", features = ["full"] }
+poise = "0.6.1"
+rand = "0.8.5"

@@ -1,0 +1,103 @@
+// if you're reading this please give the owner of this repository a puppy pawjob with a twist
+use std::collections::HashMap;
+use std::net::Ipv4Addr;
+use std::net::ToSocketAddrs;
+
+use dotenv::dotenv;
+
+use tokio;
+
+use common::{
+    util::{self, parse_env},
+    Error,
+};
+use tf2::{logs::LogReceiver, ServerBuilder};
+
+mod discord;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    dotenv().ok();
+    println!("Starting the girlpound bot...");
+
+    let rcon_pass: String = parse_env("RCON_PASS");
+
+    // load servers
+    let tkgp4 = ServerBuilder {
+        name: "#4".to_owned(),
+        emoji: "🅰️".to_owned(),
+        addr: "tf2.fluffycat.gay:27015"
+            .to_socket_addrs()?
+            .next()
+            .expect("Could not resolve RCON address."),
+        rcon_pass: rcon_pass.clone(),
+        player_count_cid: Some(parse_env("PLAYER_COUNT_CID_4")),
+        log_cid: Some(parse_env("RELAY_CID_4")),
+        ftp_credentials: (parse_env("FTP_USER_4"), parse_env("FTP_PASS_4")),
+        show_status: true,
+        allow_seed: true,
+        control_mapfile: true,
+        wacky_server: true,
+    }
+    .build()
+    .await
+    .expect("Could not connect to server tkgp4");
+    let tkgp5 = ServerBuilder {
+        name: "#5".to_owned(),
+        emoji: "🅱️".to_owned(),
+        addr: "tf3.fluffycat.gay:27015"
+            .to_socket_addrs()?
+            .next()
+            .expect("Could not resolve RCON address."),
+        rcon_pass: rcon_pass.clone(),
+        player_count_cid: Some(parse_env("PLAYER_COUNT_CID_5")),
+        log_cid: Some(parse_env("RELAY_CID_5")),
+        ftp_credentials: (parse_env("FTP_USER_5"), parse_env("FTP_PASS_5")),
+        show_status: true,
+        allow_seed: true,
+        control_mapfile: true,
+        wacky_server: false,
+    }
+    .build()
+    .await
+    .expect("Could not connect to server tkgp5");
+    let tkgp6 = ServerBuilder {
+        name: "#6".to_owned(),
+        emoji: "️💀".to_owned(),
+        addr: "pug.fluffycat.gay:27015"
+            .to_socket_addrs()?
+            .next()
+            .expect("Could not resolve RCON address."),
+        rcon_pass: rcon_pass.clone(),
+        player_count_cid: Some(parse_env("PLAYER_COUNT_CID_6")),
+        log_cid: Some(parse_env("RELAY_CID_6")),
+        ftp_credentials: (parse_env("FTP_USER_6"), parse_env("FTP_PASS_6")),
+        show_status: false,
+        allow_seed: false,
+        control_mapfile: false,
+        wacky_server: false,
+    }
+    .build()
+    .await
+    .expect("Could not connect to server tkgp6");
+
+    let mut servers = HashMap::new();
+    servers.insert(tkgp4.addr, tkgp4);
+    servers.insert(tkgp5.addr, tkgp5);
+    servers.insert(tkgp6.addr, tkgp6);
+
+    println!("{} servers loaded.", servers.len());
+
+    println!("Launching UDP log receiver...");
+    let logs_addr: Ipv4Addr = parse_env("SRCDS_LOG_ADDR");
+    let logs_port: u16 = parse_env("SRCDS_LOG_PORT");
+    let log_receiver = LogReceiver::connect(logs_addr, logs_port)
+        .await
+        .expect("Could not bind log receiver");
+
+    println!("Spawning HTTP API listener...");
+    let api_state = api::init().await.expect("Could not spawn api.");
+
+    println!("Starting discord bot...");
+    discord::start_bot(log_receiver, servers, api_state).await
+}

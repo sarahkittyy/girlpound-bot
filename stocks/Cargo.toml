@@ -1,0 +1,18 @@
+[package]
+name = "stocks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+catcoin = { path = "../catcoin" }
+
+chrono = "0.4.31"
+poise = "0.6.1"
+sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
+tokio = { version = "1", features = ["full"] }
+tokio-cron-scheduler = "0.10.0"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+plotters = { git = "https://github.com/plotters-rs/plotters", branch = "dependabot/cargo/image-0.25.1", features = ["image"] }
+image = { version = "0.25.1", default-features = false, features = ["png"] }

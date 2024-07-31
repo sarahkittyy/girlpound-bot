@@ -1,0 +1,12 @@
+[package]
+name = "seederboard"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tf2 = { path = "../tf2" }
+common = { path = "../common" }
+
+srcds_log_parser = { git = "https://github.com/sarahkittyy/srcds-log-parser", branch = "main" }
+sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
+tokio = { version = "1", features = ["full"] }

@@ -1,0 +1,13 @@
+[package]
+name = "stats"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+regex = "1.9.6"
+reqwest = { version = "0.11.22", features = ["json"] }
+scraper = "0.19.0"
+futures = "0.3.30"
+serde = {version = "1.0.193", features = ["derive"] }
+serde-xml-rs = "0.6.0"

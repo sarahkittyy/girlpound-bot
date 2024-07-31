@@ -1,0 +1,17 @@
+[package]
+name = "profile"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+steam = { path = "../steam" }
+stats = { path = "../stats" }
+common = { path = "../common" }
+tf2 = { path = "../tf2" }
+catcoin = { path = "../catcoin" }
+api = { path = "../api" }
+
+regex = "1.9.6"
+chrono = "0.4.31"
+poise = "0.6.1"
+sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
