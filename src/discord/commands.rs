@@ -149,17 +149,15 @@ pub async fn delete_server(ctx: Context<'_>) -> Result<(), Error> {
 
     if new_vote == true {
         ctx.send(CreateReply::default().content(format!(
-            "**+1** -- {}/{} ({:.0}%) votes to #DeleteTKGP.",
-            yes_votes + 1,
-            required_votes,
+            "{:.0} left. ({:.2}%). #DELETETKGP",
+            required_votes - (yes_votes + 1.0),
             (yes_votes as f32 + 1.0) / required_votes * 100.0
         )))
         .await?;
     } else {
         ctx.send(CreateReply::default().content(format!(
-            "**-1** -- {}/{} ({:.0}%) votes to #DeleteTKGP.",
-            yes_votes - 1,
-            required_votes,
+            "{:.0} left. ({:.2}%) #DELETETKGP",
+            required_votes - (yes_votes - 1.0),
             (yes_votes as f32 - 1.0) / required_votes * 100.0
         )))
         .await?;
