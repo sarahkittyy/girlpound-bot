@@ -73,6 +73,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     seederboard,
     bhop,
     profile,
+    delete_server,
     get_profile,
     link,
     fixpulls,
@@ -107,6 +108,63 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2gag,
     tf2ungag,
 ];
+
+/// If over 80% of the server votes yes, delete the server.
+#[poise::command(slash_command)]
+pub async fn delete_server(ctx: Context<'_>) -> Result<(), Error> {
+    let Some(total_members) = ctx
+        .data()
+        .guild_id
+        .to_guild_cached(&ctx)
+        .map(|v| v.member_count)
+    else {
+        ctx.send(
+            CreateReply::default()
+                .content("Error fetching guild.")
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    };
+    let yes_votes =
+        sqlx::query!("SELECT COUNT(*) as yes_votes FROM `delete_server` WHERE `vote` = true")
+            .fetch_one(&ctx.data().local_pool)
+            .await?
+            .yes_votes;
+
+    let uid = ctx.author().id;
+    let user = sqlx::query!(
+        "SELECT * FROM `delete_server` WHERE `uid` = ?",
+        uid.to_string()
+    )
+    .fetch_optional(&ctx.data().local_pool)
+    .await?;
+
+    let vote = user.map(|u| u.vote == 1).unwrap_or(false);
+    let new_vote = !vote;
+
+    let required_votes = (total_members as f32 * 0.80).ceil();
+
+    sqlx::query!("INSERT INTO `delete_server` (`uid`, `vote`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `vote` = ?", uid.to_string(), new_vote, new_vote).execute(&ctx.data().local_pool).await?;
+
+    if new_vote == true {
+        ctx.send(CreateReply::default().content(format!(
+            "{:.0} left. ({:.2}%). #DELETETKGP",
+            required_votes as i64 - (yes_votes + 1),
+            (yes_votes as f32 + 1.0) / required_votes * 100.0
+        )))
+        .await?;
+    } else {
+        ctx.send(CreateReply::default().content(format!(
+            "{:.0} left. ({:.2}%) #DELETETKGP",
+            required_votes as i64 - (yes_votes - 1),
+            (yes_votes as f32 - 1.0) / required_votes * 100.0
+        )))
+        .await?;
+    }
+
+    Ok(())
+}
 
 /// Purge a user's messages
 #[poise::command(slash_command)]
