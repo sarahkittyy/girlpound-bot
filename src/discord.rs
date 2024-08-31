@@ -351,6 +351,8 @@ pub async fn start_bot(
                             "rgl_6s_koth_bo5",
                             "rgl_6s_5cp_scrim",
                             "rgl_6s_5cp_match_pro",
+                            "tfcl_off",
+                            "tfcl_UD_ultiduo",
                         ]
                         .into_iter()
                         .map(str::to_owned)
