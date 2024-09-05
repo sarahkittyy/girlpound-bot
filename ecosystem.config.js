@@ -1,6 +1,6 @@
 module.exports = {
   apps : [{
-    script: 'target/release/girlpound-bot',
+    script: 'target/release/bot',
     interpreter: '',
   }]
 };
