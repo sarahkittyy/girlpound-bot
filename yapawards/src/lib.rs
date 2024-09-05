@@ -61,7 +61,7 @@ impl YapTracker {
         Ok(YapAwards {
             top10: top10
                 .into_iter()
-                .map(|r| (UserId::new(r.uid.parse::<u64>().unwrap()), r.count))
+                .map(|r| (UserId::new(r.uid.parse::<u64>().unwrap()), r.count as i64))
                 .collect(),
             total,
         })
