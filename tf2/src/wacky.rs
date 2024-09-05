@@ -22,6 +22,14 @@ pub fn start_job(wacky_server: Server) -> Job {
                         "exec wacky_wednesday.cfg",
                     )
                     .await.unwrap();
+				wacky_server
+                    .ftp
+                    .add_or_edit_line(
+                        "tf/cfg/server.cfg",
+                        "mapcyclefile \"mapcycle.txt\"",
+                        "mapcyclefile \"mapcycle-wacky.txt\"",
+                    )
+                    .await.unwrap();
 				// set player count to 32
 				let rs = format!("sm_reserved_slots 0");
 				let vmp = format!("sv_visiblemaxplayers 32");
@@ -66,6 +74,14 @@ pub fn end_job(wacky_server: Server) -> Job {
                     )
                     .await
                     .expect("Could not disable wacky wednesday.");
+				wacky_server
+                    .ftp
+                    .add_or_edit_line(
+                        "tf/cfg/server.cfg",
+                        "mapcyclefile \"mapcycle-wacky.txt\"",
+                        "mapcyclefile \"mapcycle.txt\"",
+                    )
+                    .await.unwrap();
 				println!("Wacky wednesday stopped.");
             })
         }))

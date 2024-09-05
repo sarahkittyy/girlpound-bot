@@ -331,13 +331,13 @@ pub async fn start_bot(
                         reminders,
                         pug_cfgs: [
                             "rgl_off",
-                            "rgl_7s_koth",
                             "rgl_7s_koth_bo5",
                             "rgl_6s_koth_scrim",
                             "rgl_6s_koth_bo5",
-                            "rgl_6s_koth",
                             "rgl_6s_5cp_scrim",
                             "rgl_6s_5cp_match_pro",
+                            "tfcl_off",
+                            "tfcl_UD_ultiduo",
                         ]
                         .into_iter()
                         .map(str::to_owned)

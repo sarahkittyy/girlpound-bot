@@ -1,5 +1,5 @@
 use chrono::Utc;
-use poise::serenity_prelude::{self as serenity};
+use poise::serenity_prelude::{self as serenity, ReactionType};
 use regex::Regex;
 use serenity::Message;
 
@@ -48,7 +48,9 @@ pub async fn praise_the_lord(
     new_message: &Message,
 ) -> Result<(), Error> {
     if new_message.author.id.get() == REX_UID && random::<f32>() < 0.05 {
-        new_message.react(ctx, '🙏').await?;
+        new_message
+            .react(ctx, ReactionType::Unicode("♠️".to_owned()))
+            .await?;
     }
     Ok(())
 }
