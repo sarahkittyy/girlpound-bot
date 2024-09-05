@@ -268,7 +268,10 @@ pub async fn start_bot(
 
     // migrate the db
     let local_pool = Pool::<MySql>::connect(&db_url).await?;
-    sqlx::migrate!("../migrations").run(&local_pool).await?;
+    let _ = sqlx::migrate!("../migrations")
+        .run(&local_pool)
+        .await
+        .inspect_err(|e| eprintln!("failed to migrate: {e:?}"));
     println!("DB Migrated.");
 
     let sb_pool = Pool::<MySql>::connect(&sb_db_url).await?;
