@@ -72,7 +72,7 @@ impl YapAwards {
     pub fn to_embed(&self) -> CreateEmbed {
         let top10total = self.top10.iter().fold(0, |acc, (_, count)| acc + count) as f64;
         CreateEmbed::new()
-            .title("🏆 Today's Yap Awards")
+            .title("🏆 Today's Awards")
             .color(Color::from_rgb(0xEF, 0xBF, 0x04))
             .description(
                 self.top10
