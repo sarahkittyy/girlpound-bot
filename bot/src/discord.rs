@@ -11,6 +11,7 @@ use api::ApiState;
 use common::{util::parse_env, Error};
 use steam::SteamIDClient;
 use tf2::{logs, wacky, Server};
+use yapawards::{self, YapTracker};
 
 use tokio_cron_scheduler::JobScheduler;
 
@@ -55,6 +56,9 @@ pub struct PoiseData {
 
     /// Shared api state
     pub api_state: ApiState,
+
+    /// Yap tracker
+    pub yap_tracker: Arc<RwLock<YapTracker>>,
 
     /// For preventing catcoin farming
     pub catcoin_spam_filter: Arc<RwLock<catcoin::SpamFilter>>,
@@ -188,6 +192,9 @@ async fn event_handler(
             let _ = on_message::praise_the_lord(ctx, data, new_message)
                 .await
                 .inspect_err(|e| eprintln!("satan's bidding: {e}"));
+            let _ = yapawards::on_message(&mut (*data.yap_tracker.write().await), new_message)
+                .await
+                .inspect_err(|e| eprintln!("yapawards fail: {e}"));
             // rate limit catcoin rng
             if data
                 .catcoin_spam_filter
@@ -262,6 +269,7 @@ pub async fn start_bot(
     let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
     let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
     let stock_market_channel_id: u64 = parse_env("STOCK_MARKET_CHANNEL_ID");
+    let yapawards_channel_id: u64 = parse_env("YAPAWARDS_CHANNEL_ID");
 
     let db_url: String = parse_env("DATABASE_URL");
     let sb_db_url: String = parse_env("SB_DATABASE_URL");
@@ -296,6 +304,8 @@ pub async fn start_bot(
         ReminderManager::new_with_init(&local_pool).await?,
     ));
 
+    let yap_tracker = Arc::new(RwLock::new(yapawards::YapTracker::new()));
+
     let framework = {
         let watcher = watcher.clone();
         let servers = servers.clone();
@@ -303,6 +313,7 @@ pub async fn start_bot(
         let sb_pool = sb_pool.clone();
         let pug_server = pug_server.clone();
         let reminders = reminders.clone();
+        let yap_tracker = yap_tracker.clone();
         poise::Framework::builder()
             .options(poise::FrameworkOptions {
                 commands: commands::ALL.iter().map(|f| f()).collect(),
@@ -358,6 +369,7 @@ pub async fn start_bot(
                         deleted_message_log_channel: serenity::ChannelId::new(
                             deleted_messages_log_channel_id,
                         ),
+                        yap_tracker,
                         leaver_log_channel: serenity::ChannelId::new(leaver_log_channel_id),
                         _mod_channel: serenity::ChannelId::new(mod_channel_id),
                         _birthday_channel: serenity::ChannelId::new(birthday_channel_id),
@@ -435,7 +447,15 @@ pub async fn start_bot(
 
     sched.add(wacky::start_job(wacky_server.clone())).await?;
     sched.add(wacky::end_job(wacky_server.clone())).await?;
+    sched
+        .add(yapawards::start_job(
+            client.http.clone(),
+            serenity::ChannelId::new(yapawards_channel_id),
+            local_pool.clone(),
+        ))
+        .await?;
     stocks::init(&sched, &local_pool).await?;
+    yapawards::init(yap_tracker, &local_pool);
 
     sched.start().await?;
 

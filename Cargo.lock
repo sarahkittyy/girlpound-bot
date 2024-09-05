@@ -661,6 +661,7 @@ dependencies = [
  "tokio",
  "tokio-cron-scheduler",
  "uwuify",
+ "yapawards",
 ]
 
 [[package]]
@@ -5258,6 +5259,19 @@ name = "xml-rs"
 version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "791978798f0597cfc70478424c2b4fdc2b7a8024aaff78497ef00f24ef674193"
+
+[[package]]
+name = "yapawards"
+version = "0.1.0"
+dependencies = [
+ "chrono 0.4.38",
+ "chrono-tz",
+ "common",
+ "poise",
+ "sqlx",
+ "tokio",
+ "tokio-cron-scheduler",
+]
 
 [[package]]
 name = "yeslogic-fontconfig-sys"
