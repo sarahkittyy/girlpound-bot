@@ -47,7 +47,7 @@ impl YapTracker {
     }
 
     pub async fn get_awards_and_reset(db: &Pool<MySql>) -> Result<YapAwards, Error> {
-        let top10 = sqlx::query!("SELECT * FROM `yapawards` ORDER BY COUNT DESC")
+        let top10 = sqlx::query!("SELECT * FROM `yapawards` ORDER BY COUNT DESC LIMIT 10")
             .fetch_all(db)
             .await?;
         let total = sqlx::query!("SELECT CAST(SUM(count) as INT) as `total` FROM `yapawards`")
