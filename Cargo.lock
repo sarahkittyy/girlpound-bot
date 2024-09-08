@@ -5264,6 +5264,7 @@ checksum = "791978798f0597cfc70478424c2b4fdc2b7a8024aaff78497ef00f24ef674193"
 name = "yapawards"
 version = "0.1.0"
 dependencies = [
+ "catcoin",
  "chrono 0.4.38",
  "chrono-tz",
  "common",

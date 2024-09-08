@@ -10,6 +10,8 @@ use tokio_cron_scheduler::{Job, JobBuilder};
 
 use common::Error;
 
+const CATCOIN_AWARD_AMOUNT: i32 = 5;
+
 pub struct YapTracker {
     cache: HashMap<UserId, i64>,
 }
@@ -82,7 +84,11 @@ impl YapAwards {
                         format!(
                             "{}**{}**. {} messages (`{:.0}%`/`{:.0}%`) - {}",
                             // fourth  place
-                            if i == 3 { "🥇 " } else { "" },
+                            if i == 3 {
+                                format!("+{} {} ", CATCOIN_AWARD_AMOUNT, catcoin::emoji())
+                            } else {
+                                "".to_owned()
+                            },
                             i + 1,
                             count,
                             (*count as f64 / top10total) * 100.0,
@@ -140,6 +146,12 @@ pub fn start_job(http: Arc<serenity::Http>, channel: ChannelId, db: Pool<MySql>)
                         return;
                     }
                 };
+
+                if let Some(x) = awards.top10.get(3) {
+                    let _ = catcoin::grant_catcoin(&db, x.0, CATCOIN_AWARD_AMOUNT)
+                        .await
+                        .inspect_err(|e| eprintln!("Could not grant yap catcoin: {e}"));
+                }
 
                 let _ = channel
                     .send_message(
