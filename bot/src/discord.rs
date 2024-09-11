@@ -455,7 +455,7 @@ pub async fn start_bot(
         ))
         .await?;
     stocks::init(&sched, &local_pool).await?;
-    //yapawards::init(yap_tracker, &local_pool);
+    yapawards::init(yap_tracker, &local_pool);
 
     sched.start().await?;
 
