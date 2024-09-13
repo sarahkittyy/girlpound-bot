@@ -10,7 +10,7 @@ use tokio_cron_scheduler::{Job, JobBuilder};
 
 use common::Error;
 
-const CATCOIN_AWARD_AMOUNT: u64 = 5;
+const CATCOIN_AWARD_AMOUNT: u64 = 3;
 
 pub struct YapTracker {
     cache: HashMap<UserId, i64>,
