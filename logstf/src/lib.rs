@@ -17,7 +17,7 @@ pub fn init(pool: &Pool<MySql>, uploader: u64, http: Arc<Http>, channel_id: Chan
             .expect("could not fetch logstf last_posted")
             .id;
 
-        let mut interval = tokio::time::interval(Duration::from_secs(30));
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
         loop {
             interval.tick().await;
             let mut logs = match fetch_last_logs(uploader).await {
