@@ -15,6 +15,7 @@ seederboard = { path = "../seederboard" }
 profile = { path = "../profile" }
 stocks = { path = "../stocks" }
 yapawards = { path = "../yapawards"}
+logstf = { path = "../logstf"}
 
 chrono = "0.4.31"
 dotenv = "0.15.0"

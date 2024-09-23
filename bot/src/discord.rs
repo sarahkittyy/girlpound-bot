@@ -270,6 +270,9 @@ pub async fn start_bot(
     let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
     let stock_market_channel_id: u64 = parse_env("STOCK_MARKET_CHANNEL_ID");
     let yapawards_channel_id: u64 = parse_env("YAPAWARDS_CHANNEL_ID");
+    let logstf_channel_id: u64 = parse_env("LOGSTF_CHANNEL_ID");
+
+    let steamid_myid: u64 = parse_env("STEAMID_MYID");
 
     let db_url: String = parse_env("DATABASE_URL");
     let sb_db_url: String = parse_env("SB_DATABASE_URL");
@@ -456,6 +459,12 @@ pub async fn start_bot(
         .await?;
     stocks::init(&sched, &local_pool).await?;
     yapawards::init(yap_tracker, &local_pool);
+    logstf::init(
+        &local_pool,
+        steamid_myid,
+        client.http.clone(),
+        serenity::ChannelId::new(logstf_channel_id),
+    );
 
     sched.start().await?;
 
