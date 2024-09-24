@@ -54,7 +54,7 @@ impl Transaction {
             print!("Granting shares... ");
             Account::grant_shares(&mut *tx, uid, &company, amount).await?;
 
-            println!("Done!");
+            log::info!("Done!");
             Ok(())
         })
         .await

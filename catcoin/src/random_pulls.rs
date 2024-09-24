@@ -113,7 +113,7 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, message: &Message) ->
         (rarity, catcoins, reward)
     };
 
-    println!("Got pull: {} {}", rarity, &reward.name);
+    log::info!("Got pull: {} {}", rarity, &reward.name);
 
     let pulls = increment_and_get_pulls(pool, reward.id).await?;
     add_to_inventory(pool, message.author.id, reward.id, pulls, catcoins).await?;

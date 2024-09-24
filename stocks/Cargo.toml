@@ -16,3 +16,4 @@ rand = "0.8.5"
 rand_distr = "0.4.3"
 plotters = { git = "https://github.com/plotters-rs/plotters", branch = "dependabot/cargo/image-0.25.1", features = ["image"] }
 image = { version = "0.25.1", default-features = false, features = ["png"] }
+log = "0.4"

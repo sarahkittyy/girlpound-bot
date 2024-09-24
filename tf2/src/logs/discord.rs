@@ -53,7 +53,7 @@ pub async fn spawn_log_thread(
                 let dom_score: Option<i32> = match update_domination_score(&pool, &parsed).await {
                     Ok(score) => Some(score),
                     Err(_) => {
-                        // println!("Could not update dom score: {:?}", e);
+                        // log::info!("Could not update dom score: {:?}", e);
                         None
                     }
                 };
@@ -70,7 +70,7 @@ pub async fn spawn_log_thread(
             for (addr, msg) in &output {
                 // get the server its from
                 let Some(server) = servers.get(addr) else {
-                    println!("addr {:?} has no associated server", addr);
+                    log::info!("addr {:?} has no associated server", addr);
                     continue;
                 };
                 // get the log channel
@@ -91,7 +91,7 @@ pub async fn spawn_log_thread(
                     )
                     .await
                 {
-                    println!("Could not send message to logs channel: {:?}", e);
+                    log::info!("Could not send message to logs channel: {:?}", e);
                 }
             }
         }

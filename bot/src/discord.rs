@@ -157,7 +157,6 @@ async fn event_handler(
     data: &PoiseData,
 ) -> Result<(), Error> {
     use serenity::FullEvent as Event;
-
     let cooldown_handler = {
         let ctx = ctx.clone();
         data.media_cooldown_sender
@@ -182,19 +181,19 @@ async fn event_handler(
             }
             let _ = on_message::watch_emojis(ctx, data, new_message)
                 .await
-                .inspect_err(|e| eprintln!("watch emojis fail: {e}"));
+                .inspect_err(|e| log::error!("watch emojis fail: {e}"));
             let _ = on_message::handle_cooldowns(ctx, data, cooldown_handler, new_message)
                 .await
-                .inspect_err(|e| eprintln!("media cooldown error: {e}"));
+                .inspect_err(|e| log::error!("media cooldown error: {e}"));
             let _ = on_message::hi_cat(ctx, data, new_message)
                 .await
-                .inspect_err(|e| eprintln!("hi cat error: {e}"));
+                .inspect_err(|e| log::error!("hi cat error: {e}"));
             let _ = on_message::praise_the_lord(ctx, data, new_message)
                 .await
-                .inspect_err(|e| eprintln!("satan's bidding: {e}"));
+                .inspect_err(|e| log::error!("satan's bidding: {e}"));
             let _ = yapawards::on_message(&mut (*data.yap_tracker.write().await), new_message)
                 .await
-                .inspect_err(|e| eprintln!("yapawards fail: {e}"));
+                .inspect_err(|e| log::error!("yapawards fail: {e}"));
             // rate limit catcoin rng
             if data
                 .catcoin_spam_filter
@@ -204,10 +203,15 @@ async fn event_handler(
             {
                 let _ = catcoin::random_pulls::on_message(ctx, &data.local_pool, new_message)
                     .await
-                    .inspect_err(|e| eprintln!("Random pull fail: {e}"));
+                    .inspect_err(|e| {
+                        log::error!(
+                            "Random pull in channel id {} fail: {e}",
+                            new_message.channel_id
+                        )
+                    });
                 let _ = catcoin::drops::on_message(ctx, &data.local_pool, new_message)
                     .await
-                    .inspect_err(|e| eprintln!("Drop fail: {e}"));
+                    .inspect_err(|e| log::error!("Drop fail: {e}"));
             }
         }
         Event::MessageDelete {
@@ -220,18 +224,18 @@ async fn event_handler(
         Event::ReactionAdd { add_reaction } => {
             let _ = on_react::add(ctx, data, add_reaction)
                 .await
-                .inspect_err(|e| eprintln!("add react fail: {e}"));
+                .inspect_err(|e| log::error!("add react fail: {e}"));
         }
         Event::ReactionRemove { removed_reaction } => {
             let _ = on_react::rm(ctx, data, removed_reaction)
                 .await
-                .inspect_err(|e| eprintln!("rm react fail: {e}"));
+                .inspect_err(|e| log::error!("rm react fail: {e}"));
         }
         Event::InteractionCreate { interaction } => {
             if let Some(mci) = interaction.as_message_component() {
                 let _ = on_component_interaction::dispatch(ctx, data, mci)
                     .await
-                    .inspect_err(|e| eprintln!("Could not handle interaction create: {e}"));
+                    .inspect_err(|e| log::error!("Could not handle interaction create: {e}"));
             }
         }
         Event::GuildMemberRemoval { user, .. } => {
@@ -282,11 +286,11 @@ pub async fn start_bot(
     let _ = sqlx::migrate!("../migrations")
         .run(&local_pool)
         .await
-        .inspect_err(|e| eprintln!("failed to migrate: {e:?}"));
-    println!("DB Migrated.");
+        .inspect_err(|e| log::error!("failed to migrate: {e:?}"));
+    log::info!("DB Migrated.");
 
     let sb_pool = Pool::<MySql>::connect(&sb_db_url).await?;
-    println!("Connected to sourcebans pool.");
+    log::info!("Connected to sourcebans pool.");
 
     catcoin::init(&local_pool).await?;
 
@@ -469,7 +473,7 @@ pub async fn start_bot(
     sched.start().await?;
 
     let fut = client.start();
-    println!("Bot started!");
+    log::info!("Bot started!");
     fut.await.expect("Bot broke"); //
 
     Ok(())

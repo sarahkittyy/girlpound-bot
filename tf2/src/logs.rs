@@ -47,7 +47,9 @@ impl LogReceiver {
                     let message = match LogMessage::from_bytes(&buf[..len]) {
                         Ok(m) => m,
                         Err(e) => {
-                            println!("Could not parse packet from {from:?} with len {len}: {e:?}");
+                            log::info!(
+                                "Could not parse packet from {from:?} with len {len}: {e:?}"
+                            );
                             continue;
                         }
                     };

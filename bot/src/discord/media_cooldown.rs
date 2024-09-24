@@ -19,7 +19,7 @@ impl MediaCooldown {
             .map(|s| s.parse::<u64>().unwrap())
             .map(serenity::ChannelId::new)
             .collect();
-        println!(
+        log::info!(
             "found media cooldown channels: {}",
             channels
                 .iter()

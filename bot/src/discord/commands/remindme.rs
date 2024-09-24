@@ -99,7 +99,7 @@ pub fn spawn_reminder_thread(
                         reminder.uid, guild_id, reminder.cid, reminder.mid)),
                     )
                     .await
-                    .inspect_err(|e| eprintln!("Could not send reminder: {e}"));
+                    .inspect_err(|e| log::error!("Could not send reminder: {e}"));
             }
         }
     });

@@ -16,3 +16,4 @@ sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
 chrono = "0.4.31"
 chrono-tz = "0.8.6"
 tokio-cron-scheduler = "0.10.0"
+log = "0.4"

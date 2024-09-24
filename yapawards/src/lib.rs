@@ -1,8 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use poise::serenity_prelude::{
-    self as serenity, ChannelId, Color, CreateAllowedMentions, CreateEmbed, CreateMessage,
-    Mentionable, Message, UserId,
+    self as serenity, ChannelId, Color, CreateEmbed, CreateMessage, Mentionable, Message, UserId,
 };
 use sqlx::{MySql, Pool, QueryBuilder};
 use tokio::sync::RwLock;
@@ -122,7 +121,7 @@ pub fn init(tracker: Arc<RwLock<YapTracker>>, pool: &Pool<MySql>) {
                 .await
                 .flush_to_db(&db)
                 .await
-                .inspect_err(|e| eprintln!("could not flush yap to db: {e:?}"));
+                .inspect_err(|e| log::error!("could not flush yap to db: {e:?}"));
         }
     });
 }
@@ -138,11 +137,11 @@ pub fn start_job(http: Arc<serenity::Http>, channel: ChannelId, db: Pool<MySql>)
             let db = db.clone();
             let http = http.clone();
             Box::pin(async move {
-                println!("Logging yap awards.");
+                log::info!("Logging yap awards.");
                 let awards = match YapTracker::get_awards_and_reset(&db).await {
                     Ok(a) => a,
                     Err(e) => {
-                        eprintln!("could not get yap awards: {e:?}");
+                        log::error!("could not get yap awards: {e:?}");
                         return;
                     }
                 };
@@ -150,7 +149,7 @@ pub fn start_job(http: Arc<serenity::Http>, channel: ChannelId, db: Pool<MySql>)
                 if let Some(x) = awards.top10.get(3) {
                     let _ = catcoin::grant_catcoin(&db, x.0, CATCOIN_AWARD_AMOUNT)
                         .await
-                        .inspect_err(|e| eprintln!("Could not grant yap catcoin: {e}"));
+                        .inspect_err(|e| log::error!("Could not grant yap catcoin: {e}"));
                     let _ = channel
                         .send_message(
                             http,
@@ -162,7 +161,7 @@ pub fn start_job(http: Arc<serenity::Http>, channel: ChannelId, db: Pool<MySql>)
                             )),
                         )
                         .await
-                        .inspect_err(|e| eprintln!("failed to send award msg: {e:?}"));
+                        .inspect_err(|e| log::error!("failed to send award msg: {e:?}"));
                 }
             })
         }))

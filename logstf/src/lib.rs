@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use chrono::{DateTime, Utc};
 use common::Error;
 use poise::serenity_prelude::{ChannelId, CreateMessage, Http};
 use serde::{Deserialize, Serialize};
@@ -23,7 +22,7 @@ pub fn init(pool: &Pool<MySql>, uploader: u64, http: Arc<Http>, channel_id: Chan
             let mut logs = match fetch_last_logs(uploader).await {
                 Ok(logs) => logs,
                 Err(e) => {
-                    eprintln!("Could not fetch logs: {e}");
+                    log::error!("Could not fetch logs: {e}");
                     continue;
                 }
             };
@@ -35,14 +34,14 @@ pub fn init(pool: &Pool<MySql>, uploader: u64, http: Arc<Http>, channel_id: Chan
                     let _ = channel_id
                         .send_message(&http, CreateMessage::new().content(log.url()))
                         .await
-                        .inspect_err(|e| eprintln!("Could not send logstf message: {e}"));
+                        .inspect_err(|e| log::error!("Could not send logstf message: {e}"));
                 }
             }
 
             let _ = sqlx::query!("UPDATE `logstf_lastposted` SET `id` = ?", last_id)
                 .execute(&pool)
                 .await
-                .inspect_err(|e| eprintln!("could not update lastid in db: {e}"));
+                .inspect_err(|e| log::error!("could not update lastid in db: {e}"));
         }
     });
 }

@@ -28,7 +28,7 @@ pub fn spawn_flush_thread(watcher: Arc<RwLock<EmojiWatcher>>, pool: Pool<MySql>)
                 .await
                 .flush(&pool)
                 .await
-                .inspect_err(|e| eprintln!("Could not flush emoji watcher: {e}"));
+                .inspect_err(|e| log::error!("Could not flush emoji watcher: {e}"));
         }
     });
 }

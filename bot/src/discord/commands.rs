@@ -207,10 +207,10 @@ pub async fn purge(
             let _ = message
                 .delete(&ctx)
                 .await
-                .inspect_err(|e| eprintln!("Could not delete user's message: {:?}", e));
+                .inspect_err(|e| log::error!("Could not delete user's message: {:?}", e));
         }
     }
-    println!("Deleted {count} messages from <@{}>", user.get());
+    log::info!("Deleted {count} messages from <@{}>", user.get());
     Ok(())
 }
 
@@ -331,7 +331,7 @@ pub async fn fixpulls(ctx: Context<'_>) -> Result<(), Error> {
     while let Some(next) = iter.next().await {
         count += 1;
         if count % 100 == 0 {
-            println!(
+            log::info!(
                 "Scanning pulls in channel <#{}>: {} done. ({} new, {} existing)",
                 ctx.channel_id(),
                 count,
@@ -344,7 +344,7 @@ pub async fn fixpulls(ctx: Context<'_>) -> Result<(), Error> {
                 if let Ok(pull) = CatcoinPullMessageData::try_from(msg) {
                     let _ = claim_old_pull(&ctx.data().local_pool, &pull)
                         .await
-                        .inspect_err(|e| println!("claim fail: {e:?}"))
+                        .inspect_err(|e| log::info!("claim fail: {e:?}"))
                         .inspect(|inserted| {
                             if *inserted {
                                 new += 1;
@@ -358,7 +358,7 @@ pub async fn fixpulls(ctx: Context<'_>) -> Result<(), Error> {
         }
     }
 
-    println!(
+    log::info!(
         "Done scanning <#{}>: {} done. ({} new, {} existing)",
         ctx.channel_id(),
         count,
@@ -917,7 +917,7 @@ pub async fn reacted_users(
         {
             Ok(users) => users,
             Err(e) => {
-                println!("Error fetching users: {:?}", e);
+                log::info!("Error fetching users: {:?}", e);
                 break;
             }
         };

@@ -12,7 +12,7 @@ pub fn start_job(wacky_server: Server) -> Job {
         .with_run_async(Box::new(move |_uuid, _l| {
 			let wacky_server = wacky_server.clone();
             Box::pin(async move {
-                println!("Starting wacky wednesday.");
+                log::info!("Starting wacky wednesday.");
                 // enable in cfg
 				wacky_server
                     .ftp
@@ -47,7 +47,7 @@ pub fn start_job(wacky_server: Server) -> Job {
 				// immediately activate
 				let cmd = format!("exec wacky_wednesday.cfg;{rs};{vmp};sm plugins reload nominations; sm plugins reload nativevotes_mapchooser");
 				wacky_server.controller.write().await.run(&cmd).await.unwrap();
-				println!("Wacky wednesday enabled.");
+				log::info!("Wacky wednesday enabled.");
 			})
         }))
         .build()
@@ -63,7 +63,7 @@ pub fn end_job(wacky_server: Server) -> Job {
         .with_run_async(Box::new(move |_uuid, _l| {
 			let wacky_server = wacky_server.clone();
             Box::pin(async move {
-                println!("Ending wacky wednesday.");
+                log::info!("Ending wacky wednesday.");
                 // remove wacky line from server.cfg
 				wacky_server
                     .ftp
@@ -82,7 +82,7 @@ pub fn end_job(wacky_server: Server) -> Job {
                         "mapcyclefile \"mapcycle.txt\"",
                     )
                     .await.unwrap();
-				println!("Wacky wednesday stopped.");
+				log::info!("Wacky wednesday stopped.");
             })
         }))
         .build()

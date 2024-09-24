@@ -19,7 +19,7 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::Http>) {
                         Ok(v) => v,
                         Err(e) => {
                             // try to reconnect on error.
-                            println!("Error getting player count: {:?}", e);
+                            log::info!("Error getting player count: {:?}", e);
                             let _ = rcon.reconnect().await;
                             continue;
                         }
@@ -38,9 +38,9 @@ pub fn spawn_player_count_thread(server: Server, ctx: Arc<serenity::Http>) {
                     )
                     .await;
                 if let Err(e) = r {
-                    println!("Could not update player count channel: {e}");
+                    log::info!("Could not update player count channel: {e}");
                 } else {
-                    println!(
+                    log::info!(
                         "Updated {} player count to {}",
                         server.name,
                         status.players.len()

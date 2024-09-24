@@ -82,7 +82,7 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
     // increment views
     let _ = view_profile(&ctx.data().local_pool, member.user.id)
         .await
-        .inspect_err(|e| eprintln!("Could not view profile: {e}"));
+        .inspect_err(|e| log::error!("Could not view profile: {e}"));
 
     let like_id = format!("{uuid}-like");
     let dislike_id = format!("{uuid}-dislike");
@@ -246,7 +246,7 @@ async fn send_profile(ctx: Context<'_>, member: serenity::Member) -> Result<(), 
     let _ = msg
         .delete(ctx)
         .await
-        .inspect_err(|e| eprintln!("Could not delete profile: {e}"));
+        .inspect_err(|e| log::error!("Could not delete profile: {e}"));
     Ok(())
 }
 

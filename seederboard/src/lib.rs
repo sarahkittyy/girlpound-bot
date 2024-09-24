@@ -81,7 +81,7 @@ pub async fn spawn_tracker(
                     let _ = stracker
                         .flush_cache_to_db()
                         .await
-                        .inspect_err(|e| eprintln!("Could not flush seeder cache to db: {e}"));
+                        .inspect_err(|e| log::error!("Could not flush seeder cache to db: {e}"));
                 }
 
                 // try resynchronizing

@@ -66,7 +66,7 @@ pub async fn interaction_dispatch(
                                 return Err("Bad modal response.".into());
                             }
                         };
-                    println!(
+                    log::info!(
                         "User requested {} stocks of {}",
                         amount_to_buy, company.name
                     );
@@ -120,7 +120,7 @@ pub async fn interaction_dispatch(
 
 /// Initialize stock market related jobs
 pub async fn init(sched: &JobScheduler, pool: &Pool<MySql>) -> Result<(), Error> {
-    println!("Initializing Stock Market...");
+    log::info!("Initializing Stock Market...");
     let cdate = sqlx::query!("SELECT `datetime` FROM `catcoin_sim_time` WHERE `id` = 1")
         .fetch_one(pool)
         .await?;
@@ -141,7 +141,7 @@ pub async fn step_market(ctx: &serenity::Context, pool: &Pool<MySql>) -> Result<
     // step simulated time
     {
         let mut time = market_time().write().await;
-        println!("Updating market for {}", time);
+        log::info!("Updating market for {}", time);
         *time = time.checked_add_days(Days::new(1)).ok_or("Bad add")?;
         sqlx::query!(
             "UPDATE `catcoin_sim_time` SET `datetime` = ? WHERE `id` = 1",
@@ -149,7 +149,7 @@ pub async fn step_market(ctx: &serenity::Context, pool: &Pool<MySql>) -> Result<
         )
         .execute(pool)
         .await?;
-        println!("It is now {}", time);
+        log::info!("It is now {}", time);
     }
 
     // flush current price

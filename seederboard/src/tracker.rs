@@ -28,7 +28,7 @@ fn now() -> u64 {
 impl Tracker {
     /// initialize the tracker with the current game's state
     pub fn new(state: GameState, pool: Pool<MySql>) -> Self {
-        println!(
+        log::info!(
             "Init'd seeder tracker with {} players online",
             state.players.len()
         );
@@ -133,7 +133,7 @@ impl Tracker {
         if self.flush_cache.len() == 0 {
             return Ok(());
         }
-        println!("Flushing {} seeders to db.", self.flush_cache.len());
+        log::info!("Flushing {} seeders to db.", self.flush_cache.len());
         let players = self.flush_cache.iter();
         let mut qb =
             QueryBuilder::new(r#"INSERT INTO `seederboard` (`steamid`, `seconds_seeded`)"#);

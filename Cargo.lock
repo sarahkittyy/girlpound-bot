@@ -282,6 +282,7 @@ dependencies = [
  "axum",
  "chrono 0.4.38",
  "common",
+ "log",
  "rand 0.8.5",
  "steam-connect",
  "tokio",
@@ -641,8 +642,10 @@ dependencies = [
  "common",
  "dotenv",
  "emojito",
+ "fern",
  "futures",
  "humantime",
+ "log",
  "logstf",
  "poise",
  "profile",
@@ -768,6 +771,7 @@ version = "0.1.0"
 dependencies = [
  "chrono 0.4.38",
  "common",
+ "log",
  "poise",
  "rand 0.8.5",
  "rand_distr",
@@ -1389,6 +1393,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f9bfee30e4dedf0ab8b422f03af778d9612b63f502710fc500a334ebe2de645"
 dependencies = [
  "simd-adler32",
+]
+
+[[package]]
+name = "fern"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9f0c14694cbd524c8720dd69b0e3179344f04ebb5f90f2e4a440c6ea3b2f1ee"
+dependencies = [
+ "log",
 ]
 
 [[package]]
@@ -2292,6 +2305,7 @@ version = "0.1.0"
 dependencies = [
  "chrono 0.4.38",
  "common",
+ "log",
  "poise",
  "reqwest",
  "serde",
@@ -3593,6 +3607,7 @@ name = "seederboard"
 version = "0.1.0"
 dependencies = [
  "common",
+ "log",
  "sqlx",
  "srcds_log_parser",
  "tf2",
@@ -3862,6 +3877,7 @@ name = "sourcebans"
 version = "0.1.0"
 dependencies = [
  "common",
+ "log",
  "poise",
  "rand 0.8.5",
  "sqlx",
@@ -4161,6 +4177,7 @@ dependencies = [
  "chrono 0.4.38",
  "common",
  "image",
+ "log",
  "plotters",
  "poise",
  "rand 0.8.5",
@@ -4338,6 +4355,7 @@ dependencies = [
  "chrono-tz",
  "common",
  "ftp",
+ "log",
  "poise",
  "rcon",
  "regex 1.10.5",
@@ -5283,6 +5301,7 @@ dependencies = [
  "chrono 0.4.38",
  "chrono-tz",
  "common",
+ "log",
  "poise",
  "sqlx",
  "tokio",

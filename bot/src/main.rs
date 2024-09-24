@@ -18,7 +18,39 @@ mod discord;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenv().ok();
-    println!("Starting the girlpound bot...");
+
+    let mut log_config = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {}] {}",
+                chrono::Local::now().format("%m/%d %I:%M:%S %p"),
+                record.level(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Off);
+
+    for module in [
+        "api",
+        "bot",
+        "catcoin",
+        "common",
+        "logstf",
+        "profile",
+        "seederboard",
+        "sourcebans",
+        "stats",
+        "steam",
+        "stocks",
+        "tf2",
+        "yapawards",
+    ] {
+        log_config = log_config.level_for(module, log::LevelFilter::Debug);
+    }
+    log_config.chain(std::io::stdout()).apply()?;
+
+    log::info!("hello!!");
+    log::info!("Starting the girlpound bot...");
 
     let rcon_pass: String = parse_env("RCON_PASS");
 
@@ -86,18 +118,18 @@ async fn main() -> Result<(), Error> {
     servers.insert(tkgp5.addr, tkgp5);
     servers.insert(tkgp6.addr, tkgp6);
 
-    println!("{} servers loaded.", servers.len());
+    log::info!("{} servers loaded.", servers.len());
 
-    println!("Launching UDP log receiver...");
+    log::info!("Launching UDP log receiver...");
     let logs_addr: Ipv4Addr = parse_env("SRCDS_LOG_ADDR");
     let logs_port: u16 = parse_env("SRCDS_LOG_PORT");
     let log_receiver = LogReceiver::connect(logs_addr, logs_port)
         .await
         .expect("Could not bind log receiver");
 
-    println!("Spawning HTTP API listener...");
+    log::info!("Spawning HTTP API listener...");
     let api_state = api::init().await.expect("Could not spawn api.");
 
-    println!("Starting discord bot...");
+    log::info!("Starting discord bot...");
     discord::start_bot(log_receiver, servers, api_state).await
 }

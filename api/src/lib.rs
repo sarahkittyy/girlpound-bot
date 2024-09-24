@@ -112,13 +112,13 @@ pub async fn init() -> Result<ApiState, Error> {
                 .nth(0)
                 .expect("No addrs.");
             let Ok(listener) = TcpListener::bind(socket_addr).await else {
-                eprintln!("Could not bind to port.");
+                log::error!("Could not bind to port.");
                 continue;
             };
-            println!("HTTP listener bound to {}", socket_addr);
+            log::info!("HTTP listener bound to {}", socket_addr);
             let _ = axum::serve(listener, app.clone())
                 .await
-                .inspect_err(|e| eprintln!("axum server error: {e}"));
+                .inspect_err(|e| log::error!("axum server error: {e}"));
         }
     });
 

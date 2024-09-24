@@ -66,7 +66,7 @@ pub fn spawn_ban_protest_thread(
     last_protest_pid: i32,
     ctx: Arc<serenity::Http>,
 ) {
-    println!("Last ban protest id: {}", last_protest_pid);
+    log::info!("Last ban protest id: {}", last_protest_pid);
     // interval to listen for new protest submissions
     let mut interval = time::interval(time::Duration::from_secs(120));
     tokio::spawn(async move {
@@ -101,7 +101,7 @@ pub fn spawn_ban_protest_thread(
                 }
                 Ok(rows) => rows,
                 Err(e) => {
-                    println!("Could not fetch protests. Error: {:?}", e);
+                    log::info!("Could not fetch protests. Error: {:?}", e);
                     continue;
                 }
             };

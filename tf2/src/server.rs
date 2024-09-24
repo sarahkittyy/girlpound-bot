@@ -23,7 +23,7 @@ pub struct ServerBuilder {
 impl ServerBuilder {
     pub async fn build(self) -> Result<Server, Error> {
         let ftp_url: SocketAddr = (self.addr.ip(), 21).into();
-        println!("Connecting to {:?}...", self.addr);
+        log::info!("Connecting to {:?}...", self.addr);
         Ok(Server {
             name: self.name,
             emoji: self.emoji,

@@ -44,10 +44,9 @@ pub async fn dispatch(
         },
         "delete.msg" => match &mci.data.kind {
             ComponentInteractionDataKind::Button => {
-                let _ =
-                    mci.message.delete(ctx).await.inspect_err(|e| {
-                        eprintln!("Could not delete from component interaction: {e}")
-                    });
+                let _ = mci.message.delete(ctx).await.inspect_err(|e| {
+                    log::error!("Could not delete from component interaction: {e}")
+                });
             }
             _ => (),
         },
