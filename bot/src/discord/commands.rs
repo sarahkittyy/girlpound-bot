@@ -145,15 +145,8 @@ pub async fn delete_server(ctx: Context<'_>) -> Result<(), Error> {
             .yes_votes;
 
     let uid = ctx.author().id;
-    let user = sqlx::query!(
-        "SELECT * FROM `delete_server` WHERE `uid` = ?",
-        uid.to_string()
-    )
-    .fetch_optional(&ctx.data().local_pool)
-    .await?;
 
-    let vote = user.map(|u| u.vote == 1).unwrap_or(false);
-    let new_vote = !vote;
+    let new_vote = true;
 
     let required_votes = (total_members as f32 * 0.80).ceil();
 
