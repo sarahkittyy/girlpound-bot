@@ -1,4 +1,5 @@
-use std::{env, str::FromStr};
+use std::{env, str::FromStr, time::Instant};
+use tokio::sync::mpsc;
 
 use chrono::{DateTime, Duration, Utc};
 
@@ -14,6 +15,34 @@ pub fn parse_env<T: FromStr>(name: &str) -> T {
         .ok()
         .and_then(|v| v.parse().ok())
         .expect(&format!("Could not find env variable {}", name))
+}
+
+pub async fn recv_timeout<T>(mut rx: mpsc::Receiver<T>, duration: std::time::Duration) -> Vec<T> {
+    let mut res = vec![];
+    let timeout = Instant::now() + duration;
+    loop {
+        // calculate the remaining time for the timeout
+        let remaining = timeout.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            break; // stop if we've hit the 3-second mark
+        }
+
+        // try receiving with a timeout
+        match tokio::time::timeout(remaining, rx.recv()).await {
+            Ok(Some(msg)) => {
+                res.push(msg); // collect message into the vector
+            }
+            Ok(None) => {
+                // the channel is closed, so exit the loop
+                break;
+            }
+            Err(_) => {
+                // timeout happened, exit the loop
+                break;
+            }
+        }
+    }
+    res
 }
 
 pub fn get_bit(value: u16, bit: u8) -> bool {

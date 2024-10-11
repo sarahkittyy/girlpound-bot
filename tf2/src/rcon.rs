@@ -10,8 +10,6 @@ use rcon::Connection;
 use regex::Regex;
 use tokio::net::TcpStream;
 
-use crate::Server;
-
 #[derive(Debug, Clone)]
 pub struct Player {
     pub name: String,
@@ -44,7 +42,7 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn as_discord_output(&self, server: &Server, show_uids: bool) -> String {
+    pub fn as_discord_output(&self, emoji: &str, show_uids: bool) -> String {
         let list = self
             .players
             .iter()
@@ -78,7 +76,7 @@ impl GameState {
         };
         format!(
             "{0} `{1}/{2}` on `{3}`\n{4}{5}{6}{7}",
-            server.emoji,
+            emoji,
             self.players.len(),
             self.max_players,
             self.map,

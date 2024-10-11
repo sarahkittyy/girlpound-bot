@@ -1,7 +1,7 @@
 use poise::serenity_prelude as serenity;
 use serenity::AutocompleteChoice;
 use std::{net::SocketAddr, time::Duration};
-use tokio::{sync::mpsc, time::Instant};
+use tokio::sync::mpsc;
 
 use crate::discord::Context;
 
@@ -45,9 +45,10 @@ pub async fn rcon_and_reply(
         .await?;
     Ok(())
 }
+
 /// Returns the list of online users
 pub async fn users_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<AutocompleteChoice> {
-    let (tx, mut rx) = mpsc::channel(100);
+    let (tx, rx) = mpsc::channel(100);
     for (_addr, server) in &ctx.data().servers {
         let tx = tx.clone();
         let server = server.clone();
@@ -67,37 +68,15 @@ pub async fn users_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<Autocomp
             }
         });
     }
-    let mut res = vec![];
-    let timeout_duration = Duration::from_millis(2500);
-    let timeout = Instant::now() + timeout_duration;
-    loop {
-        // calculate the remaining time for the timeout
-        let remaining = timeout.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
-            break; // stop if we've hit the 3-second mark
-        }
-
-        // try receiving with a timeout
-        match tokio::time::timeout(remaining, rx.recv()).await {
-            Ok(Some(msg)) => {
-                res.extend(msg); // collect message into the vector
-            }
-            Ok(None) => {
-                // the channel is closed, so exit the loop
-                break;
-            }
-            Err(_) => {
-                // timeout happened, exit the loop
-                break;
-            }
-        }
-    }
-    res
+    drop(tx);
+    common::util::recv_timeout(rx, Duration::from_millis(2500))
+        .await
+        .concat()
 }
 
 /// Returns the list of online users
 pub async fn steam_id_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<AutocompleteChoice> {
-    let (tx, mut rx) = mpsc::channel(100);
+    let (tx, rx) = mpsc::channel(100);
     for (_addr, server) in &ctx.data().servers {
         let tx = tx.clone();
         let server = server.clone();
@@ -122,32 +101,10 @@ pub async fn steam_id_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<Autoc
             }
         });
     }
-    let mut res = vec![];
-    let timeout_duration = Duration::from_millis(2500);
-    let timeout = Instant::now() + timeout_duration;
-    loop {
-        // calculate the remaining time for the timeout
-        let remaining = timeout.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
-            break; // stop if we've hit the 3-second mark
-        }
-
-        // try receiving with a timeout
-        match tokio::time::timeout(remaining, rx.recv()).await {
-            Ok(Some(msg)) => {
-                res.extend(msg); // collect message into the vector
-            }
-            Ok(None) => {
-                // the channel is closed, so exit the loop
-                break;
-            }
-            Err(_) => {
-                // timeout happened, exit the loop
-                break;
-            }
-        }
-    }
-    res
+    drop(tx);
+    common::util::recv_timeout(rx, Duration::from_millis(2500))
+        .await
+        .concat()
 }
 
 /// Returns a list of maps available on the pug server

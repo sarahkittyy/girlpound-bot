@@ -16,6 +16,7 @@ use tf2::{Server, TF2Class};
 
 pub mod util;
 use futures::StreamExt;
+use tokio::sync::mpsc;
 use util::*;
 
 mod map;
@@ -62,12 +63,11 @@ pub use stocks::*;
 
 use stats::psychostats;
 
-use poise;
 use poise::serenity_prelude::{
     self as serenity, ButtonStyle, ChannelType, ComponentInteractionCollector, CreateActionRow,
     CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, Mentionable,
 };
-use poise::CreateReply;
+use poise::{self, CreateReply};
 use serenity::{CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, CreateMessage, GetMessages};
 
 use rand::prelude::*;
@@ -798,7 +798,7 @@ pub async fn seeder(
                 seeder_role.get(),
                 server.emoji,
                 ctx.author().id,
-                status.as_discord_output(server, false),
+                status.as_discord_output(&server.emoji, false),
             ))
             .allowed_mentions(CreateAllowedMentions::new().roles(vec![seeder_role.get()])),
     )
@@ -858,14 +858,29 @@ pub async fn status(
     let show_uids = show_uids.unwrap_or(false);
 
     let mut output = String::new();
+    let (tx, rx) = mpsc::channel(100);
     for server in servers {
-        let mut rcon = server.controller.write().await;
-        let Ok(state) = rcon.status().await else {
-            continue;
-        };
-
-        output += &state.as_discord_output(server, show_uids);
+        let server = server.clone();
+        let tx = tx.clone();
+        tokio::spawn(async move {
+            let mut rcon = server.controller.write().await;
+            let Ok(state) = rcon.status().await else {
+                return;
+            };
+            let _ = tx.send((state, server.emoji)).await;
+        });
     }
+    drop(tx);
+
+    let res = common::util::recv_timeout(rx, Duration::from_millis(2500)).await;
+    for (state, emoji) in res {
+        output += &state.as_discord_output(&emoji, show_uids);
+    }
+
+    // send status msg
+    ctx.send(CreateReply::default().content(output).ephemeral(show_uids))
+        .await?;
+
     // delete last status msg
     let msgs = ctx
         .channel_id()
@@ -878,13 +893,13 @@ pub async fn status(
                 || msg.content.starts_with("🅱️")
                 || msg.content.starts_with("💀"))
         {
-            msg.delete(ctx.http()).await?;
+            let _ = msg
+                .delete(ctx.http())
+                .await
+                .inspect_err(|e| eprintln!("could not delete old status msg: {e}"));
             break;
         }
     }
-    // send status msg
-    ctx.send(CreateReply::default().content(output).ephemeral(show_uids))
-        .await?;
     Ok(())
 }
 
