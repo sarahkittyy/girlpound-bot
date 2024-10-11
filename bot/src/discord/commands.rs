@@ -877,14 +877,10 @@ pub async fn status(
         output += &state.as_discord_output(&emoji, show_uids);
     }
 
-    // send status msg
-    ctx.send(CreateReply::default().content(output).ephemeral(show_uids))
-        .await?;
-
     // delete last status msg
     let msgs = ctx
         .channel_id()
-        .messages(ctx.http(), GetMessages::new().limit(45))
+        .messages(ctx.http(), GetMessages::new().limit(30))
         .await?;
     let bid = ctx.cache().current_user().id;
     for msg in &msgs {
@@ -900,6 +896,10 @@ pub async fn status(
             break;
         }
     }
+
+    // send status msg
+    ctx.send(CreateReply::default().content(output).ephemeral(show_uids))
+        .await?;
     Ok(())
 }
 
