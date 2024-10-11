@@ -872,7 +872,8 @@ pub async fn status(
     }
     drop(tx);
 
-    let res = common::util::recv_timeout(rx, Duration::from_millis(2500)).await;
+    let mut res = common::util::recv_timeout(rx, Duration::from_millis(2500)).await;
+    res.sort_by(|(_, a), (_, b)| a.cmp(b));
     for (state, emoji) in res {
         output += &state.as_discord_output(&emoji, show_uids);
     }
