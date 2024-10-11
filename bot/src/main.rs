@@ -74,7 +74,7 @@ async fn main() -> Result<(), Error> {
     .build()
     .await
     .expect("Could not connect to server tkgp4");
-    /*let tkgp5 = ServerBuilder {
+    let tkgp5 = ServerBuilder {
         name: "#5".to_owned(),
         emoji: "🅱️".to_owned(),
         addr: "tf3.fluffycat.gay:27015"
@@ -111,12 +111,12 @@ async fn main() -> Result<(), Error> {
     }
     .build()
     .await
-    .expect("Could not connect to server tkgp6");*/
+    .expect("Could not connect to server tkgp6");
 
     let mut servers = HashMap::new();
     servers.insert(tkgp4.addr, tkgp4);
-    //servers.insert(tkgp5.addr, tkgp5);
-    //servers.insert(tkgp6.addr, tkgp6);
+    servers.insert(tkgp5.addr, tkgp5);
+    servers.insert(tkgp6.addr, tkgp6);
 
     log::info!("{} servers loaded.", servers.len());
 
