@@ -1,6 +1,7 @@
 use poise::serenity_prelude as serenity;
 use serenity::AutocompleteChoice;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
+use tokio::{sync::mpsc, time::Instant};
 
 use crate::discord::Context;
 
@@ -44,19 +45,51 @@ pub async fn rcon_and_reply(
         .await?;
     Ok(())
 }
-
 /// Returns the list of online users
 pub async fn users_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<AutocompleteChoice> {
-    let mut res = vec![];
+    let (tx, mut rx) = mpsc::channel(100);
     for (_addr, server) in &ctx.data().servers {
-        if let Ok(state) = server.controller.write().await.status().await {
-            res.extend(
-                state
-                    .players
-                    .iter()
-                    .filter(|p| p.name.to_lowercase().contains(&partial.to_lowercase()))
-                    .map(|p| AutocompleteChoice::new(p.name.clone(), p.name.clone())),
-            );
+        let tx = tx.clone();
+        let server = server.clone();
+        let partial = partial.to_owned();
+        tokio::spawn(async move {
+            if let Ok(state) = server.controller.write().await.status().await {
+                let _ = tx
+                    .send(
+                        state
+                            .players
+                            .iter()
+                            .filter(|p| p.name.to_lowercase().contains(&partial.to_lowercase()))
+                            .map(|p| AutocompleteChoice::new(p.name.clone(), p.name.clone()))
+                            .collect::<Vec<AutocompleteChoice>>(),
+                    )
+                    .await;
+            }
+        });
+    }
+    let mut res = vec![];
+    let timeout_duration = Duration::from_millis(2500);
+    let timeout = Instant::now() + timeout_duration;
+    loop {
+        // calculate the remaining time for the timeout
+        let remaining = timeout.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            break; // stop if we've hit the 3-second mark
+        }
+
+        // try receiving with a timeout
+        match tokio::time::timeout(remaining, rx.recv()).await {
+            Ok(Some(msg)) => {
+                res.extend(msg); // collect message into the vector
+            }
+            Ok(None) => {
+                // the channel is closed, so exit the loop
+                break;
+            }
+            Err(_) => {
+                // timeout happened, exit the loop
+                break;
+            }
         }
     }
     res
@@ -64,18 +97,54 @@ pub async fn users_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<Autocomp
 
 /// Returns the list of online users
 pub async fn steam_id_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<AutocompleteChoice> {
-    let mut res = vec![];
+    let (tx, mut rx) = mpsc::channel(100);
     for (_addr, server) in &ctx.data().servers {
-        if let Ok(state) = server.controller.write().await.status().await {
-            res.extend(
-                state
-                    .players
-                    .iter()
-                    .filter(|p| p.name.to_lowercase().contains(&partial.to_lowercase()))
-                    .map(|p| {
-                        AutocompleteChoice::new(format!("{} {}", &p.name, &p.id), p.id.clone())
-                    }),
-            );
+        let tx = tx.clone();
+        let server = server.clone();
+        let partial = partial.to_owned();
+        tokio::spawn(async move {
+            if let Ok(state) = server.controller.write().await.status().await {
+                let _ = tx
+                    .send(
+                        state
+                            .players
+                            .iter()
+                            .filter(|p| p.name.to_lowercase().contains(&partial.to_lowercase()))
+                            .map(|p| {
+                                AutocompleteChoice::new(
+                                    format!("{} {}", &p.name, &p.id),
+                                    p.id.clone(),
+                                )
+                            })
+                            .collect::<Vec<AutocompleteChoice>>(),
+                    )
+                    .await;
+            }
+        });
+    }
+    let mut res = vec![];
+    let timeout_duration = Duration::from_millis(2500);
+    let timeout = Instant::now() + timeout_duration;
+    loop {
+        // calculate the remaining time for the timeout
+        let remaining = timeout.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            break; // stop if we've hit the 3-second mark
+        }
+
+        // try receiving with a timeout
+        match tokio::time::timeout(remaining, rx.recv()).await {
+            Ok(Some(msg)) => {
+                res.extend(msg); // collect message into the vector
+            }
+            Ok(None) => {
+                // the channel is closed, so exit the loop
+                break;
+            }
+            Err(_) => {
+                // timeout happened, exit the loop
+                break;
+            }
         }
     }
     res

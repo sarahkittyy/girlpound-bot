@@ -4,7 +4,10 @@ use crate::{discord::Context, Error};
 use poise;
 use poise::CreateReply;
 
-use super::util::{rcon_and_reply, rcon_user_output, servers_autocomplete, users_autocomplete};
+use super::util::{
+    rcon_and_reply, rcon_user_output, servers_autocomplete, steam_id_autocomplete,
+    users_autocomplete,
+};
 
 /// Ban a user from the tf2 server
 #[poise::command(slash_command)]
@@ -22,6 +25,39 @@ pub async fn tf2ban(
     let reason = reason.unwrap_or("undesirable".to_owned());
     let cmd = format!("sm_ban \"{}\" {} {}", username, minutes, reason);
     rcon_and_reply(ctx, server, cmd).await
+}
+
+/// Raw ban (when sourcemod is down)
+#[poise::command(slash_command)]
+pub async fn tf2banraw(
+    ctx: Context<'_>,
+    #[description = "The server to query"]
+    #[autocomplete = "servers_autocomplete"]
+    server: SocketAddr,
+    #[description = "The user to ban"]
+    #[autocomplete = "steam_id_autocomplete"]
+    user: String,
+    #[description = "Time to ban them for, in minutes"] minutes: u32,
+) -> Result<(), Error> {
+    let cmd = format!("banid \"{}\" {} kick", minutes, user);
+    rcon_and_reply(ctx, Some(server), cmd).await
+}
+
+/// Raw kick (when sourcemod is down)
+#[poise::command(slash_command)]
+pub async fn tf2kickraw(
+    ctx: Context<'_>,
+    #[description = "The server to query"]
+    #[autocomplete = "servers_autocomplete"]
+    server: SocketAddr,
+    #[description = "The user to kick"]
+    #[autocomplete = "steam_id_autocomplete"]
+    user: String,
+    #[description = "Reason"] reason: Option<String>,
+) -> Result<(), Error> {
+    let reason = reason.unwrap_or("1984".to_owned());
+    let cmd = format!("kickid \"{}\" {}", user, reason);
+    rcon_and_reply(ctx, Some(server), cmd).await
 }
 
 /// Ban a steam id from the tf2 server
