@@ -16,7 +16,7 @@ use tf2::{Server, TF2Class};
 
 pub mod util;
 use futures::StreamExt;
-use tokio::sync::mpsc;
+use tokio::{io::AsyncWriteExt, sync::mpsc};
 use util::*;
 
 mod map;
@@ -121,7 +121,51 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2unmute,
     tf2gag,
     tf2ungag,
+    get_videos,
 ];
+
+/// download videos
+#[poise::command(slash_command)]
+pub async fn get_videos(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.reply("running...").await?;
+    let mut messages = ctx.channel_id().messages_iter(&ctx).boxed();
+    while let Some(msg_result) = messages.next().await {
+        match msg_result {
+            Ok(msg) => {
+                let Some(attachment) = msg.attachments.first() else {
+                    continue;
+                };
+                if !attachment
+                    .content_type
+                    .as_ref()
+                    .is_some_and(|c| c.starts_with("video/"))
+                {
+                    continue;
+                }
+                let user = msg.author_nick(ctx).await.unwrap_or(msg.author.name);
+                let Ok(resp) = reqwest::get(&attachment.url).await else {
+                    eprintln!("dl error for {user}, continuing");
+                    continue;
+                };
+                let Ok(mut file) =
+                    tokio::fs::File::create(format!("{}_{}", user, attachment.filename)).await
+                else {
+                    eprintln!("could not make file");
+                    continue;
+                };
+                let Ok(bytes) = resp.bytes().await else {
+                    eprintln!("could not get bytes");
+                    continue;
+                };
+                file.write_all(&bytes).await?;
+                file.flush().await?;
+            }
+            Err(e) => eprintln!("message get failed: {e}"),
+        }
+    }
+    println!("done");
+    Ok(())
+}
 
 /// If over 80% of the server votes yes, delete the server.
 #[poise::command(slash_command)]
