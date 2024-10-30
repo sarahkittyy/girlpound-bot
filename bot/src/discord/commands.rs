@@ -112,6 +112,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     reacted_users,
     feedback,
     tf2ban,
+    spawn_duel,
     tf2banid,
     tf2banraw,
     tf2unban,
@@ -123,6 +124,25 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2ungag,
     get_videos,
 ];
+
+/// Forcefully spawn a catcoin duel lobby
+#[poise::command(slash_command)]
+pub async fn spawn_duel(
+    ctx: Context<'_>,
+    #[description = "The amount of catcoins to wager"] wager: Option<u64>,
+) -> Result<(), Error> {
+    let wager = wager.unwrap_or(25);
+    ctx.send(CreateReply::default().content("Sent.").ephemeral(true))
+        .await?;
+    ::catcoin::duels::spawn_duel(
+        ctx.serenity_context(),
+        &ctx.data().local_pool,
+        ctx.channel_id(),
+        wager,
+    )
+    .await?;
+    Ok(())
+}
 
 /// download videos
 #[poise::command(slash_command)]

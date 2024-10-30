@@ -1,4 +1,5 @@
 pub mod drops;
+pub mod duels;
 pub mod inventory;
 pub mod random_pulls;
 
@@ -8,7 +9,7 @@ use common::{
     util::{parse_env, LeakyBucket},
     Error,
 };
-use poise::serenity_prelude::{self as serenity, UserId};
+use poise::serenity_prelude::{self as serenity, Context, GuildId, UserId};
 
 use random_pulls::Reward;
 use sqlx::{self, Executor, MySql, Pool};
@@ -17,6 +18,26 @@ static EMOJI: OnceLock<String> = OnceLock::new();
 /// Fetch the catcoin currency emoji
 pub fn emoji() -> &'static str {
     EMOJI.get_or_init(|| parse_env("CATCOIN_EMOJI"))
+}
+
+static ATTACK_EMOJI: OnceLock<String> = OnceLock::new();
+pub fn attack_emoji() -> &'static str {
+    ATTACK_EMOJI.get_or_init(|| parse_env("ATTACK_EMOJI"))
+}
+
+static DEFENSE_EMOJI: OnceLock<String> = OnceLock::new();
+pub fn defense_emoji() -> &'static str {
+    DEFENSE_EMOJI.get_or_init(|| parse_env("DEFENSE_EMOJI"))
+}
+
+static CATCOIN_ATTACK_EMOJI: OnceLock<String> = OnceLock::new();
+pub fn catcoin_attack_emoji() -> &'static str {
+    CATCOIN_ATTACK_EMOJI.get_or_init(|| parse_env("CATCOIN_ATTACK_EMOJI"))
+}
+
+static CATCOIN_DEFENSE_EMOJI: OnceLock<String> = OnceLock::new();
+pub fn catcoin_defense_emoji() -> &'static str {
+    CATCOIN_DEFENSE_EMOJI.get_or_init(|| parse_env("CATCOIN_DEFENSE_EMOJI"))
 }
 
 static DROPS: OnceLock<Vec<Reward>> = OnceLock::new();

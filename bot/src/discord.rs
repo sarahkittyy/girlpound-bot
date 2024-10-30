@@ -212,6 +212,9 @@ async fn event_handler(
                 let _ = catcoin::drops::on_message(ctx, &data.local_pool, new_message)
                     .await
                     .inspect_err(|e| log::error!("Drop fail: {e}"));
+                let _ = catcoin::duels::on_message(ctx, &data.local_pool, new_message)
+                    .await
+                    .inspect_err(|e| log::error!("Duel fail: {e}"));
             }
         }
         Event::MessageDelete {
