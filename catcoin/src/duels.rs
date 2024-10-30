@@ -184,7 +184,7 @@ pub async fn spawn_duel(
 
     while let Some(mci) = ComponentInteractionCollector::new(ctx)
         .channel_id(channel)
-        .timeout(Duration::from_secs(300))
+        .timeout(Duration::from_secs(500))
         .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
         .await
     {
@@ -214,35 +214,55 @@ pub async fn spawn_duel(
         }
 
         if duel.is_ready() {
-            // try and deduct the catcoin from each user's balance
             {
+                // try and deduct the catcoin from each user's balance
                 let mut tx = pool.begin().await?;
                 if !spend_catcoin(&mut *tx, duel.defense.as_ref().unwrap().id, duel.wager).await? {
                     tx.rollback().await?;
-                    msg.reply(
-                        ctx,
-                        format!(
-                            "{} tried to cheat the duel! aborting.",
-                            duel.defense.as_ref().unwrap().mention()
-                        ),
-                    )
-                    .await?;
+                    msg.channel_id
+                        .send_message(
+                            ctx,
+                            CreateMessage::new().content(format!(
+                                "{} tried to cheat the duel! aborting.",
+                                duel.defense.as_ref().unwrap().mention()
+                            )),
+                        )
+                        .await?;
+                    msg.delete(ctx).await?;
                     duel.reset();
-                    update_embed(ctx, &mut msg, &duel).await?;
+                    msg = msg
+                        .channel_id
+                        .send_message(
+                            ctx,
+                            CreateMessage::new()
+                                .embed(duel.to_embed())
+                                .components(duel.to_components()),
+                        )
+                        .await?;
                     continue;
                 }
                 if !spend_catcoin(&mut *tx, duel.attack.as_ref().unwrap().id, duel.wager).await? {
                     tx.rollback().await?;
-                    msg.reply(
-                        ctx,
-                        format!(
-                            "{} tried to cheat the duel! aborting.",
-                            duel.attack.as_ref().unwrap().mention()
-                        ),
-                    )
-                    .await?;
+                    msg.channel_id
+                        .send_message(
+                            ctx,
+                            CreateMessage::new().content(format!(
+                                "{} tried to cheat the duel! aborting.",
+                                duel.attack.as_ref().unwrap().mention()
+                            )),
+                        )
+                        .await?;
+                    msg.delete(ctx).await?;
                     duel.reset();
-                    update_embed(ctx, &mut msg, &duel).await?;
+                    msg = msg
+                        .channel_id
+                        .send_message(
+                            ctx,
+                            CreateMessage::new()
+                                .embed(duel.to_embed())
+                                .components(duel.to_components()),
+                        )
+                        .await?;
                     continue;
                 }
                 tx.commit().await?;
@@ -252,14 +272,24 @@ pub async fn spawn_duel(
         }
     }
 
-    msg.edit(
-        ctx,
-        EditMessage::new()
-            .embeds(vec![])
-            .components(vec![])
-            .new_attachment(CreateAttachment::path("public/catcoinflip.gif").await?),
-    )
-    .await?;
+    if !duel.is_ready() {
+        msg.edit(
+            ctx,
+            EditMessage::new()
+                .content("Duel ignored.")
+                .components(vec![])
+                .embeds(vec![]),
+        )
+        .await?;
+        return Ok(());
+    }
+
+    msg = channel
+        .send_message(
+            ctx,
+            CreateMessage::new().add_file(CreateAttachment::path("public/catcoinflip.gif").await?),
+        )
+        .await?;
     let secs = thread_rng().gen_range(2..=5);
     tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
 
