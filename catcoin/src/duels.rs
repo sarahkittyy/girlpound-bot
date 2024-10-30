@@ -273,14 +273,7 @@ pub async fn spawn_duel(
     }
 
     if !duel.is_ready() {
-        msg.edit(
-            ctx,
-            EditMessage::new()
-                .content("Duel ignored.")
-                .components(vec![])
-                .embeds(vec![]),
-        )
-        .await?;
+        msg.delete(ctx).await?;
         return Ok(());
     }
 
