@@ -52,9 +52,9 @@ impl Duel {
 
     fn to_embed(&self) -> CreateEmbed {
         CreateEmbed::new()
-            .title(format!("‼️ {} {} duel ✨", self.wager, emoji()))
+            .title(format!("‼️ {} {} coin flip ✨", self.wager, emoji()))
             .field(
-                format!("defense {}", defense_emoji()),
+                format!("{} defense", defense_emoji()),
                 &self
                     .defense
                     .as_ref()
@@ -63,7 +63,7 @@ impl Duel {
                 true,
             )
             .field(
-                format!("{} attack", attack_emoji()),
+                format!("attack {}", attack_emoji()),
                 self.attack
                     .as_ref()
                     .map(|a| a.mention().to_string())
@@ -287,7 +287,15 @@ pub async fn spawn_duel(
     msg = channel
         .send_message(
             ctx,
-            CreateMessage::new().add_file(CreateAttachment::path("public/catcoinflip.gif").await?),
+            CreateMessage::new()
+                .content(format!(
+                    "{} (attack) vs {} (defense) (**{}** {} wager)",
+                    duel.attack.as_ref().unwrap().mention(),
+                    duel.defense.as_ref().unwrap().mention(),
+                    duel.wager,
+                    emoji()
+                ))
+                .add_file(CreateAttachment::path("public/catcoinflip.gif").await?),
         )
         .await?;
     let secs = thread_rng().gen_range(2..=5);
