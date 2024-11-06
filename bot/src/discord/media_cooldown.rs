@@ -52,6 +52,9 @@ impl MediaCooldown {
         if !self.channels.contains(&cid) {
             return Ok(());
         }
+        if msg.author.id.get() == 135895345296048128 {
+            return Ok(());
+        }
         // only care about msgs with attachments
         if msg.attachments.is_empty() && msg.embeds.is_empty() {
             return Ok(());
