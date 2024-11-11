@@ -8,7 +8,7 @@ use common::{
     util::{get_bit, hhmmss, truncate},
     Error,
 };
-use stats::gameme;
+use stats::{gameme, psychostats};
 use tf2::TF2Class;
 
 use self::vote::Votes;
@@ -159,20 +159,28 @@ impl UserProfile {
                 }
             }
             if self.hide_stats == 0 {
-                if let Some((stats, player)) = steam_data
-                    .stats
-                    .as_ref()
-                    .and_then(|stats| Some((stats, stats.get_first_player()?)))
-                {
-                    let percentile = player.rank as f32 / stats.rankinginfo.activeplayers as f32;
+                let mut output = String::new();
+                if let Some(player) = steam_data.stats4.as_ref() {
                     // stats field
-                    let output = format!(
-                        "[**#{}** _(Top {:.1}%)_]({}playerinfo/{})",
+                    output += &format!(
+                        "#4: [**#{}** _(Top {:.1}%)_]({}playerinfo/{})\n",
                         player.rank,
-                        percentile * 100.,
-                        gameme::BASEURL,
+                        player.percentile,
+                        psychostats::BASEURL4,
                         player.id
                     );
+                }
+                if let Some(player) = steam_data.stats5.as_ref() {
+                    // stats field
+                    output += &format!(
+                        "#5: [**#{}** _(Top {:.1}%)_]({}playerinfo/{})",
+                        player.rank,
+                        player.percentile,
+                        psychostats::BASEURL5,
+                        player.id
+                    );
+                }
+                if !output.is_empty() {
                     e = e.field("Stats 📈", output, true);
                 } else {
                     e = e.field("Stats 📈", "`No Data`", true);

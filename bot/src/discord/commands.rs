@@ -533,9 +533,9 @@ pub async fn givepro(
     Ok(())
 }
 
-/// Lookup your LEGACY tkgp psychostats (deprecated 6/18/24 in favor of gameME -> /profile)
+/// Lookup your tkgp psychostats data
 #[poise::command(slash_command, user_cooldown = 15)]
-pub async fn psychostats(
+pub async fn stats(
     ctx: Context<'_>,
     #[description = "Steam profile url, eg. https://steamcommunity.com/id/sarahkitty/"]
     profile: Option<String>,

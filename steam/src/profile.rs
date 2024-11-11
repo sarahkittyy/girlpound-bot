@@ -2,7 +2,7 @@ use sqlx::{MySql, Pool};
 
 use crate::{SteamIDClient, SteamPlayerSummary};
 use common::Error;
-use stats::gameme;
+use stats::psychostats;
 
 #[derive(Clone)]
 pub struct SteamProfileData {
@@ -10,7 +10,8 @@ pub struct SteamProfileData {
     pub seederboard: Option<(i64, i64)>,
     pub worst_enemy: Option<(SteamPlayerSummary, i64)>,
     pub best_friend: Option<(SteamPlayerSummary, i64)>,
-    pub stats: Option<gameme::PlayerLookupData>,
+    pub stats4: Option<psychostats::PsychoStats>,
+    pub stats5: Option<psychostats::PsychoStats>,
     pub summary: SteamPlayerSummary,
 }
 
@@ -39,7 +40,7 @@ impl SteamProfileData {
             .await?;
         let summary = summaries.first().ok_or("Steam profile not found")?;
 
-        let stats = gameme::get_player(&steamidprofile.steamid).await.ok();
+        let (stats4, stats5) = psychostats::find_plr(&steamidprofile.steamid).await?;
 
         let best_friend = sqlx::query!("select against, abs(score) as score from (select score, gt_steamid as against from domination where lt_steamid=? order by score asc limit 1) as lts
 			UNION ALL
@@ -73,7 +74,8 @@ impl SteamProfileData {
             seederboard: seeding.map(|s| (s.rank, s.seconds_seeded.unwrap_or(0))),
             worst_enemy,
             best_friend,
-            stats,
+            stats4,
+            stats5,
             summary: summary.clone(),
         }))
     }
