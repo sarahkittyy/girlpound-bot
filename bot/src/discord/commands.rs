@@ -93,7 +93,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     wacky,
     purge,
     givepro,
-    psychostats,
+    stats,
     bark,
     botsay,
     emojitop,
