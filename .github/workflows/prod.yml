@@ -15,6 +15,7 @@ jobs:
       - name: Build
         run: |
             cargo build --release
+            whoami
 
       - name: Run
         run: |
