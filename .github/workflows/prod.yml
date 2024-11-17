@@ -12,6 +12,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cwd
+      - name: Build
         run: |
-            echo "$PWD"
+            cargo build --release
+
+      - name: Run
+        run: |
+            sudo supervisorctl restart girlpound-bot
