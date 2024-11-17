@@ -10,9 +10,9 @@ jobs:
     runs-on: sarah-vps
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          clean: false
+        run: |
+          git clone https://github.com/${{ github.repository }} . || true
+          git pull
 
       - name: Build
         run: |
