@@ -16,9 +16,10 @@ jobs:
 
       - name: Build
         run: |
-            cargo sqlx migrate run
-            cargo build --release
+          source ~/.profile
+          cargo sqlx migrate run
+          cargo build --release
 
       - name: Run
         run: |
-            sudo supervisorctl restart girlpound-bot
+          sudo supervisorctl restart girlpound-bot
