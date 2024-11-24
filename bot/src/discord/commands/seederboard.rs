@@ -16,7 +16,8 @@ pub async fn seederboard(ctx: Context<'_>) -> Result<(), Error> {
     let top_seeders =
         sqlx::query!("SELECT * FROM `seederboard` ORDER BY `seconds_seeded` DESC LIMIT 10")
             .fetch_all(&ctx.data().local_pool)
-            .await?;
+            .await
+            .inspect_err(|e| log::error!("error in seederboard query: {e:?}"))?;
 
     let comma_separated_steamids = top_seeders
         .iter()
@@ -29,7 +30,8 @@ pub async fn seederboard(ctx: Context<'_>) -> Result<(), Error> {
         .data()
         .steamid_client
         .lookup(&comma_separated_steamids)
-        .await?
+        .await
+        .inspect_err(|e| log::error!("error in steamid lookup: {e:?}"))?
         .into_iter()
         .map(|profile| (profile.steam3, profile.steamid64))
         .collect();
@@ -45,7 +47,8 @@ pub async fn seederboard(ctx: Context<'_>) -> Result<(), Error> {
         .data()
         .steamid_client
         .get_player_summaries(&comma_separated_steamid64s)
-        .await?
+        .await
+        .inspect_err(|e| log::error!("error in summaries: {e:?}"))?
         .into_iter()
         .map(|summary| (summary.steamid.clone(), summary))
         .collect::<HashMap<_, _>>();
@@ -75,7 +78,9 @@ pub async fn seederboard(ctx: Context<'_>) -> Result<(), Error> {
         ))
         .color(Color::DARK_RED);
 
-    ctx.send(CreateReply::default().embed(embed)).await?;
+    ctx.send(CreateReply::default().embed(embed))
+        .await
+        .inspect_err(|e| log::error!("error in send reply: {e:?}"))?;
 
     Ok(())
 }
