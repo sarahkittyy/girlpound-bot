@@ -15,7 +15,7 @@ pub fn start_job(wacky_server: Server) -> Job {
                 log::info!("Starting wacky wednesday.");
                 // enable in cfg
 				wacky_server
-                    .ftp
+                    .files
                     .add_or_edit_line(
                         "tf/cfg/server.cfg",
                         "// exec wacky_wednesday.cfg",
@@ -23,7 +23,7 @@ pub fn start_job(wacky_server: Server) -> Job {
                     )
                     .await.unwrap();
 				wacky_server
-                    .ftp
+                    .files
                     .add_or_edit_line(
                         "tf/cfg/server.cfg",
                         "mapcyclefile \"mapcycle.txt\"",
@@ -36,11 +36,11 @@ pub fn start_job(wacky_server: Server) -> Job {
 			
 				// update player count in server.cfg for persistence
 				wacky_server
-					.ftp
+					.files
 					.add_or_edit_line("tf/cfg/server.cfg", "sm_reserved_slots", &rs)
 					.await.unwrap();
 				wacky_server
-					.ftp
+					.files
 					.add_or_edit_line("tf/cfg/server.cfg", "sv_visiblemaxplayers", &vmp)
 					.await.unwrap();
 			
@@ -66,7 +66,7 @@ pub fn end_job(wacky_server: Server) -> Job {
                 log::info!("Ending wacky wednesday.");
                 // remove wacky line from server.cfg
 				wacky_server
-                    .ftp
+                    .files
                     .add_or_edit_line(
                         "tf/cfg/server.cfg",
                         "exec wacky_wednesday.cfg",
@@ -75,7 +75,7 @@ pub fn end_job(wacky_server: Server) -> Job {
                     .await
                     .expect("Could not disable wacky wednesday.");
 				wacky_server
-                    .ftp
+                    .files
                     .add_or_edit_line(
                         "tf/cfg/server.cfg",
                         "mapcyclefile \"mapcycle-wacky.txt\"",

@@ -644,11 +644,11 @@ pub async fn playercap(
 
     // update server.cfg for persistence
     server
-        .ftp
+        .files
         .add_or_edit_line("tf/cfg/server.cfg", "sm_reserved_slots", &rs)
         .await?;
     server
-        .ftp
+        .files
         .add_or_edit_line("tf/cfg/server.cfg", "sv_visiblemaxplayers", &vmp)
         .await?;
 

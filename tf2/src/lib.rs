@@ -1,8 +1,10 @@
 mod class;
-mod ftp;
+mod files;
+pub mod ftp;
 pub mod logs;
 mod rcon;
 mod server;
+pub mod sftp;
 pub mod wacky;
 
 pub use class::TF2Class;

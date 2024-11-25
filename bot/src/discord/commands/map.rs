@@ -37,7 +37,7 @@ async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) ->
 
     for server in servers {
         server
-            .ftp
+            .files
             .upload_file("tf/cfg/mapcycle.txt", maps.join("\n").as_bytes())
             .await?;
     }
@@ -76,7 +76,7 @@ async fn rm(
 
     for server in servers {
         server
-            .ftp
+            .files
             .upload_file("tf/cfg/mapcycle.txt", maps.join("\n").as_bytes())
             .await?;
     }

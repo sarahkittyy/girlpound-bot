@@ -28,7 +28,7 @@ async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) ->
     maps.dedup();
 
     server
-        .ftp
+        .files
         .upload_file("tf/cfg/mapcycle-wacky.txt", maps.join("\n").as_bytes())
         .await?;
     ctx.say(format!("Added map `{}`", map)).await?;
@@ -58,7 +58,7 @@ async fn rm(
     maps.remove(index);
 
     server
-        .ftp
+        .files
         .upload_file("tf/cfg/mapcycle-wacky.txt", maps.join("\n").as_bytes())
         .await?;
     ctx.send(CreateReply::default().content(format!("Removed map `{}`", map)))
