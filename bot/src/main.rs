@@ -73,7 +73,7 @@ async fn main() -> Result<(), Error> {
         player_count_cid: Some(parse_env("PLAYER_COUNT_CID_4")),
         log_cid: Some(parse_env("RELAY_CID_4")),
         files: Arc::new(ServerSftp::new(
-            (tkgp4_ftp_addr.ip(), 2022).into(),
+            tkgp4_ftp_addr,
             parse_env("FTP_USER_4"),
             parse_env("FTP_PASS_4"),
         )),
