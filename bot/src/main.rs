@@ -64,6 +64,7 @@ async fn main() -> Result<(), Error> {
         .to_socket_addrs()?
         .next()
         .expect("Could not resolve RCON address.");
+    log::info!("{tkgp4_ftp_addr:?}");
 
     let tkgp4 = ServerBuilder {
         name: "#4".to_owned(),

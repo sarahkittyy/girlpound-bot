@@ -8,7 +8,10 @@ use common::{
 use chrono::{DateTime, TimeDelta, Utc};
 use rcon::Connection;
 use regex::Regex;
+use steam::SteamIDClient;
 use tokio::net::TcpStream;
+
+use crate::Server;
 
 #[derive(Debug, Clone)]
 pub struct Player {
@@ -261,4 +264,55 @@ impl RconController {
             Err("Could not parse current map".into())
         }
     }
+}
+
+pub async fn banid(
+    client: &SteamIDClient,
+    id: &str,
+    servers: &[&Server],
+    minutes: u32,
+    reason: &str,
+) -> String {
+    //let sid_re = Regex::new(r#"(?:(STEAM_\d+:\d+:\d+)|\[?(.:1:\d+)]?)"#).unwrap();
+    let Ok(profile) = client
+        .lookup(&id)
+        .await
+        .and_then(|profiles| profiles.first().cloned().ok_or("No profile found".into()))
+    else {
+        return format!("Could not resolve given SteamID to a profile.");
+    };
+    let cmd = format!(
+        "sm_addban {} {} {}; kickid \"{}\" {}",
+        minutes, &profile.steamid, reason, &profile.steam3, reason
+    );
+    let _ = rcon_user_output(servers, cmd).await;
+    let time = if minutes == 0 {
+        "permanent".to_owned()
+    } else {
+        minutes.to_string()
+    };
+    return format!(
+        "Banned https://steamcommunity.com/profiles/{} (time: {}) (reason: {})",
+        &profile.steamid64, time, reason
+    );
+}
+
+pub async fn rcon_user_output(servers: &[&Server], cmd: String) -> String {
+    let mut outputs: Vec<String> = vec![];
+    for server in servers {
+        let mut rcon = server.controller.write().await;
+        let output = match rcon.run(&cmd).await {
+            Ok(output) => {
+                if output.is_empty() {
+                    ":white_check_mark:".to_owned()
+                } else {
+                    format!(" `{}`", output.trim())
+                }
+            }
+            Err(e) => e.to_string(),
+        };
+        outputs.push(format!("{}{}", server.emoji, output))
+    }
+    outputs.sort();
+    outputs.join("\n")
 }

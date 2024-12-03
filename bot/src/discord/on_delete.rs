@@ -18,6 +18,9 @@ pub async fn save_deleted(
     else {
         return Err("Message not found in cache")?;
     };
+    if message.author.bot {
+        return Ok(());
+    }
     let Some(channel) = channel_id.to_channel(ctx).await?.guild() else {
         return Err("Channel not found.")?;
     };

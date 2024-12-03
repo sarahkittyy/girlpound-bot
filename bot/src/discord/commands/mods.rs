@@ -3,10 +3,10 @@ use std::net::SocketAddr;
 use crate::{discord::Context, Error};
 use poise;
 use poise::CreateReply;
+use tf2::{banid, rcon_user_output};
 
 use super::util::{
-    rcon_and_reply, rcon_user_output, servers_autocomplete, steam_id_autocomplete,
-    users_autocomplete,
+    rcon_and_reply, servers_autocomplete, steam_id_autocomplete, users_autocomplete,
 };
 
 /// Ban a user from the tf2 server
@@ -69,36 +69,15 @@ pub async fn tf2banid(
     #[description = "The reason for the ban"] reason: Option<String>,
 ) -> Result<(), Error> {
     ctx.defer().await?;
-    //let sid_re = Regex::new(r#"(?:(STEAM_\d+:\d+:\d+)|\[?(.:1:\d+)]?)"#).unwrap();
-    let Ok(profile) = ctx
-        .data()
-        .steamid_client
-        .lookup(&id)
-        .await
-        .and_then(|profiles| profiles.first().cloned().ok_or("No profile found".into()))
-    else {
-        ctx.send(
-            CreateReply::default()
-                .content(format!("Could not resolve given SteamID to a profile.")),
-        )
-        .await?;
-        return Ok(());
-    };
-    let reason = reason.unwrap_or("undesirable".to_owned());
-    let cmd = format!(
-        "sm_addban {} {} {}; kickid \"{}\" {}",
-        minutes, &profile.steamid, reason, &profile.steam3, reason
-    );
-    let _ = rcon_user_output(
+    let result = banid(
+        &ctx.data().steamid_client,
+        &id,
         ctx.data().servers.values().collect::<Vec<_>>().as_slice(),
-        cmd,
+        minutes,
+        &reason.unwrap_or("undesirable".to_owned()),
     )
     .await;
-    ctx.send(CreateReply::default().content(format!(
-        "Banned https://steamcommunity.com/profiles/{}",
-        &profile.steamid64
-    )))
-    .await?;
+    ctx.send(CreateReply::default().content(result)).await?;
 
     Ok(())
 }

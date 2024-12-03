@@ -6,27 +6,7 @@ use tokio::sync::mpsc;
 use crate::discord::Context;
 
 use common::Error;
-use tf2::Server;
-
-pub async fn rcon_user_output(servers: &[&Server], cmd: String) -> String {
-    let mut outputs: Vec<String> = vec![];
-    for server in servers {
-        let mut rcon = server.controller.write().await;
-        let output = match rcon.run(&cmd).await {
-            Ok(output) => {
-                if output.is_empty() {
-                    ":white_check_mark:".to_owned()
-                } else {
-                    format!(" `{}`", output.trim())
-                }
-            }
-            Err(e) => e.to_string(),
-        };
-        outputs.push(format!("{}{}", server.emoji, output))
-    }
-    outputs.sort();
-    outputs.join("\n")
-}
+use tf2::{rcon_user_output, Server};
 
 pub fn output_servers(ctx: Context<'_>, addr: Option<SocketAddr>) -> Result<Vec<&Server>, Error> {
     Ok(if let Some(addr) = addr {

@@ -12,7 +12,7 @@ use common::{
     Error,
 };
 use steam::SteamIDProfile;
-use tf2::{Server, TF2Class};
+use tf2::{rcon_user_output, Server, TF2Class};
 
 pub mod util;
 use futures::StreamExt;

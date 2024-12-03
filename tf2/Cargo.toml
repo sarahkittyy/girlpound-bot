@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 rcon = { path = "../rust-rcon", features = ["rt-tokio"] }
 common = { path = "../common" }
+steam = { path = "../steam" }
 
 regex = "1.9.6"
 tokio = { version = "1", features = ["full"] }
