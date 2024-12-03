@@ -29,7 +29,7 @@ pub async fn execute_modal_generic<
 
 pub fn get_steam_link_content(link_url: &str) -> (CreateEmbed, Vec<CreateActionRow>) {
     let embed = CreateEmbed::new() //
-        .title("Get a code from https://api.fluffycat.gay/steam-link & enter it below.")
+        .title("Get a code from https://link.fluffycat.gay/steam-link & enter it below.")
         .url(link_url);
     let row = vec![CreateActionRow::Buttons(vec![
         CreateButton::new_link(link_url)
