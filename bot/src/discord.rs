@@ -71,6 +71,8 @@ pub struct PoiseData {
     pub member_role: serenity::RoleId,
     /// role for 6s games
     pub scrim_role: serenity::RoleId,
+    // mod role
+    pub mod_role: serenity::RoleId,
 
     /// #general
     pub general_channel: serenity::ChannelId,
@@ -272,6 +274,7 @@ pub async fn start_bot(
     let horny_role_id: u64 = parse_env("HORNY_ROLE");
     let member_role_id: u64 = parse_env("MEMBER_ROLE");
     let scrim_role_id: u64 = parse_env("SCRIM_ROLE");
+    let mod_role_id: u64 = parse_env("MOD_ROLE");
     let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
     let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
     let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
@@ -374,6 +377,7 @@ pub async fn start_bot(
                         horny_role: serenity::RoleId::new(horny_role_id),
                         member_role: serenity::RoleId::new(member_role_id),
                         scrim_role: serenity::RoleId::new(scrim_role_id),
+                        mod_role: serenity::RoleId::new(mod_role_id),
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
                         general_channel: serenity::ChannelId::new(general_channel_id),
                         deleted_message_log_channel: serenity::ChannelId::new(

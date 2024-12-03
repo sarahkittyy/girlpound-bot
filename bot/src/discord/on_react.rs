@@ -97,8 +97,13 @@ pub async fn ban_react(
     let uid_caps = uid_regex.captures(&msg_content);
     let uid: Option<&str> = uid_caps.and_then(|c| c.get(0).map(|m| m.as_str()));
     let is_join_leave: bool = msg_content.starts_with('+') || msg_content.starts_with("\\-");
+    let is_admin = reaction
+        .user(ctx)
+        .await?
+        .has_role(ctx, data.guild_id, data.mod_role)
+        .await?;
 
-    if in_relay && is_hammer && is_join_leave && uid.is_some() {
+    if in_relay && is_hammer && is_join_leave && is_admin && uid.is_some() {
         let uid = uid.unwrap();
         let result = tf2::banid(
             &data.steamid_client,
