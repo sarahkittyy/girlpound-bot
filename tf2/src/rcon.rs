@@ -269,7 +269,7 @@ impl RconController {
 pub async fn banid(
     client: &SteamIDClient,
     id: &str,
-    servers: &[&Server],
+    server: &Server,
     minutes: u32,
     reason: &str,
 ) -> String {
@@ -285,7 +285,7 @@ pub async fn banid(
         "sm_addban {} {} {}; kickid \"{}\" {}",
         minutes, &profile.steamid, reason, &profile.steam3, reason
     );
-    let _ = rcon_user_output(servers, cmd).await;
+    let _ = rcon_user_output(&[server], cmd).await;
     let time = if minutes == 0 {
         "permanent".to_owned()
     } else {

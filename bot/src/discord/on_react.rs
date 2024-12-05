@@ -108,11 +108,10 @@ pub async fn ban_react(
         let result = tf2::banid(
             &data.steamid_client,
             uid,
-            &[data
-                .servers
+            data.servers
                 .values()
                 .next()
-                .ok_or::<Error>("no servers".into())?],
+                .ok_or::<Error>("no servers".into())?,
             0,
             "1984",
         )
