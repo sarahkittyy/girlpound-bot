@@ -64,7 +64,15 @@ async fn main() -> Result<(), Error> {
         .to_socket_addrs()?
         .next()
         .expect("Could not resolve RCON address.");
-    log::info!("{tkgp4_ftp_addr:?}");
+
+    let tkgp5_addr = "tf3.fluffycat.gay:27015"
+        .to_socket_addrs()?
+        .next()
+        .expect("Could not resolve RCON address.");
+    let tkgp5_ftp_addr = parse_env::<String>("FTP_HOST_5")
+        .to_socket_addrs()?
+        .next()
+        .expect("Could not resolve RCON address.");
 
     let tkgp4 = ServerBuilder {
         name: "#4".to_owned(),
@@ -97,9 +105,10 @@ async fn main() -> Result<(), Error> {
         rcon_pass: rcon_pass.clone(),
         player_count_cid: Some(parse_env("PLAYER_COUNT_CID_5")),
         log_cid: Some(parse_env("RELAY_CID_5")),
-        files: Arc::new(ServerFtp::new(
-            (tkgp5_addr.ip(), 21).into(),
-            (parse_env("FTP_USER_5"), parse_env("FTP_PASS_5")),
+        files: Arc::new(ServerSftp::new(
+            tkgp5_ftp_addr,
+            parse_env("FTP_USER_5"),
+            parse_env("FTP_PASS_5"),
         )),
         show_status: true,
         allow_seed: true,
