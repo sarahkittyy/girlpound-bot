@@ -74,6 +74,15 @@ async fn main() -> Result<(), Error> {
         .next()
         .expect("Could not resolve RCON address.");
 
+    let tkgp6_addr = "pug.fluffycat.gay:27015"
+        .to_socket_addrs()?
+        .next()
+        .expect("Could not resolve RCON address.");
+    let tkgp6_ftp_addr = parse_env::<String>("FTP_HOST_6")
+        .to_socket_addrs()?
+        .next()
+        .expect("Could not resolve RCON address.");
+
     let tkgp4 = ServerBuilder {
         name: "#4".to_owned(),
         emoji: "🅰️".to_owned(),
@@ -94,10 +103,6 @@ async fn main() -> Result<(), Error> {
     .build()
     .await
     .expect("Could not connect to server tkgp4");
-    let tkgp5_addr = "tf3.fluffycat.gay:27015"
-        .to_socket_addrs()?
-        .next()
-        .expect("Could not resolve RCON address.");
     let tkgp5 = ServerBuilder {
         name: "#5".to_owned(),
         emoji: "🅱️".to_owned(),
@@ -118,10 +123,6 @@ async fn main() -> Result<(), Error> {
     .build()
     .await
     .expect("Could not connect to server tkgp5");
-    let tkgp6_addr = "pug.fluffycat.gay:27015"
-        .to_socket_addrs()?
-        .next()
-        .expect("Could not resolve RCON address.");
     let tkgp6 = ServerBuilder {
         name: "#6".to_owned(),
         emoji: "️💀".to_owned(),
@@ -129,9 +130,10 @@ async fn main() -> Result<(), Error> {
         rcon_pass: rcon_pass.clone(),
         player_count_cid: Some(parse_env("PLAYER_COUNT_CID_6")),
         log_cid: Some(parse_env("RELAY_CID_6")),
-        files: Arc::new(ServerFtp::new(
-            (tkgp6_addr.ip(), 21).into(),
-            (parse_env("FTP_USER_6"), parse_env("FTP_PASS_6")),
+        files: Arc::new(ServerSftp::new(
+            tkgp6_ftp_addr,
+            parse_env("FTP_USER_6"),
+            parse_env("FTP_PASS_6"),
         )),
         show_status: false,
         allow_seed: false,
