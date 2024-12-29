@@ -45,10 +45,14 @@ pub async fn inv(
     let page_buttons = |pages: &Vec<PaginatedInventory>, page: usize| {
         let mut v = vec![];
         if page > 0 {
-            v.push(CreateButton::new(prev_id.clone()).emoji(ReactionType::Unicode("⬅️".to_owned())));
+            v.push(
+                CreateButton::new(prev_id.clone()).emoji(ReactionType::Unicode("⬅️".to_owned())),
+            );
         }
         if pages[page].has_next() {
-            v.push(CreateButton::new(next_id.clone()).emoji(ReactionType::Unicode("➡️".to_owned())));
+            v.push(
+                CreateButton::new(next_id.clone()).emoji(ReactionType::Unicode("➡️".to_owned())),
+            );
         }
         v.push(CreateButton::new(close_id.clone()).emoji(ReactionType::Unicode("❌".to_owned())));
         vec![CreateActionRow::Buttons(v)]
@@ -317,7 +321,7 @@ async fn drop(
 async fn pay(
     ctx: Context<'_>,
     #[description = "The catcoin recipient."] to: serenity::User,
-    #[description = "The amount to send."] amount: u64,
+    #[description = "The amount to send."] amount: i64,
 ) -> Result<(), Error> {
     if to.id == ctx.author().id {
         ctx.send(
@@ -332,6 +336,14 @@ async fn pay(
         ctx.send(
             CreateReply::default()
                 .content(format!("Cannot send **0** {}", catcoin::emoji()))
+                .ephemeral(true),
+        )
+        .await?;
+        return Ok(());
+    } else if amount < 0 {
+        ctx.send(
+            CreateReply::default()
+                .content(format!("nice twy"))
                 .ephemeral(true),
         )
         .await?;
