@@ -3,7 +3,7 @@ use poise::serenity_prelude::ChannelId;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
 
-use crate::{files::ServerFiles, RconController, ServerFtp};
+use crate::{files::ServerFiles, RconController};
 
 /// Factory struct for the tf2 server data
 pub struct ServerBuilder {

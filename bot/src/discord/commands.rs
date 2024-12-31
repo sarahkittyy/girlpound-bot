@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::env;
-use std::net::SocketAddr;
 use std::time::Duration;
 
 use super::{Context, PoiseData};
@@ -621,12 +620,12 @@ pub async fn playercap(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: String,
     #[description = "The player cap 24 <= p <= 32"] count: i32,
 ) -> Result<(), Error> {
     let re = Regex::new(r#""maxplayers" is "(\d+)""#).unwrap();
 
-    let server = ctx.data().server(server)?;
+    let server = ctx.data().server(&server)?;
 
     let min: i32 = 24;
     let max = server.controller.write().await.run("maxplayers").await?;
@@ -664,7 +663,7 @@ pub async fn rcon(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "The command to send."] cmd: String,
     #[description = "Hide the reply?"] hide_reply: Option<bool>,
 ) -> Result<(), Error> {
@@ -681,7 +680,7 @@ pub async fn snipers(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: String,
     #[description = "The sniper limit (-1 for enable)"] limit: i8,
     #[description = "Hide the reply?"] hide_reply: Option<bool>,
 ) -> Result<(), Error> {
@@ -703,7 +702,7 @@ pub async fn bhop(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: String,
     #[description = "Whether you can bhop or not"] enabled: bool,
     #[description = "Allow autohop? (Default: False) (hold space vs timed jumps)"] autohop: Option<
         bool,
@@ -715,7 +714,7 @@ pub async fn bhop(
         if enabled { 1 } else { 0 },
         if autohop { 1 } else { 0 }
     );
-    let server = ctx.data().server(server)?;
+    let server = ctx.data().server(&server)?;
     let _ = rcon_user_output(&[server], cmd).await;
     let reply = if enabled {
         format!(
@@ -784,7 +783,7 @@ pub async fn respawntimes(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "Set to instant respawn"] instant: Option<bool>,
 ) -> Result<(), Error> {
     let cmd: String = match instant {
@@ -807,11 +806,11 @@ pub async fn seeder(
     ctx: Context<'_>,
     #[description = "The server to seed"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: String,
     #[description = "Optional message to attach"] message: Option<String>,
 ) -> Result<(), Error> {
     // check cooldown
-    match ctx.data().can_seed(server).await {
+    match ctx.data().can_seed(ctx.data().server(&server)?.addr).await {
         Ok(()) => (),
         Err(time_left) => {
             let now = chrono::Utc::now();
@@ -824,8 +823,7 @@ pub async fn seeder(
         }
     };
 
-    let server_addr = server;
-    let server = ctx.data().server(server)?;
+    let server = ctx.data().server(&server)?;
     if !server.allow_seed {
         ctx.send(CreateReply::default().content("This server is not seedable."))
             .await?;
@@ -868,7 +866,7 @@ pub async fn seeder(
     )
     .await?;
     // reset cooldown
-    ctx.data().reset_seed_cooldown(server_addr).await;
+    ctx.data().reset_seed_cooldown(server.addr).await;
 
     Ok(())
 }
@@ -904,12 +902,12 @@ pub async fn status(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "Display user IDs?"] show_uids: Option<bool>,
 ) -> Result<(), Error> {
     // get all the servers to include in the result
     let mut servers = if let Some(server) = server {
-        vec![ctx.data().server(server)?]
+        vec![ctx.data().server(&server)?]
     } else {
         ctx.data()
             .servers

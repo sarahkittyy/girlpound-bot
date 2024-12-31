@@ -8,7 +8,7 @@ use common::{
     util::{get_bit, hhmmss, truncate},
     Error,
 };
-use stats::{gameme, psychostats};
+use stats::psychostats;
 use tf2::TF2Class;
 
 use self::vote::Votes;

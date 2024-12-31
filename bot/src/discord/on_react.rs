@@ -1,6 +1,5 @@
 use poise::serenity_prelude::{self as serenity, CreateMessage, Message, Reaction};
 use regex::Regex;
-use tf2::{rcon_user_output, Server};
 
 use super::PoiseData;
 use common::Error;

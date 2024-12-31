@@ -12,7 +12,7 @@ use common::{
     util::{self, parse_env},
     Error,
 };
-use tf2::{ftp::ServerFtp, logs::LogReceiver, sftp::ServerSftp, ServerBuilder};
+use tf2::{logs::LogReceiver, sftp::ServerSftp, ServerBuilder};
 
 mod discord;
 

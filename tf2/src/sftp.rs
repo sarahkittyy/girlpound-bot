@@ -15,25 +15,6 @@ pub struct ServerSftp {
     pub password: String,
 }
 
-struct KeyPrompt {
-    password: String,
-}
-
-impl KeyboardInteractivePrompt for KeyPrompt {
-    fn prompt<'a>(
-        &mut self,
-        username: &str,
-        instructions: &str,
-        prompts: &[ssh2::Prompt<'a>],
-    ) -> Vec<String> {
-        log::info!("{username}");
-        log::info!("{instructions}");
-        log::info!("{prompts:?}");
-        stdout().flush().unwrap();
-        vec![self.password.clone()]
-    }
-}
-
 impl ServerSftp {
     pub fn new(addr: SocketAddr, username: String, password: String) -> Self {
         Self {

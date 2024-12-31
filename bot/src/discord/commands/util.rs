@@ -1,6 +1,6 @@
 use poise::serenity_prelude as serenity;
 use serenity::AutocompleteChoice;
-use std::{net::SocketAddr, time::Duration};
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 use crate::discord::Context;
@@ -8,9 +8,9 @@ use crate::discord::Context;
 use common::Error;
 use tf2::{rcon_user_output, Server};
 
-pub fn output_servers(ctx: Context<'_>, addr: Option<SocketAddr>) -> Result<Vec<&Server>, Error> {
+pub fn output_servers(ctx: Context<'_>, addr: Option<String>) -> Result<Vec<&Server>, Error> {
     Ok(if let Some(addr) = addr {
-        vec![ctx.data().server(addr)?]
+        vec![ctx.data().server(&addr)?]
     } else {
         ctx.data().servers.values().collect()
     })
@@ -18,7 +18,7 @@ pub fn output_servers(ctx: Context<'_>, addr: Option<SocketAddr>) -> Result<Vec<
 
 pub async fn rcon_and_reply(
     ctx: Context<'_>,
-    server: Option<SocketAddr>,
+    server: Option<String>,
     cmd: String,
 ) -> Result<(), Error> {
     ctx.say(rcon_user_output(&output_servers(ctx, server)?, cmd).await)
@@ -117,6 +117,6 @@ pub async fn servers_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<Autoco
         .servers
         .iter()
         .filter(|(_addr, s)| s.name.to_lowercase().contains(&partial.to_lowercase()))
-        .map(|(addr, s)| AutocompleteChoice::new(s.name.clone(), addr.to_string()))
+        .map(|(addr, s)| AutocompleteChoice::new(s.name.clone(), s.name.clone()))
         .collect()
 }

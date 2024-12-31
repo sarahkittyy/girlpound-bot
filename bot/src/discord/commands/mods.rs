@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-
 use crate::{discord::Context, Error};
 use poise;
 use poise::CreateReply;
@@ -15,7 +13,7 @@ pub async fn tf2ban(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "The username to ban."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -33,7 +31,7 @@ pub async fn tf2banraw(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: String,
     #[description = "The user to ban"]
     #[autocomplete = "steam_id_autocomplete"]
     user: String,
@@ -49,7 +47,7 @@ pub async fn tf2kickraw(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: SocketAddr,
+    server: String,
     #[description = "The user to kick"]
     #[autocomplete = "steam_id_autocomplete"]
     user: String,
@@ -131,7 +129,7 @@ pub async fn tf2kick(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "The username to kick."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -147,7 +145,7 @@ pub async fn tf2mute(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "The username to mute."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -170,7 +168,7 @@ pub async fn tf2unmute(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "The username to unmute."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -191,7 +189,7 @@ pub async fn tf2gag(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "The username to gag."]
     #[autocomplete = "users_autocomplete"]
     username: String,
@@ -214,7 +212,7 @@ pub async fn tf2ungag(
     ctx: Context<'_>,
     #[description = "The server to query"]
     #[autocomplete = "servers_autocomplete"]
-    server: Option<SocketAddr>,
+    server: Option<String>,
     #[description = "The username to gag."]
     #[autocomplete = "users_autocomplete"]
     username: String,

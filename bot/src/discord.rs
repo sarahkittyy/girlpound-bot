@@ -100,9 +100,17 @@ pub struct PoiseData {
 }
 impl PoiseData {
     /// fetch the server with the given socket address
-    pub fn server(&self, server_addr: SocketAddr) -> Result<&Server, Error> {
+    pub fn server_from_addr(&self, server_addr: SocketAddr) -> Result<&Server, Error> {
         self.servers
             .get(&server_addr)
+            .ok_or("Server not found".into())
+    }
+
+    /// fetch the server closest to the given name
+    pub fn server(&self, server_addr: &str) -> Result<&Server, Error> {
+        self.servers
+            .values()
+            .find(|s| s.name.contains(server_addr))
             .ok_or("Server not found".into())
     }
 

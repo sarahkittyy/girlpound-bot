@@ -9,7 +9,7 @@ use common::{
     util::{parse_env, LeakyBucket},
     Error,
 };
-use poise::serenity_prelude::{self as serenity, Context, GuildId, UserId};
+use poise::serenity_prelude::{self as serenity, UserId};
 
 use random_pulls::Reward;
 use sqlx::{self, Executor, MySql, Pool};
