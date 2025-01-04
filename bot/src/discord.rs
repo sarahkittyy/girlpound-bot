@@ -367,6 +367,7 @@ pub async fn start_bot(
                         pug_cfgs: [
                             "rgl_off",
                             "mge",
+                            "arena",
                             "rgl_7s_koth_bo5",
                             "rgl_6s_koth_scrim",
                             "rgl_6s_koth_bo5",
