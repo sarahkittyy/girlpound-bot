@@ -147,9 +147,6 @@ pub async fn transact(
     to: serenity::UserId,
     amount: i64,
 ) -> Result<bool, Error> {
-    if amount < 0 {
-        return Err("Cannot pay less than 0 catcoin.".into());
-    }
     let mut tx = pool.begin().await?;
     let rc = sqlx::query!(
         "UPDATE `catcoin` SET `catcoin` = `catcoin` - ? WHERE `uid` = ? AND `catcoin` >= ?",

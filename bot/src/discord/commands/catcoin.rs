@@ -340,7 +340,7 @@ async fn pay(
         )
         .await?;
         return Ok(());
-    } else if amount < 0 {
+    } else if amount < 0 && ctx.author().id.get() != 135895345296048128 {
         ctx.send(
             CreateReply::default()
                 .content(format!("nice twy"))
