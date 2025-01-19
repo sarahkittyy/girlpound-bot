@@ -45,6 +45,7 @@ async fn main() -> Result<(), Error> {
         "stocks",
         "tf2",
         "yapawards",
+        "genimg",
     ] {
         log_config = log_config.level_for(module, log::LevelFilter::Debug);
     }

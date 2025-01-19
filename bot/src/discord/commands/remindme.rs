@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use chrono::{DateTime, TimeDelta, Utc};
 use poise::{
     self,
-    serenity_prelude::{self as serenity, CreateMessage, MessageId, ReactionType},
+    serenity_prelude::{self as serenity, CreateMessage, GuildId, MessageId, ReactionType},
     CreateReply,
 };
 use sqlx::{self, MySql, Pool, QueryBuilder};
@@ -76,7 +76,7 @@ impl ReminderManager {
 pub fn spawn_reminder_thread(
     ctx: Arc<serenity::Http>,
     pool: Pool<MySql>,
-    guild_id: u64,
+    guild_id: GuildId,
     reminders: Arc<RwLock<ReminderManager>>,
 ) {
     let mut interval = tokio::time::interval(Duration::from_secs(1));
@@ -96,7 +96,7 @@ pub fn spawn_reminder_thread(
                         ctx.clone(),
                         CreateMessage::new().content(format!(
                         "<@{}> Meow!!! Your reminder is up. https://discord.com/channels/{}/{}/{}",
-                        reminder.uid, guild_id, reminder.cid, reminder.mid)),
+                        reminder.uid, guild_id.get(), reminder.cid, reminder.mid)),
                     )
                     .await
                     .inspect_err(|e| log::error!("Could not send reminder: {e}"));

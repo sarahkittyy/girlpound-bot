@@ -1,0 +1,12 @@
+[package]
+name = "genimg"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+
+tokio = { version = "1", features = ["full"] }
+chrono = "0.4.31"
+poise = "0.6.1"
+log = "0.4"

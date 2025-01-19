@@ -3,12 +3,13 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use chrono::{DateTime, Duration, Utc};
-use poise::serenity_prelude::{self as serenity, Mentionable};
+use poise::serenity_prelude::{self as serenity, ChannelId, GuildId, Mentionable, RoleId};
 use poise::PrefixFrameworkOptions;
 use serenity::CreateMessage;
 
 use api::ApiState;
 use common::{util::parse_env, Error};
+use genimg::GenImg;
 use steam::SteamIDClient;
 use tf2::{logs, wacky, Server};
 use yapawards::{self, YapTracker};
@@ -41,7 +42,7 @@ pub struct PoiseData {
     /// all tf2 servers known by the bot
     pub servers: HashMap<SocketAddr, Server>,
     /// guild the bot operates in
-    pub guild_id: serenity::GuildId,
+    pub guild_id: GuildId,
     /// identify the pug server. tkgp specific
     pub pug_server: SocketAddr,
     /// list of pug cfgs available for use
@@ -64,28 +65,34 @@ pub struct PoiseData {
     pub catcoin_spam_filter: Arc<RwLock<catcoin::SpamFilter>>,
 
     /// NSFW role
-    pub horny_role: serenity::RoleId,
+    pub horny_role: RoleId,
     /// role to seed teh tf2 server
-    pub seeder_role: serenity::RoleId,
+    pub seeder_role: RoleId,
     /// role to give users to allow them into the server
-    pub member_role: serenity::RoleId,
+    pub member_role: RoleId,
     /// role for 6s games
-    pub scrim_role: serenity::RoleId,
+    pub scrim_role: RoleId,
     // mod role
-    pub mod_role: serenity::RoleId,
+    pub mod_role: RoleId,
+    // server booster role
+    pub booster_role: RoleId,
+    // suppawter role
+    pub suppawter_role: RoleId,
+    // gen imgs role
+    pub genimg_role: RoleId,
 
     /// #general
-    pub general_channel: serenity::ChannelId,
+    pub general_channel: ChannelId,
     /// channel where deleted messages are logged
-    pub deleted_message_log_channel: serenity::ChannelId,
+    pub deleted_message_log_channel: ChannelId,
     /// channel where users who left are logged
-    pub leaver_log_channel: serenity::ChannelId,
+    pub leaver_log_channel: ChannelId,
     /// mod channel id
-    pub _mod_channel: serenity::ChannelId,
+    pub _mod_channel: ChannelId,
     /// age verification channel
-    pub _birthday_channel: serenity::ChannelId,
+    pub _birthday_channel: ChannelId,
     /// for posting stock market info daily
-    pub stock_market_channel: serenity::ChannelId,
+    pub stock_market_channel: ChannelId,
 
     /// /seeder cooldown
     pub seeder_cooldown: Arc<RwLock<HashMap<SocketAddr, DateTime<Utc>>>>,
@@ -97,6 +104,8 @@ pub struct PoiseData {
     pub _sb_pool: Pool<MySql>,
     /// steamid.uk api client
     pub steamid_client: SteamIDClient,
+    /// genimg client
+    pub genimg: Arc<RwLock<GenImg>>,
 }
 impl PoiseData {
     /// fetch the server with the given socket address
@@ -204,6 +213,9 @@ async fn event_handler(
             let _ = yapawards::on_message(&mut (*data.yap_tracker.write().await), new_message)
                 .await
                 .inspect_err(|e| log::error!("yapawards fail: {e}"));
+            let _ = genimg::on_message(ctx, data.genimg.clone(), new_message.clone())
+                .await
+                .inspect_err(|e| log::error!("genimg fail: {e}"));
             // rate limit catcoin rng
             if data
                 .catcoin_spam_filter
@@ -275,20 +287,24 @@ pub async fn start_bot(
     api_state: ApiState,
 ) -> Result<(), Error> {
     let bot_token: String = parse_env("BOT_TOKEN");
-    let guild_id: u64 = parse_env("GUILD_ID");
-    let deleted_messages_log_channel_id: u64 = parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID");
-    let leaver_log_channel_id: u64 = parse_env("LEAVER_LOG_CHANNEL_ID");
-    let seeder_role_id: u64 = parse_env("SEEDER_ROLE");
-    let horny_role_id: u64 = parse_env("HORNY_ROLE");
-    let member_role_id: u64 = parse_env("MEMBER_ROLE");
-    let scrim_role_id: u64 = parse_env("SCRIM_ROLE");
-    let mod_role_id: u64 = parse_env("MOD_ROLE");
-    let general_channel_id: u64 = parse_env("GENERAL_CHANNEL_ID");
-    let mod_channel_id: u64 = parse_env("MOD_CHANNEL_ID");
-    let birthday_channel_id: u64 = parse_env("BIRTHDAY_CHANNEL_ID");
-    let stock_market_channel_id: u64 = parse_env("STOCK_MARKET_CHANNEL_ID");
-    let yapawards_channel_id: u64 = parse_env("YAPAWARDS_CHANNEL_ID");
-    let logstf_channel_id: u64 = parse_env("LOGSTF_CHANNEL_ID");
+
+    let guild = GuildId::new(parse_env("GUILD_ID"));
+    let deleted_message_log_channel = ChannelId::new(parse_env("DELETED_MESSAGE_LOG_CHANNEL_ID"));
+    let leaver_log_channel = ChannelId::new(parse_env("LEAVER_LOG_CHANNEL_ID"));
+    let seeder_role = RoleId::new(parse_env("SEEDER_ROLE"));
+    let horny_role = RoleId::new(parse_env("HORNY_ROLE"));
+    let member_role = RoleId::new(parse_env("MEMBER_ROLE"));
+    let scrim_role = RoleId::new(parse_env("SCRIM_ROLE"));
+    let mod_role = RoleId::new(parse_env("MOD_ROLE"));
+    let genimg_role = RoleId::new(parse_env("GENIMG_ROLE"));
+    let booster_role = RoleId::new(parse_env("BOOSTER_ROLE"));
+    let suppawter_role = RoleId::new(parse_env("SUPPAWTER_ROLE"));
+    let general_channel = ChannelId::new(parse_env("GENERAL_CHANNEL_ID"));
+    let mod_channel = ChannelId::new(parse_env("MOD_CHANNEL_ID"));
+    let birthday_channel = ChannelId::new(parse_env("BIRTHDAY_CHANNEL_ID"));
+    let stock_market_channel = ChannelId::new(parse_env("STOCK_MARKET_CHANNEL_ID"));
+    let yapawards_channel = ChannelId::new(parse_env("YAPAWARDS_CHANNEL_ID"));
+    let logstf_channel = ChannelId::new(parse_env("LOGSTF_CHANNEL_ID"));
 
     let steamid_myid: u64 = parse_env("STEAMID_MYID");
 
@@ -348,12 +364,8 @@ pub async fn start_bot(
             .setup(move |ctx, _ready, framework| {
                 Box::pin(async move {
                     ctx.cache.set_max_messages(500);
-                    poise::builtins::register_in_guild(
-                        ctx,
-                        &framework.options().commands,
-                        serenity::GuildId::new(guild_id),
-                    )
-                    .await?;
+                    poise::builtins::register_in_guild(ctx, &framework.options().commands, guild)
+                        .await?;
 
                     ctx.set_activity(Some(serenity::ActivityData::playing("with touys ^-^")));
 
@@ -362,7 +374,7 @@ pub async fn start_bot(
                         media_cooldown: Arc::new(RwLock::new(
                             media_cooldown::MediaCooldown::from_env(),
                         )),
-                        guild_id: serenity::GuildId::new(guild_id),
+                        guild_id: guild,
                         reminders,
                         pug_cfgs: [
                             "rgl_off",
@@ -383,21 +395,22 @@ pub async fn start_bot(
                         pug_server,
                         api_state,
                         emoji_rank: watcher.clone(),
-                        seeder_role: serenity::RoleId::new(seeder_role_id),
-                        horny_role: serenity::RoleId::new(horny_role_id),
-                        member_role: serenity::RoleId::new(member_role_id),
-                        scrim_role: serenity::RoleId::new(scrim_role_id),
-                        mod_role: serenity::RoleId::new(mod_role_id),
+                        seeder_role,
+                        horny_role,
+                        member_role,
+                        scrim_role,
+                        mod_role,
+                        genimg_role,
+                        booster_role,
+                        suppawter_role,
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
-                        general_channel: serenity::ChannelId::new(general_channel_id),
-                        deleted_message_log_channel: serenity::ChannelId::new(
-                            deleted_messages_log_channel_id,
-                        ),
+                        general_channel,
+                        deleted_message_log_channel,
                         yap_tracker,
-                        leaver_log_channel: serenity::ChannelId::new(leaver_log_channel_id),
-                        _mod_channel: serenity::ChannelId::new(mod_channel_id),
-                        _birthday_channel: serenity::ChannelId::new(birthday_channel_id),
-                        stock_market_channel: serenity::ChannelId::new(stock_market_channel_id),
+                        leaver_log_channel,
+                        _mod_channel: mod_channel,
+                        _birthday_channel: birthday_channel,
+                        stock_market_channel,
                         media_cooldown_sender: OnceCell::new(),
                         seeder_cooldown: Arc::new(RwLock::new(HashMap::new())),
                         local_pool,
@@ -407,6 +420,13 @@ pub async fn start_bot(
                             parse_env("STEAMID_API_KEY"),
                             parse_env("STEAM_API_KEY"),
                         ),
+                        genimg: Arc::new(RwLock::new(GenImg::new(
+                            //
+                            genimg_role,
+                            general_channel,
+                            member_role,
+                            vec![suppawter_role, booster_role],
+                        ))),
                     })
                 })
             })
@@ -446,7 +466,7 @@ pub async fn start_bot(
             .try_get("pid")?;
     sourcebans::spawn_ban_protest_thread(
         sb_pool.clone(),
-        serenity::ChannelId::new(mod_channel_id),
+        mod_channel,
         latest_protest_pid,
         client.http.clone(),
     );
@@ -454,7 +474,7 @@ pub async fn start_bot(
     commands::spawn_reminder_thread(
         client.http.clone(),
         local_pool.clone(),
-        guild_id,
+        guild,
         reminders.clone(),
     );
 
@@ -474,7 +494,7 @@ pub async fn start_bot(
     sched
         .add(yapawards::start_job(
             client.http.clone(),
-            serenity::ChannelId::new(yapawards_channel_id),
+            yapawards_channel,
             local_pool.clone(),
         ))
         .await?;
@@ -484,7 +504,7 @@ pub async fn start_bot(
         &local_pool,
         steamid_myid,
         client.http.clone(),
-        serenity::ChannelId::new(logstf_channel_id),
+        logstf_channel,
     );
 
     sched.start().await?;
