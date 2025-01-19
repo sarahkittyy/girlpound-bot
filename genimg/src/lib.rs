@@ -68,7 +68,7 @@ pub async fn on_message(
         .entry(msg.author.id)
         .or_insert_with(|| chrono::DateTime::<Utc>::MIN_UTC.naive_utc())
         .clone();
-    if !has_genimg_role && last_sent + chrono::Duration::hours(24) < chrono::Utc::now().naive_utc()
+    if !has_genimg_role && last_sent + chrono::Duration::hours(12) < chrono::Utc::now().naive_utc()
     {
         member.add_role(ctx, genimg.genimg_role).await?;
         return Ok(());
