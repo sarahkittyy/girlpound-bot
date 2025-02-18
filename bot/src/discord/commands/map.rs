@@ -18,6 +18,7 @@ pub async fn map(_: Context<'_>) -> Result<(), Error> {
 /// adds a map to the mapcycle.txt of all servers
 #[poise::command(slash_command)]
 async fn add(ctx: Context<'_>, #[description = "The map to add"] map: String) -> Result<(), Error> {
+    ctx.defer().await?;
     let servers: Vec<Server> = ctx
         .data()
         .servers
@@ -51,6 +52,7 @@ async fn rm(
     ctx: Context<'_>,
     #[description = "The map to remove"] map: String,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     let servers: Vec<Server> = ctx
         .data()
         .servers
@@ -91,6 +93,7 @@ async fn list(
     ctx: Context<'_>,
     #[description = "Match specific maps"] filter: Option<String>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     let server = ctx
         .data()
         .servers
