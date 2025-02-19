@@ -623,6 +623,7 @@ pub async fn playercap(
     server: String,
     #[description = "The player cap 24 <= p <= 32"] count: i32,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     let re = Regex::new(r#""maxplayers" is "(\d+)""#).unwrap();
 
     let server = ctx.data().server(&server)?;
