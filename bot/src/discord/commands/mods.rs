@@ -70,11 +70,7 @@ pub async fn tf2banid(
     let result = banid(
         &ctx.data().steamid_client,
         &id,
-        ctx.data()
-            .servers
-            .values()
-            .next()
-            .ok_or::<Error>("No servers!?".into())?,
+        &ctx.data().servers.values().collect::<Vec<&tf2::Server>>(),
         minutes,
         &reason.unwrap_or("undesirable".to_owned()),
     )
