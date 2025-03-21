@@ -641,6 +641,7 @@ dependencies = [
  "chrono-tz",
  "common",
  "dotenv",
+ "emoji 0.1.0",
  "emojito",
  "fern",
  "futures",
@@ -745,6 +746,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cardgames"
+version = "0.1.0"
+dependencies = [
+ "catcoin",
+ "common",
+ "emoji 0.1.0",
+ "poise",
+ "sqlx",
+]
+
+[[package]]
 name = "cargo-platform"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -772,6 +784,7 @@ version = "0.1.0"
 dependencies = [
  "chrono 0.4.38",
  "common",
+ "emoji 0.1.0",
  "log",
  "poise",
  "rand 0.8.5",
@@ -1267,6 +1280,16 @@ dependencies = [
 
 [[package]]
 name = "emoji"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "emoji"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32e9309870371f7fa7767752e5048fc0c0675b017a27d9c601dffe9a1efe0301"
@@ -1283,7 +1306,7 @@ version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be40efefb276c4912ea93a6d17588d5127d412b1ca7c185a7ec5a08d4305009b"
 dependencies = [
- "emoji",
+ "emoji 0.2.1",
  "unic-emoji-char",
 ]
 
@@ -3139,6 +3162,7 @@ dependencies = [
  "catcoin",
  "chrono 0.4.38",
  "common",
+ "emoji 0.1.0",
  "poise",
  "regex 1.10.5",
  "sqlx",
@@ -4227,6 +4251,7 @@ dependencies = [
  "catcoin",
  "chrono 0.4.38",
  "common",
+ "emoji 0.1.0",
  "image",
  "log",
  "plotters",
@@ -4405,6 +4430,7 @@ dependencies = [
  "chrono 0.4.38",
  "chrono-tz",
  "common",
+ "emoji 0.1.0",
  "ftp",
  "log",
  "poise",
@@ -5354,6 +5380,7 @@ dependencies = [
  "chrono 0.4.38",
  "chrono-tz",
  "common",
+ "emoji 0.1.0",
  "log",
  "poise",
  "sqlx",

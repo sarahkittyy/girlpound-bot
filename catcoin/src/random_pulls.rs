@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use emoji::emoji;
 use poise::serenity_prelude::{
     Color, Context, CreateAttachment, CreateEmbed, CreateEmbedFooter, CreateMessage, Message,
 };
@@ -125,7 +126,7 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, message: &Message) ->
             ":bangbang: {} Pull: {} #{} :sparkles:",
             rarity, reward.name, pulls
         ))
-        .description(format!("{} **+{}**", crate::emoji(), catcoins))
+        .description(format!("{} **+{}**", emoji("catcoin"), catcoins))
         .footer(CreateEmbedFooter::new("/catcoin balance"))
         .attachment(&attachment.filename)
         .color(reward.rarity.color());

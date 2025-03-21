@@ -10,6 +10,7 @@ common = { path = "../common" }
 tf2 = { path = "../tf2" }
 catcoin = { path = "../catcoin" }
 api = { path = "../api" }
+emoji = { path = "../emoji" }
 
 regex = "1.9.6"
 chrono = "0.4.31"

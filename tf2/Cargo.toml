@@ -7,6 +7,7 @@ edition = "2021"
 rcon = { path = "../rust-rcon", features = ["rt-tokio"] }
 common = { path = "../common" }
 steam = { path = "../steam" }
+emoji = { path = "../emoji" }
 
 regex = "1.9.6"
 tokio = { version = "1", features = ["full"] }

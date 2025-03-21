@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use chrono::{Days, NaiveDateTime};
+use emoji::emoji;
 use poise::serenity_prelude::{
     self as serenity, ComponentInteraction, ComponentInteractionDataKind, CreateAttachment,
     CreateInteractionResponse, CreateInteractionResponseFollowup, CreateMessage, Mentionable,
@@ -68,7 +69,8 @@ pub async fn interaction_dispatch(
                         };
                     log::info!(
                         "User requested {} stocks of {}",
-                        amount_to_buy, company.name
+                        amount_to_buy,
+                        company.name
                     );
                     mi.create_response(ctx, CreateInteractionResponse::Acknowledge)
                         .await?;
@@ -102,9 +104,9 @@ pub async fn interaction_dispatch(
                                 amount_to_buy,
                                 company.name,
                                 amount_to_buy * company.price,
-                                catcoin::emoji(),
+                                emoji("catcoin"),
                                 company.price,
-                                catcoin::emoji()
+                                emoji("catcoin")
                             )),
                         )
                         .await?;

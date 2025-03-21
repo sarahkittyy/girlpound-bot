@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 common = { path = "../common" }
 chrono = "0.4.31"
+emoji = { path = "../emoji" }
 
 sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
 tokio = { version = "1", features = ["full"] }

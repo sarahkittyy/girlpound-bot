@@ -10,6 +10,10 @@ use poise::serenity_prelude::{
 use common::Error;
 use sqlx::{MySql, Pool};
 
+use emoji::emoji;
+
+use super::{get_catcoin, grant_catcoin, spend_catcoin};
+
 const TRIP_MESSAGES: &'static [&'static str] = &[
     "meow!! >w< %u tripped and lost **%c** %e",
     "total noob fail!!!! %u fell over and dropped **%c** %e",
@@ -28,9 +32,6 @@ fn random_trip_msg(name: &str, amount: u64, catcoin_emoji: &str) -> String {
         .replace("%e", catcoin_emoji)
 }
 
-use crate::emoji;
-
-use super::{get_catcoin, grant_catcoin, spend_catcoin};
 /// Users rarely trip and drop some of their catcoin
 pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, msg: &Message) -> Result<(), Error> {
     let uuid = msg.id.get();
@@ -72,12 +73,12 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, msg: &Message) -> Res
         .title(random_trip_msg(
             msg.author.global_name.as_ref().unwrap_or(&msg.author.name),
             amount,
-            &emoji(),
+            &emoji("catcoin"),
         ));
     let button = CreateActionRow::Buttons(vec![CreateButton::new(format!("{uuid}-spilled-coin"))
         .label(format!("{amount}"))
         .emoji(
-            emoji()
+            emoji("catcoin")
                 .parse::<ReactionType>()
                 .expect("Could not parse catcoin emoji as ReactionType"),
         )]);
@@ -104,7 +105,7 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, msg: &Message) -> Res
                 "{} picked their own **{}** {} back up. ^-^",
                 mci.user.mention(),
                 amount,
-                emoji()
+                emoji("catcoin")
             )
         } else {
             format!(
@@ -112,7 +113,7 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, msg: &Message) -> Res
                 mci.user.mention(),
                 msg.author.mention(),
                 amount,
-                emoji()
+                emoji("catcoin")
             )
         };
         rh.edit(

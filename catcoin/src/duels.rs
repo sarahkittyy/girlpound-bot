@@ -12,7 +12,9 @@ use rand::{random, thread_rng, Rng};
 use rand_distr::{Distribution, Normal};
 use sqlx::{MySql, Pool};
 
-use crate::{attack_emoji, defense_emoji, emoji, get_catcoin, grant_catcoin, spend_catcoin};
+use crate::{get_catcoin, grant_catcoin, spend_catcoin};
+
+use emoji::emoji;
 
 pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, msg: &Message) -> Result<(), Error> {
     let wager: u64 = {
@@ -52,9 +54,13 @@ impl Duel {
 
     fn to_embed(&self) -> CreateEmbed {
         CreateEmbed::new()
-            .title(format!("‼️ {} {} coin flip ✨", self.wager, emoji()))
+            .title(format!(
+                "‼️ {} {} coin flip ✨",
+                self.wager,
+                emoji("catcoin")
+            ))
             .field(
-                format!("{} defense", defense_emoji()),
+                format!("{} defense", emoji("defense_position")),
                 &self
                     .defense
                     .as_ref()
@@ -63,7 +69,7 @@ impl Duel {
                 true,
             )
             .field(
-                format!("attack {}", attack_emoji()),
+                format!("attack {}", emoji("attack_position")),
                 self.attack
                     .as_ref()
                     .map(|a| a.mention().to_string())
@@ -286,7 +292,7 @@ pub async fn spawn_duel(
                     duel.attack.as_ref().unwrap().mention(),
                     duel.defense.as_ref().unwrap().mention(),
                     duel.wager,
-                    emoji()
+                    emoji("catcoin")
                 ))
                 .add_file(CreateAttachment::path("public/catcoinflip.gif").await?),
         )
@@ -322,7 +328,7 @@ pub async fn spawn_duel(
                 winner.mention(),
                 loser.mention(),
                 duel.wager,
-                emoji()
+                emoji("catcoin")
             )),
     )
     .await?;

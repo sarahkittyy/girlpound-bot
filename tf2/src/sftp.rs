@@ -1,5 +1,5 @@
 use std::{
-    io::{stdout, Read, Write},
+    io::{Read, Write},
     net::{SocketAddr, TcpStream},
     path::Path,
 };
@@ -7,7 +7,7 @@ use std::{
 use crate::files::ServerFiles;
 use common::Error;
 use poise::serenity_prelude::async_trait;
-use ssh2::{KeyboardInteractivePrompt, Session, Sftp};
+use ssh2::{Session, Sftp};
 
 pub struct ServerSftp {
     pub addr: SocketAddr,

@@ -1,5 +1,5 @@
 [workspace]
-members = ["tf2", "bot", "common", "stats", "api", "catcoin", "steam", "sourcebans", "seederboard", "profile", "stocks", "yapawards", "logstf", "genimg"]
+members = ["tf2", "bot", "common", "stats", "api", "catcoin", "steam", "sourcebans", "seederboard", "profile", "stocks", "yapawards", "logstf", "genimg", "emoji", "cardgames"]
 default-members = ["bot"]
 resolver = "2"
 

@@ -75,11 +75,11 @@ pub struct PoiseData {
     // mod role
     pub mod_role: RoleId,
     // server booster role
-    pub booster_role: RoleId,
+    pub _booster_role: RoleId,
     // suppawter role
-    pub suppawter_role: RoleId,
+    pub _suppawter_role: RoleId,
     // gen imgs role
-    pub genimg_role: RoleId,
+    pub _genimg_role: RoleId,
 
     /// #general
     pub general_channel: ChannelId,
@@ -109,7 +109,7 @@ pub struct PoiseData {
 }
 impl PoiseData {
     /// fetch the server with the given socket address
-    pub fn server_from_addr(&self, server_addr: SocketAddr) -> Result<&Server, Error> {
+    pub fn _server_from_addr(&self, server_addr: SocketAddr) -> Result<&Server, Error> {
         self.servers
             .get(&server_addr)
             .ok_or("Server not found".into())
@@ -400,9 +400,9 @@ pub async fn start_bot(
                         member_role,
                         scrim_role,
                         mod_role,
-                        genimg_role,
-                        booster_role,
-                        suppawter_role,
+                        _genimg_role: genimg_role,
+                        _booster_role: booster_role,
+                        _suppawter_role: suppawter_role,
                         horny_callouts: Arc::new(RwLock::new(HashSet::new())),
                         general_channel,
                         deleted_message_log_channel,

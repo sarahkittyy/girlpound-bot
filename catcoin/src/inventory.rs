@@ -5,8 +5,10 @@ use poise::serenity_prelude::{
 use regex::Regex;
 use sqlx::{MySql, Pool};
 
-use crate::{emoji, random_pulls::Rarity};
+use crate::random_pulls::Rarity;
 use common::Error;
+
+use emoji::emoji;
 
 use super::random_pulls::Reward;
 
@@ -91,7 +93,7 @@ impl PaginatedInventory {
                 format!(
                     "(**+{}** {}) **{}** {} `#{}` | <t:{}:R>",
                     pull.catcoin,
-                    emoji(),
+                    emoji("catcoin"),
                     pull.reward.rarity,
                     pull.reward.name,
                     pull.number,

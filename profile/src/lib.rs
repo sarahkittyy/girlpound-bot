@@ -8,6 +8,7 @@ use common::{
     util::{get_bit, hhmmss, truncate},
     Error,
 };
+use emoji::emoji;
 use stats::psychostats;
 use tf2::TF2Class;
 
@@ -205,7 +206,7 @@ impl UserProfile {
         }
         // catcoins
         e = e.field(
-            format!("Catcoin {}", catcoin::emoji()),
+            format!("Catcoin {}", emoji("catcoin")),
             catcoin.catcoin.to_string(),
             true,
         );

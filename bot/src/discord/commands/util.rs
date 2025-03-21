@@ -117,6 +117,6 @@ pub async fn servers_autocomplete(ctx: Context<'_>, partial: &str) -> Vec<Autoco
         .servers
         .iter()
         .filter(|(_addr, s)| s.name.to_lowercase().contains(&partial.to_lowercase()))
-        .map(|(addr, s)| AutocompleteChoice::new(s.name.clone(), s.name.clone()))
+        .map(|(_addr, s)| AutocompleteChoice::new(s.name.clone(), s.name.clone()))
         .collect()
 }

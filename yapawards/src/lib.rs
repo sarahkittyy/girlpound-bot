@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
+use emoji::emoji;
 use poise::serenity_prelude::{
     self as serenity, ChannelId, Color, CreateEmbed, CreateMessage, Mentionable, Message, UserId,
 };
@@ -84,7 +85,7 @@ impl YapAwards {
                             "{}**{}**. {} messages (`{:.0}%`/`{:.0}%`) - {}",
                             // fourth  place
                             if i == 3 {
-                                format!("+{} {} ", CATCOIN_AWARD_AMOUNT, catcoin::emoji())
+                                format!("+{} {} ", CATCOIN_AWARD_AMOUNT, emoji("catcoin"))
                             } else {
                                 "".to_owned()
                             },
@@ -157,7 +158,7 @@ pub fn start_job(http: Arc<serenity::Http>, channel: ChannelId, db: Pool<MySql>)
                                 "{} **+{}** {}",
                                 x.0.mention(),
                                 CATCOIN_AWARD_AMOUNT,
-                                catcoin::emoji()
+                                emoji("catcoin")
                             )),
                         )
                         .await

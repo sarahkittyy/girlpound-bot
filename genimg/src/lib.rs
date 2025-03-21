@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use chrono::{NaiveDateTime, Utc};
 use common::Error;
-use poise::serenity_prelude::{self as serenity, ChannelId, EditMessage, Message, RoleId, UserId};
+use poise::serenity_prelude::{self as serenity, ChannelId, Message, RoleId, UserId};
 use tokio::sync::RwLock;
 
 // when a user sends a message with an image/embed in the channel, their "genimg" role is removed for 24 hours
@@ -34,7 +34,7 @@ impl GenImg {
 pub async fn on_message(
     ctx: &serenity::Context,
     genimg: Arc<RwLock<GenImg>>,
-    mut msg: Message,
+    msg: Message,
 ) -> Result<(), Error> {
     let mut genimg = genimg.write().await;
     let member = msg.member(ctx).await?;

@@ -2,6 +2,7 @@ use futures::TryFutureExt;
 use rand::prelude::*;
 use std::time::Duration;
 
+use emoji::emoji;
 use poise::{
     self,
     serenity_prelude::{
@@ -45,14 +46,10 @@ pub async fn inv(
     let page_buttons = |pages: &Vec<PaginatedInventory>, page: usize| {
         let mut v = vec![];
         if page > 0 {
-            v.push(
-                CreateButton::new(prev_id.clone()).emoji(ReactionType::Unicode("⬅️".to_owned())),
-            );
+            v.push(CreateButton::new(prev_id.clone()).emoji(ReactionType::Unicode("⬅️".to_owned())));
         }
         if pages[page].has_next() {
-            v.push(
-                CreateButton::new(next_id.clone()).emoji(ReactionType::Unicode("➡️".to_owned())),
-            );
+            v.push(CreateButton::new(next_id.clone()).emoji(ReactionType::Unicode("➡️".to_owned())));
         }
         v.push(CreateButton::new(close_id.clone()).emoji(ReactionType::Unicode("❌".to_owned())));
         vec![CreateActionRow::Buttons(v)]
@@ -200,7 +197,7 @@ async fn drop(
     if amount == 0 {
         ctx.send(
             CreateReply::default()
-                .content(format!("Cannot drop **0** {}", catcoin::emoji()))
+                .content(format!("Cannot drop **0** {}", emoji("catcoin")))
                 .ephemeral(true),
         )
         .await?;
@@ -215,7 +212,7 @@ async fn drop(
             ctx.send(CreateReply::default().ephemeral(true).content(format!(
                 "You do not have **{}** {}",
                 amount,
-                catcoin::emoji()
+                emoji("catcoin")
             )))
             .await?;
             return Ok(());
@@ -241,7 +238,7 @@ async fn drop(
                 .as_deref()
                 .unwrap_or(ctx.author().name.as_ref()),
             amount,
-            catcoin::emoji()
+            emoji("catcoin")
         )
     });
 
@@ -252,7 +249,7 @@ async fn drop(
     let button = CreateActionRow::Buttons(vec![CreateButton::new(format!("{uuid}-claim"))
         .label(format!("{amount}"))
         .emoji(
-            catcoin::emoji()
+            emoji("catcoin")
                 .parse::<ReactionType>()
                 .expect("Could not parse catcoin emoji as ReactionType"),
         )]);
@@ -288,7 +285,7 @@ async fn drop(
                     mci.user.mention(),
                     ctx.author().mention(),
                     amount,
-                    catcoin::emoji()
+                    emoji("catcoin")
                 ))
                 .components(vec![]),
         )
@@ -307,7 +304,7 @@ async fn drop(
                 "{} Your drop has expired. Refunding **{}** {}",
                 ctx.author().mention(),
                 amount,
-                catcoin::emoji()
+                emoji("catcoin")
             )),
         )
         .await?;
@@ -335,7 +332,7 @@ async fn pay(
     if amount == 0 {
         ctx.send(
             CreateReply::default()
-                .content(format!("Cannot send **0** {}", catcoin::emoji()))
+                .content(format!("Cannot send **0** {}", emoji("catcoin")))
                 .ephemeral(true),
         )
         .await?;
@@ -355,13 +352,13 @@ async fn pay(
                 format!(
                     "Sent **{}** {} to {}.",
                     amount,
-                    catcoin::emoji(),
+                    emoji("catcoin"),
                     to.mention()
                 ),
                 false,
             ),
             Ok(false) => (
-                format!("You do not have enough catcoin {}.", catcoin::emoji()),
+                format!("You do not have enough catcoin {}.", emoji("catcoin")),
                 true,
             ),
             Err(e) => (format!("Internal payment error: `{:?}`", e), true),
@@ -386,7 +383,7 @@ async fn balance(ctx: Context<'_>) -> Result<(), Error> {
         .catcoin;
     ctx.send(CreateReply::default().content(format!(
         "{} You have {} catcoin.",
-        catcoin::emoji(),
+        emoji("catcoin"),
         catcoin
     )))
     .await?;
@@ -422,7 +419,7 @@ async fn top(ctx: Context<'_>) -> Result<(), Error> {
                 i + 1,
                 member.display_name(),
                 wallet.catcoin,
-                catcoin::emoji()
+                emoji("catcoin")
             )
         });
     let output = list.into_iter().collect::<Vec<String>>().join("\n");

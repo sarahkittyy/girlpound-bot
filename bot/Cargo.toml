@@ -14,9 +14,10 @@ sourcebans = { path = "../sourcebans" }
 seederboard = { path = "../seederboard" }
 profile = { path = "../profile" }
 stocks = { path = "../stocks" }
-yapawards = { path = "../yapawards"}
-logstf = { path = "../logstf"}
-genimg = { path = "../genimg"}
+yapawards = { path = "../yapawards" }
+logstf = { path = "../logstf" }
+genimg = { path = "../genimg" }
+emoji = { path = "../emoji" }
 
 chrono = "0.4.31"
 dotenv = "0.15.0"

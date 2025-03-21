@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 common = { path = "../common" }
 catcoin = { path = "../catcoin" }
+emoji = { path = "../emoji" }
 
 chrono = "0.4.31"
 poise = "0.6.1"

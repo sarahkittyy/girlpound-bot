@@ -1,5 +1,5 @@
 [package]
-name = "yapawards"
+name = "cardgames"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,10 +8,5 @@ common = { path = "../common" }
 catcoin = { path = "../catcoin" }
 emoji = { path = "../emoji" }
 
-chrono = "0.4.31"
-chrono-tz = "0.8.6"
 poise = "0.6.1"
 sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
-tokio = { version = "1", features = ["full"] }
-tokio-cron-scheduler = "0.10.0"
-log = "0.4"
