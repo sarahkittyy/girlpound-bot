@@ -1,10 +1,11 @@
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use poise::serenity_prelude::{
     ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector,
     ComponentInteractionDataKind, Context, CreateActionRow, CreateButton, CreateEmbed,
     CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu,
     CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, Mentionable, Message, User, UserId,
+    Timestamp,
 };
 
 use common::Error;
@@ -24,6 +25,8 @@ pub struct PokerLobby {
     player2_hand: Option<Hand>,
     player1_selected: bool,
     player2_selected: bool,
+    player1_timeout: Option<u64>,  // Unix timestamp when player 1's selection time expires
+    player2_timeout: Option<u64>,  // Unix timestamp when player 2's selection time expires
 }
 
 impl PokerLobby {
@@ -41,6 +44,8 @@ impl PokerLobby {
             player2_hand: None,
             player1_selected: false,
             player2_selected: false,
+            player1_timeout: None,
+            player2_timeout: None,
         }
     }
 
@@ -179,6 +184,127 @@ impl PokerLobby {
         if self.is_ready() {
             self.player1_hand = Some(self.deck.deal_hand());
             self.player2_hand = Some(self.deck.deal_hand());
+        }
+    }
+
+    // Deducts wager from both players and sets selection timeouts
+    pub async fn deduct_wagers_and_set_timeouts(
+        &mut self,
+        pool: &Pool<MySql>,
+        ctx: &Context,
+        msg: &Message,
+    ) -> Result<bool, Error> {
+        if !self.is_ready() {
+            return Ok(false);
+        }
+
+        let mut tx = pool.begin().await?;
+
+        if !spend_catcoin(&mut *tx, self.player1.as_ref().unwrap().id, self.wager).await? {
+            tx.rollback().await?;
+            msg.channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::new().content(format!(
+                        "{} is suddenly broke. game aborted.",
+                        self.player1.as_ref().unwrap().mention()
+                    )),
+                )
+                .await?;
+            msg.delete(ctx).await?;
+            return Ok(false);
+        }
+
+        if !spend_catcoin(&mut *tx, self.player2.as_ref().unwrap().id, self.wager).await? {
+            tx.rollback().await?;
+            msg.channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::new().content(format!(
+                        "{} is suddenly bwoke. game aborted.",
+                        self.player2.as_ref().unwrap().mention()
+                    )),
+                )
+                .await?;
+            msg.delete(ctx).await?;
+            return Ok(false);
+        }
+
+        tx.commit().await?;
+        
+        // Set timeouts for both players after successful catcoin deduction
+        self.set_selection_timeouts();
+        
+        Ok(true)
+    }
+    
+    // Sets 30-second timeouts for both players
+    fn set_selection_timeouts(&mut self) {
+        // Get current time in seconds
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs();
+        
+        // Add 30 seconds for the timeout
+        let timeout = now + 30;
+        
+        self.player1_timeout = Some(timeout);
+        self.player2_timeout = Some(timeout);
+    }
+    
+    // Format a discord relative timestamp for the timeout
+    fn format_timeout_timestamp(&self, player_num: u8) -> String {
+        let timeout = match player_num {
+            1 => self.player1_timeout,
+            2 => self.player2_timeout,
+            _ => None,
+        };
+        
+        if let Some(timestamp) = timeout {
+            format!("<t:{}:R>", timestamp)
+        } else {
+            "".to_string()
+        }
+    }
+    
+    // Checks if a player's selection time has expired
+    fn is_player_timeout_expired(&self, player_num: u8) -> bool {
+        let timeout = match player_num {
+            1 => self.player1_timeout,
+            2 => self.player2_timeout,
+            _ => None,
+        };
+        
+        let Some(deadline) = timeout else {
+            return false;
+        };
+        
+        // Get current time
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs();
+            
+        now >= deadline
+    }
+    
+    // Auto-selects for players who haven't made a choice when their time expires
+    fn auto_select_on_timeout(&mut self) {
+        // Check player 1
+        if !self.player1_selected && self.is_player_timeout_expired(1) {
+            if let Some(hand) = self.player1_hand.as_mut() {
+                // If timeout expired, don't redraw any cards
+                self.player1_selected = true;
+            }
+        }
+        
+        // Check player 2
+        if !self.player2_selected && self.is_player_timeout_expired(2) {
+            if let Some(hand) = self.player2_hand.as_mut() {
+                // If timeout expired, don't redraw any cards
+                self.player2_selected = true;
+            }
         }
     }
 
@@ -468,17 +594,27 @@ pub async fn create_poker_game(
                 continue;
             };
 
+            // If this is the first time we're dealing hands, deduct catcoin and set timeouts
+            if poker.player1_hand.is_none() && poker.player2_hand.is_none() {
+                if !poker.deduct_wagers_and_set_timeouts(pool, ctx, &msg).await? {
+                    // If deduction failed, the method already handled the error messaging
+                    continue;
+                }
+            }
+
             let hand = poker.get_hand_or_deal(player_num).clone();
-            // Send ephemeral message with player's cards and selection menu
+            // Send ephemeral message with player's cards, selection menu, and timeout
             let hand_text = poker.format_hand_with_rank(&hand);
+            let timeout_text = format!("\n\nMake your selection by {}! If you don't choose, no cards will be redrawn.", 
+                poker.format_timeout_timestamp(player_num));
 
             mci.create_response(
                 ctx,
                 CreateInteractionResponse::Message(
                     CreateInteractionResponseMessage::new()
-                        .content(hand_text)
+                        .content(format!("{}{}", hand_text, timeout_text))
                         .ephemeral(true)
-                        .components(vec![poker.get_card_select_menu(1)]),
+                        .components(vec![poker.get_card_select_menu(player_num)]),
                 ),
             )
             .await?;
@@ -524,6 +660,9 @@ pub async fn create_poker_game(
             update_embed(ctx, &mut msg, &poker).await?;
         }
 
+        // Check timeouts and auto-select for players who didn't make a choice in time
+        poker.auto_select_on_timeout();
+        
         // If both players have made their selections, determine winner
         if poker.is_ready() && poker.are_selections_done() {
             break;
@@ -534,43 +673,6 @@ pub async fn create_poker_game(
     if !poker.is_ready() || !poker.are_selections_done() {
         msg.delete(ctx).await?;
         return Ok(());
-    }
-
-    // Deduct wagers from both players
-    {
-        let mut tx = pool.begin().await?;
-
-        if !spend_catcoin(&mut *tx, poker.player1.as_ref().unwrap().id, wager).await? {
-            tx.rollback().await?;
-            msg.channel_id
-                .send_message(
-                    ctx,
-                    CreateMessage::new().content(format!(
-                        "{} doesn't have enough catcoin! Game cancelled.",
-                        poker.player1.as_ref().unwrap().mention()
-                    )),
-                )
-                .await?;
-            msg.delete(ctx).await?;
-            return Ok(());
-        }
-
-        if !spend_catcoin(&mut *tx, poker.player2.as_ref().unwrap().id, wager).await? {
-            tx.rollback().await?;
-            msg.channel_id
-                .send_message(
-                    ctx,
-                    CreateMessage::new().content(format!(
-                        "{} doesn't have enough catcoin! Game cancelled.",
-                        poker.player2.as_ref().unwrap().mention()
-                    )),
-                )
-                .await?;
-            msg.delete(ctx).await?;
-            return Ok(());
-        }
-
-        tx.commit().await?;
     }
 
     // Determine winner and update embed
