@@ -636,6 +636,7 @@ name = "bot"
 version = "0.1.0"
 dependencies = [
  "api",
+ "cardgames",
  "catcoin",
  "chrono 0.4.38",
  "chrono-tz",
@@ -753,6 +754,7 @@ dependencies = [
  "common",
  "emoji 0.1.0",
  "poise",
+ "rand 0.8.5",
  "sqlx",
 ]
 

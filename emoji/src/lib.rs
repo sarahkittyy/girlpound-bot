@@ -14,7 +14,8 @@ impl EmojiTable {
             .expect(&format!("could not read {} to emojis", &emoji_file));
 
         let table = EmojiTable {
-            dictionary: serde_json::from_str(&emoji_file_data).unwrap_or_default(),
+            dictionary: serde_json::from_str(&emoji_file_data)
+                .expect(&format!("could not parse {} to emojis", &emoji_file)),
         };
         log::info!("loaded {} emojis", table.dictionary.len());
         table

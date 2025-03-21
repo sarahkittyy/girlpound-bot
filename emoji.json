@@ -12,5 +12,40 @@
   "catcoin_defense": "<:catcoin:1247376303762575480>",
   "defense_position": "<:defense_position:1300952821100838965>",
   "attack_position": "<:attack_position:1300952867816996957>",
-  "catcoin_attack": "<:catcoin_attack:1352747488620318811>"
+  "catcoin_attack": "<:catcoin_attack:1352747488620318811>",
+
+  "club_bottom": "<:club_bottom:1352749443199275008>",
+  "diamond_bottom": "<:diamond_bottom:1352748753739579512>",
+  "heart_bottom": "<:heart_bottom:1352749444163964968>",
+  "spade_bottom": "<:spade_bottom:1352748732558475358>",
+
+  "black_2_top": "<:black_2_top:1352748777840316446>",
+  "black_3_top": "<:black_3_top:1352748775717732495>",
+  "black_4_top": "<:black_4_top:1352748899814608987>",
+  "black_5_top": "<:black_5_top:1352748771389472889>",
+  "black_6_top": "<:black_6_top:1352748898829209660>",
+  "black_7_top": "<:black_7_top:1352748768289620118>",
+  "black_8_top": "<:black_8_top:1352748897277317223>",
+  "black_9_top": "<:black_9_top:1352748765123182642>",
+  "black_10_top": "<:black_10_top:1352749160570552524>",
+  "black_jack_top": "<:black_jack_top:1352748760748261496>",
+  "black_queen_top": "<:black_queen_top:1352748757271445725>",
+  "black_king_top": "<:black_king_top:1352749161698693182>",
+  "black_ace_top": "<:black_ace_top:1352748895586746512>",
+
+  "red_2_top": "<:red_2_top:1352749328359231520>",
+  "red_3_top": "<:red_3_top:1352748748144509110>",
+  "red_4_top": "<:red_4_top:1352749329365995611>",
+  "red_5_top": "<:red_5_top:1352748743941947576>",
+  "red_6_top": "<:red_6_top:1352749330813030654>",
+  "red_7_top": "<:red_7_top:1352748741014196324>",
+  "red_8_top": "<:red_8_top:1352748739957100594>",
+  "red_9_top": "<:red_9_top:1352748738497609730>",
+  "red_10_top": "<:red_10_top:1352748750640250971>",
+  "red_jack_top": "<:red_jack_top:1352748736257851453>",
+  "red_queen_top": "<:red_queen_top:1352748733867233403>",
+  "red_king_top": "<:red_king_top:1352748734852763669>",
+  "red_ace_top": "<:red_ace_top:1352748737356763156>",
+
+  "card_back": "<:card_back:1352770586077827234>"
 }

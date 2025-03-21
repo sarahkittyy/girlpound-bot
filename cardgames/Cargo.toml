@@ -8,5 +8,6 @@ common = { path = "../common" }
 catcoin = { path = "../catcoin" }
 emoji = { path = "../emoji" }
 
+rand = "0.8.5"
 poise = "0.6.1"
 sqlx = { version = "0.7.2", features = ["runtime-tokio", "mysql", "chrono"] }
