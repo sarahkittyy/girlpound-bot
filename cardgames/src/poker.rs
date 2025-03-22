@@ -350,9 +350,9 @@ impl PokerLobby {
     }
 
     fn try_register_player(&mut self, user: User) -> Result<(), &'static str> {
-        if self.player1.is_none() {
+        if self.player1.is_none() && self.player2.as_ref().is_none_or(|p| p.id != user.id) {
             self.player1 = Some(user);
-        } else if self.player2.is_none() {
+        } else if self.player2.is_none() && self.player1.as_ref().is_none_or(|p| p.id != user.id) {
             self.player2 = Some(user);
         } else {
             return Err("da lobby is full >//<");
