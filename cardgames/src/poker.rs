@@ -172,7 +172,7 @@ impl PokerLobby {
 
             // Create a more detailed description when both players have the same hand rank
             let description = format!(
-                "{} wins +**{}** {} with **{}** over {}'s **{}**",
+                "{} stole +**{}** {} with **{}** over {}'s **{}**",
                 winner.0.mention(),
                 self.wager,
                 emoji("catcoin"),
