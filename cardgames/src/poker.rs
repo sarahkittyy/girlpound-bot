@@ -128,7 +128,7 @@ impl PokerLobby {
         &self,
         ctx: &Context,
         winner_id: Option<UserId>,
-        original_msg: &Message,
+        original_msg: &mut Message,
     ) -> Result<(), Error> {
         let player1_hand = self.player1_hand.as_ref().unwrap();
         let player2_hand = self.player2_hand.as_ref().unwrap();
@@ -145,13 +145,13 @@ impl PokerLobby {
                 (
                     self.player1.as_ref().unwrap(),
                     player1_rank,
-                    player1_tiebreakers.clone(),
+                    &player1_tiebreakers,
                 )
             } else {
                 (
                     self.player2.as_ref().unwrap(),
                     player2_rank,
-                    player2_tiebreakers.clone(),
+                    &player2_tiebreakers,
                 )
             };
 
@@ -160,13 +160,13 @@ impl PokerLobby {
                 (
                     self.player2.as_ref().unwrap(),
                     player2_rank,
-                    player2_tiebreakers,
+                    &player2_tiebreakers,
                 )
             } else {
                 (
                     self.player1.as_ref().unwrap(),
                     player1_rank,
-                    player1_tiebreakers,
+                    &player1_tiebreakers,
                 )
             };
 
@@ -198,14 +198,68 @@ impl PokerLobby {
             ));
         }
 
-        // Send the winner announcement as a reply to the original message
+        // Add fields for both players' final hands, sort by winner first
+        if winner_id.is_none_or(|wid| wid == self.player1.as_ref().unwrap().id) {
+            winner_embed = winner_embed.field(
+                format!(
+                    "{}'s hand ({})",
+                    self.player1.as_ref().unwrap().display_name(),
+                    if player1_rank == player2_rank {
+                        format_rank_tie(player1_rank, &player1_tiebreakers)
+                    } else {
+                        player1_rank.to_string()
+                    }
+                ),
+                self.format_hand(player1_hand),
+                true,
+            );
+            winner_embed = winner_embed.field(
+                format!(
+                    "{}'s hand ({})",
+                    self.player2.as_ref().unwrap().display_name(),
+                    if player1_rank == player2_rank {
+                        format_rank_tie(player2_rank, &player2_tiebreakers)
+                    } else {
+                        player2_rank.to_string()
+                    }
+                ),
+                self.format_hand(player2_hand),
+                true,
+            );
+        } else {
+            winner_embed = winner_embed.field(
+                format!(
+                    "{}'s hand ({})",
+                    self.player2.as_ref().unwrap().display_name(),
+                    if player1_rank == player2_rank {
+                        format_rank_tie(player2_rank, &player2_tiebreakers)
+                    } else {
+                        player2_rank.to_string()
+                    }
+                ),
+                self.format_hand(player2_hand),
+                true,
+            );
+            winner_embed = winner_embed.field(
+                format!(
+                    "{}'s hand ({})",
+                    self.player1.as_ref().unwrap().display_name(),
+                    if player1_rank == player2_rank {
+                        format_rank_tie(player1_rank, &player1_tiebreakers)
+                    } else {
+                        player1_rank.to_string()
+                    }
+                ),
+                self.format_hand(player1_hand),
+                true,
+            )
+        }
+
+        // Edit the original message with the winner announcement and hands
         original_msg
-            .channel_id
-            .send_message(
+            .edit(
                 ctx,
-                CreateMessage::new()
-                    .reference_message(original_msg)
-                    .embed(winner_embed),
+                EditMessage::new().embed(winner_embed).components(vec![]),
             )
             .await?;
 
@@ -261,92 +315,105 @@ impl PokerLobby {
         Ok(())
     }
 
-    pub fn to_embed(&self) -> CreateEmbed {
+    pub fn to_lobby_embed(&self) -> CreateEmbed {
         let mut embed = CreateEmbed::new().title(format!(
             "♠️ poker - {} {} wager ♦️",
             self.wager,
             emoji("catcoin")
         ));
 
-        if !self.is_ready() {
-            // Lobby phase
-            embed = embed
-                .field(
-                    format!("{} defense player", emoji("defense_position")),
-                    self.player1
-                        .as_ref()
-                        .map(|p| p.mention().to_string())
-                        .unwrap_or("open".to_owned()),
-                    true,
-                )
-                .field(
-                    format!("attack player {}", emoji("attack_position")),
-                    self.player2
-                        .as_ref()
-                        .map(|p| p.mention().to_string())
-                        .unwrap_or("open".to_owned()),
-                    true,
-                );
-        } else {
-            // Game in progress
-            let player1_status = if self.player1_selected && self.player1_redrawn_count > 0 {
-                format!(
-                    " (redrew {} card{})",
-                    self.player1_redrawn_count,
-                    if self.player1_redrawn_count == 1 {
-                        ""
-                    } else {
-                        "s"
-                    }
-                )
-            } else if self.player1_selected {
-                " (ready)".to_string()
-            } else {
-                "".to_string()
-            };
-
-            let player2_status = if self.player2_selected && self.player2_redrawn_count > 0 {
-                format!(
-                    " (redrew {} card{})",
-                    self.player2_redrawn_count,
-                    if self.player2_redrawn_count == 1 {
-                        ""
-                    } else {
-                        "s"
-                    }
-                )
-            } else if self.player2_selected {
-                " (ready)".to_string()
-            } else {
-                "".to_string()
-            };
-
-            embed = embed
-                .field(
-                    format!(
-                        "{}'s hand{}",
-                        self.player1.as_ref().unwrap().display_name(),
-                        player1_status
-                    ),
-                    emoji("card_back").repeat(5), // Card back emoji
-                    true,
-                )
-                .field(
-                    format!(
-                        "{}'s hand{}",
-                        self.player2.as_ref().unwrap().display_name(),
-                        player2_status
-                    ),
-                    emoji("card_back").repeat(5), // Card back emoji
-                    true,
-                )
-                .description(format!(
-                    "hands finalized {}",
-                    self.format_timeout_timestamp()
-                ));
-        }
+        embed = embed
+            .field(
+                format!("{} defense player", emoji("defense_position")),
+                self.player1
+                    .as_ref()
+                    .map(|p| p.mention().to_string())
+                    .unwrap_or("open".to_owned()),
+                true,
+            )
+            .field(
+                format!("attack player {}", emoji("attack_position")),
+                self.player2
+                    .as_ref()
+                    .map(|p| p.mention().to_string())
+                    .unwrap_or("open".to_owned()),
+                true,
+            );
 
         embed
+    }
+
+    pub fn to_game_embed(&self) -> CreateEmbed {
+        let mut embed = CreateEmbed::new().title(format!(
+            "♠️ poker - {} {} wager ♦️",
+            self.wager,
+            emoji("catcoin")
+        ));
+        // Game in progress
+        let player1_status = if self.player1_selected && self.player1_redrawn_count > 0 {
+            format!(
+                " (redrew {} card{})",
+                self.player1_redrawn_count,
+                if self.player1_redrawn_count == 1 {
+                    ""
+                } else {
+                    "s"
+                }
+            )
+        } else if self.player1_selected {
+            " (ready)".to_string()
+        } else {
+            "".to_string()
+        };
+
+        let player2_status = if self.player2_selected && self.player2_redrawn_count > 0 {
+            format!(
+                " (redrew {} card{})",
+                self.player2_redrawn_count,
+                if self.player2_redrawn_count == 1 {
+                    ""
+                } else {
+                    "s"
+                }
+            )
+        } else if self.player2_selected {
+            " (ready)".to_string()
+        } else {
+            "".to_string()
+        };
+
+        embed = embed
+            .field(
+                format!(
+                    "{}'s hand{}",
+                    self.player1.as_ref().unwrap().display_name(),
+                    player1_status
+                ),
+                self.format_hand(self.player1_hand.as_ref().unwrap()),
+                true,
+            )
+            .field(
+                format!(
+                    "{}'s hand{}",
+                    self.player2.as_ref().unwrap().display_name(),
+                    player2_status
+                ),
+                self.format_hand(self.player2_hand.as_ref().unwrap()),
+                true,
+            )
+            .description(format!(
+                "hands finalized {}",
+                self.format_timeout_timestamp()
+            ));
+        embed
+    }
+
+    pub fn to_embed(&self) -> CreateEmbed {
+        if !self.is_ready() {
+            self.to_lobby_embed()
+        } else {
+            self.to_game_embed()
+        }
     }
 
     fn try_register_player(&mut self, user: User) -> Result<(), &'static str> {
@@ -499,9 +566,9 @@ impl PokerLobby {
         } else if !self.are_selections_done() {
             // Game in progress - view cards and select cards to redraw
             let view = CreateButton::new(format!("{}-view", self.uuid))
-                .label("view cards")
+                .label("redraw cards")
                 .style(ButtonStyle::Success)
-                .emoji('👀');
+                .emoji('🃏');
 
             vec![CreateActionRow::Buttons(vec![view])]
         } else {
@@ -770,9 +837,28 @@ pub async fn create_poker_game(
                     // If deduction failed, the method already handled the error messaging
                     continue;
                 }
-            }
 
-            update_embed(ctx, &mut msg, &poker).await?;
+                msg.edit(
+                    ctx,
+                    EditMessage::new()
+                        .embed(poker.to_lobby_embed())
+                        .components(vec![]),
+                )
+                .await?;
+
+                msg = msg
+                    .channel_id
+                    .send_message(
+                        ctx,
+                        CreateMessage::new()
+                            .reference_message(&msg)
+                            .embed(poker.to_embed())
+                            .components(poker.to_components()),
+                    )
+                    .await?;
+            } else {
+                update_embed(ctx, &mut msg, &poker).await?;
+            }
             mci.create_response(ctx, CreateInteractionResponse::Acknowledge)
                 .await?;
         } else if mci.data.custom_id == view_id {
@@ -891,20 +977,10 @@ pub async fn create_poker_game(
         }
     };
 
-    // Create a results embed for final hand reveal
-    let revealed_hands_embed = poker.create_revealed_hands_embed();
-
-    // Update original message with revealed hands
-    msg.edit(
-        ctx,
-        EditMessage::new()
-            .embed(revealed_hands_embed)
-            .components(vec![]),
-    )
-    .await?;
-
-    // Create and send winner announcement as reply
-    poker.send_winner_announcement(ctx, winner_id, &msg).await?;
+    // Display winner announcement and hands in the second message
+    poker
+        .send_winner_announcement(ctx, winner_id, &mut msg)
+        .await?;
 
     Ok(())
 }
