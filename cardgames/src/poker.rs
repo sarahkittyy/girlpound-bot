@@ -1,17 +1,19 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    cmp::Ordering,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use poise::serenity_prelude::{
     ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector,
     ComponentInteractionDataKind, Context, CreateActionRow, CreateButton, CreateEmbed,
     CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu,
     CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, Mentionable, Message, User, UserId,
-    Timestamp,
 };
 
 use common::Error;
 use sqlx::{MySql, Pool};
 
-use crate::{Deck, Hand};
+use crate::{format_rank_tie, Deck, Hand, HandRank, Rank};
 use catcoin::{get_catcoin, grant_catcoin, spend_catcoin};
 use emoji::emoji;
 
@@ -25,8 +27,7 @@ pub struct PokerLobby {
     player2_hand: Option<Hand>,
     player1_selected: bool,
     player2_selected: bool,
-    player1_timeout: Option<u64>,  // Unix timestamp when player 1's selection time expires
-    player2_timeout: Option<u64>,  // Unix timestamp when player 2's selection time expires
+    draw_timeout: Option<u64>, // Unix timestamp when selection time expires
 }
 
 impl PokerLobby {
@@ -44,9 +45,170 @@ impl PokerLobby {
             player2_hand: None,
             player1_selected: false,
             player2_selected: false,
-            player1_timeout: None,
-            player2_timeout: None,
+            draw_timeout: None,
         }
+    }
+
+    // Create an embed that shows both players' hands with their ranks
+    pub fn create_revealed_hands_embed(&self) -> CreateEmbed {
+        let mut embed = CreateEmbed::new().title(format!(
+            "♠️ poker - {} {} wager ♦️",
+            self.wager,
+            emoji("catcoin")
+        ));
+
+        let player1_hand = self.player1_hand.as_ref().unwrap();
+        let player2_hand = self.player2_hand.as_ref().unwrap();
+
+        let (player1_rank, player1_tiebreakers) = player1_hand.evaluate();
+        let (player2_rank, player2_tiebreakers) = player2_hand.evaluate();
+
+        embed = embed
+            .field(
+                format!(
+                    "{}'s hand ({})",
+                    self.player1.as_ref().unwrap().display_name(),
+                    if player1_rank == player2_rank {
+                        format_rank_tie(player1_rank, &player1_tiebreakers)
+                    } else {
+                        player1_rank.to_string()
+                    }
+                ),
+                self.format_hand(player1_hand),
+                true,
+            )
+            .field(
+                format!(
+                    "{}'s hand ({})",
+                    self.player2.as_ref().unwrap().display_name(),
+                    if player1_rank == player2_rank {
+                        format_rank_tie(player2_rank, &player2_tiebreakers)
+                    } else {
+                        player2_rank.to_string()
+                    }
+                ),
+                self.format_hand(player2_hand),
+                true,
+            );
+
+        embed
+    }
+
+    // Send a reply message announcing the winner
+    pub async fn send_winner_announcement(
+        &self,
+        ctx: &Context,
+        winner_id: Option<UserId>,
+        original_msg: &Message,
+    ) -> Result<(), Error> {
+        let player1_hand = self.player1_hand.as_ref().unwrap();
+        let player2_hand = self.player2_hand.as_ref().unwrap();
+
+        let (player1_rank, player1_tiebreakers) = player1_hand.evaluate();
+        let (player2_rank, player2_tiebreakers) = player2_hand.evaluate();
+
+        let mut winner_embed = CreateEmbed::new()
+            .title("🏆 poker results 🏆")
+            .color(0xFFD700); // Gold color
+
+        if let Some(winner_id) = winner_id {
+            let winner = if winner_id == self.player1.as_ref().unwrap().id {
+                (
+                    self.player1.as_ref().unwrap(),
+                    player1_rank,
+                    player1_tiebreakers,
+                )
+            } else {
+                (
+                    self.player2.as_ref().unwrap(),
+                    player2_rank,
+                    player2_tiebreakers,
+                )
+            };
+
+            // Create a more detailed description when both players have the same hand rank
+            let description = format!(
+                "{} wins +**{}** {} with **{}**",
+                winner.0.mention(),
+                self.wager * 2,
+                emoji("catcoin"),
+                if player1_rank == player2_rank {
+                    format_rank_tie(winner.1, &winner.2)
+                } else {
+                    winner.1.to_string()
+                }
+            );
+
+            winner_embed = winner_embed.description(description);
+        } else {
+            // For ties, mention it's a tie but player 1 wins by default
+            winner_embed = winner_embed.description(format!(
+                "draw!! {} catcoins have been returned >w<",
+                emoji("catcoin")
+            ));
+        }
+
+        // Send the winner announcement as a reply to the original message
+        original_msg
+            .channel_id
+            .send_message(
+                ctx,
+                CreateMessage::new()
+                    .reference_message(original_msg)
+                    .embed(winner_embed),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    // Abort the game with a reason, refund players if needed
+    pub async fn abort_game(
+        &self,
+        ctx: &Context,
+        pool: &Pool<MySql>,
+        msg: &Message,
+        reason: &str,
+    ) -> Result<(), Error> {
+        // Refund catcoin to players who joined if wagers were deducted
+        // (Only applies when game has started but selections aren't done)
+        if self.is_ready() && self.draw_timeout.is_some() && !self.are_selections_done() {
+            let mut tx = pool.begin().await?;
+
+            // Refund player 1
+            if let Some(player1) = &self.player1 {
+                grant_catcoin(&mut *tx, player1.id, self.wager).await?;
+            }
+
+            // Refund player 2
+            if let Some(player2) = &self.player2 {
+                grant_catcoin(&mut *tx, player2.id, self.wager).await?;
+            }
+
+            tx.commit().await?;
+
+            // Send abort notification message to channel
+            msg.channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::new()
+                        .content(format!("poker game aborted: {}. wagers refunded.", reason)),
+                )
+                .await?;
+        } else {
+            // Just notify about the abort
+            msg.channel_id
+                .send_message(
+                    ctx,
+                    CreateMessage::new().content(format!("poker game aborted: {}.", reason)),
+                )
+                .await?;
+        }
+
+        // Delete the original message
+        msg.delete(ctx).await?;
+
+        Ok(())
     }
 
     pub fn to_embed(&self) -> CreateEmbed {
@@ -75,87 +237,39 @@ impl PokerLobby {
                         .unwrap_or("open".to_owned()),
                     true,
                 );
-        } else if !self.are_selections_done() {
+        } else {
             // Game in progress
             embed = embed
                 .field(
-                    format!("{}'s hand", self.player1.as_ref().unwrap().display_name()),
+                    format!(
+                        "{}'s hand{}",
+                        self.player1.as_ref().unwrap().display_name(),
+                        if self.player1_selected {
+                            " (ready)"
+                        } else {
+                            ""
+                        }
+                    ),
                     emoji("card_back").repeat(5), // Card back emoji
                     true,
                 )
                 .field(
-                    format!("{}'s hand", self.player2.as_ref().unwrap().display_name()),
+                    format!(
+                        "{}'s hand{}",
+                        self.player2.as_ref().unwrap().display_name(),
+                        if self.player2_selected {
+                            " (ready)"
+                        } else {
+                            ""
+                        }
+                    ),
                     emoji("card_back").repeat(5), // Card back emoji
                     true,
-                );
-
-            // Show who has finished their selection
-            let mut status = String::new();
-            if self.player1_selected {
-                status.push_str(&format!(
-                    "{} is ready\n",
-                    self.player1.as_ref().unwrap().display_name()
-                ));
-            }
-            if self.player2_selected {
-                status.push_str(&format!(
-                    "{} is ready\n",
-                    self.player2.as_ref().unwrap().display_name()
-                ));
-            }
-
-            if !status.is_empty() {
-                embed = embed.field("Status", status, false);
-            }
-        } else {
-            // Game complete
-            let player1_hand = self.player1_hand.as_ref().unwrap();
-            let player2_hand = self.player2_hand.as_ref().unwrap();
-
-            let (player1_rank, _) = player1_hand.evaluate();
-            let (player2_rank, _) = player2_hand.evaluate();
-
-            let comparison = player1_hand.compare(player2_hand);
-
-            let winner = match comparison {
-                std::cmp::Ordering::Greater => self.player1.as_ref().unwrap(),
-                std::cmp::Ordering::Less => self.player2.as_ref().unwrap(),
-                std::cmp::Ordering::Equal => {
-                    // In case of a tie, we could use a tiebreaker or split the pot
-                    // For now, let's just pick player 1 as a winner in a tie
-                    self.player1.as_ref().unwrap()
-                }
-            };
-
-            embed = embed
-                .field(
-                    format!(
-                        "{}'s hand ({})",
-                        self.player1.as_ref().unwrap().name,
-                        player1_rank
-                    ),
-                    "Cards will be shown here", // This will be replaced with actual cards in a later step
-                    false,
                 )
-                .field(
-                    format!(
-                        "{}'s hand ({})",
-                        self.player2.as_ref().unwrap().name,
-                        player2_rank
-                    ),
-                    "Cards will be shown here", // This will be replaced with actual cards in a later step
-                    false,
-                )
-                .field(
-                    "Winner",
-                    format!(
-                        "{} wins **{}** {}!",
-                        winner.mention(),
-                        self.wager * 2,
-                        emoji("catcoin")
-                    ),
-                    false,
-                );
+                .description(format!(
+                    "hands finalized {}",
+                    self.format_timeout_timestamp()
+                ));
         }
 
         embed
@@ -187,7 +301,7 @@ impl PokerLobby {
         }
     }
 
-    // Deducts wager from both players and sets selection timeouts
+    // Deducts wager from both players, sets selection timeouts, and deals initial hands
     pub async fn deduct_wagers_and_set_timeouts(
         &mut self,
         pool: &Pool<MySql>,
@@ -206,7 +320,7 @@ impl PokerLobby {
                 .send_message(
                     ctx,
                     CreateMessage::new().content(format!(
-                        "{} is suddenly broke. game aborted.",
+                        "{} twied to cheat. game aborted",
                         self.player1.as_ref().unwrap().mention()
                     )),
                 )
@@ -221,7 +335,7 @@ impl PokerLobby {
                 .send_message(
                     ctx,
                     CreateMessage::new().content(format!(
-                        "{} is suddenly bwoke. game aborted.",
+                        "{} twied to cheat. game aborted",
                         self.player2.as_ref().unwrap().mention()
                     )),
                 )
@@ -231,80 +345,59 @@ impl PokerLobby {
         }
 
         tx.commit().await?;
-        
+
         // Set timeouts for both players after successful catcoin deduction
-        self.set_selection_timeouts();
-        
+        self.set_selection_timeout();
+
+        // Deal initial hands after catcoin deduction is successful
+        self.deal_initial_hands();
+
         Ok(true)
     }
-    
+
     // Sets 30-second timeouts for both players
-    fn set_selection_timeouts(&mut self) {
+    fn set_selection_timeout(&mut self) {
         // Get current time in seconds
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards")
             .as_secs();
-        
+
         // Add 30 seconds for the timeout
         let timeout = now + 30;
-        
-        self.player1_timeout = Some(timeout);
-        self.player2_timeout = Some(timeout);
+
+        self.draw_timeout = Some(timeout);
     }
-    
+
     // Format a discord relative timestamp for the timeout
-    fn format_timeout_timestamp(&self, player_num: u8) -> String {
-        let timeout = match player_num {
-            1 => self.player1_timeout,
-            2 => self.player2_timeout,
-            _ => None,
-        };
-        
-        if let Some(timestamp) = timeout {
+    fn format_timeout_timestamp(&self) -> String {
+        if let Some(timestamp) = self.draw_timeout {
             format!("<t:{}:R>", timestamp)
         } else {
             "".to_string()
         }
     }
-    
+
     // Checks if a player's selection time has expired
-    fn is_player_timeout_expired(&self, player_num: u8) -> bool {
-        let timeout = match player_num {
-            1 => self.player1_timeout,
-            2 => self.player2_timeout,
-            _ => None,
-        };
-        
-        let Some(deadline) = timeout else {
+    fn is_player_timeout_expired(&self) -> bool {
+        let Some(deadline) = self.draw_timeout else {
             return false;
         };
-        
+
         // Get current time
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards")
             .as_secs();
-            
+
         now >= deadline
     }
-    
+
     // Auto-selects for players who haven't made a choice when their time expires
     fn auto_select_on_timeout(&mut self) {
-        // Check player 1
-        if !self.player1_selected && self.is_player_timeout_expired(1) {
-            if let Some(hand) = self.player1_hand.as_mut() {
-                // If timeout expired, don't redraw any cards
-                self.player1_selected = true;
-            }
-        }
-        
-        // Check player 2
-        if !self.player2_selected && self.is_player_timeout_expired(2) {
-            if let Some(hand) = self.player2_hand.as_mut() {
-                // If timeout expired, don't redraw any cards
-                self.player2_selected = true;
-            }
+        if self.is_player_timeout_expired() {
+            self.player1_selected = true;
+            self.player2_selected = true;
         }
     }
 
@@ -342,24 +435,25 @@ impl PokerLobby {
             panic!("cannot get card select manu if no hand is dealt");
         };
 
-        let options = hand
+        let mut options = hand
             .cards
             .iter()
             .enumerate()
             .map(|(i, card)| {
                 CreateSelectMenuOption::new(
-                    format!("{} of {}", card.rank, card.suit),
+                    format!("{}. {} of {}", i + 1, card.rank, card.suit),
                     format!("card{}", i),
                 )
-                .description(format!("select to redraw card {}", i + 1))
             })
             .collect::<Vec<_>>();
+
+        options.push(CreateSelectMenuOption::new("none", "none"));
 
         CreateActionRow::SelectMenu(
             CreateSelectMenu::new(custom_id, CreateSelectMenuKind::String { options })
                 .placeholder("select cards to redraw (or none)")
                 .min_values(0)
-                .max_values(5),
+                .max_values(6),
         )
     }
 
@@ -414,12 +508,22 @@ impl PokerLobby {
 
         if player_num == 1 && !self.player1_selected {
             if let Some(hand) = self.player1_hand.as_mut() {
+                if selections.contains(&"none".to_owned()) {
+                    self.player1_selected = true;
+                    return;
+                }
                 hand.redraw(&mut self.deck, &indices);
+                hand.sort();
                 self.player1_selected = true;
             }
         } else if player_num == 2 && !self.player2_selected {
             if let Some(hand) = self.player2_hand.as_mut() {
+                if selections.contains(&"none".to_owned()) {
+                    self.player2_selected = true;
+                    return;
+                }
                 hand.redraw(&mut self.deck, &indices);
+                hand.sort();
                 self.player2_selected = true;
             }
         }
@@ -460,54 +564,6 @@ impl PokerLobby {
             _ => panic!("Invalid player number"),
         }
     }
-
-    fn update_embed_with_final_hands(&self, mut embed: CreateEmbed) -> CreateEmbed {
-        let player1_hand = self.player1_hand.as_ref().unwrap();
-        let player2_hand = self.player2_hand.as_ref().unwrap();
-
-        let (player1_rank, _) = player1_hand.evaluate();
-        let (player2_rank, _) = player2_hand.evaluate();
-
-        embed = embed.field(
-            format!(
-                "{}'s hand ({})",
-                self.player1.as_ref().unwrap().name,
-                player1_rank
-            ),
-            self.format_hand(player1_hand),
-            false,
-        );
-
-        embed = embed.field(
-            format!(
-                "{}'s hand ({})",
-                self.player2.as_ref().unwrap().name,
-                player2_rank
-            ),
-            self.format_hand(player2_hand),
-            false,
-        );
-
-        let comparison = player1_hand.compare(player2_hand);
-        let winner = match comparison {
-            std::cmp::Ordering::Greater => self.player1.as_ref().unwrap(),
-            std::cmp::Ordering::Less => self.player2.as_ref().unwrap(),
-            std::cmp::Ordering::Equal => self.player1.as_ref().unwrap(), // Default to player 1 on tie
-        };
-
-        embed = embed.field(
-            "Winner",
-            format!(
-                "{} wins **{}** {}!",
-                winner.mention(),
-                self.wager * 2,
-                emoji("catcoin")
-            ),
-            false,
-        );
-
-        embed
-    }
 }
 
 pub async fn create_poker_game(
@@ -532,7 +588,8 @@ pub async fn create_poker_game(
         )
         .await?;
 
-    async fn update_embed(
+    // Update embed and components of a message
+    pub async fn update_embed(
         ctx: &Context,
         msg: &mut Message,
         poker: &PokerLobby,
@@ -547,7 +604,8 @@ pub async fn create_poker_game(
         Ok(())
     }
 
-    async fn err_respond(
+    // Respond to an interaction with an error message
+    pub async fn err_respond(
         ctx: &Context,
         mci: &ComponentInteraction,
         msg: &str,
@@ -564,13 +622,45 @@ pub async fn create_poker_game(
         Ok(())
     }
 
-    // Wait for players to join
-    while let Some(mci) = ComponentInteractionCollector::new(ctx)
-        .channel_id(channel)
-        .timeout(Duration::from_secs(600))
-        .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
-        .await
-    {
+    // Set up a shorter timeout for the component collector to allow regular timeout checks
+    let collector_timeout = Duration::from_secs(3); // Check every 10 seconds
+
+    // Wait for players to join and handle gameplay
+    loop {
+        let interaction = ComponentInteractionCollector::new(ctx)
+            .channel_id(channel)
+            .timeout(collector_timeout)
+            .filter(move |mci| mci.data.custom_id.starts_with(&uuid.to_string()))
+            .await;
+
+        // Check timeouts and auto-select for players who didn't make a choice in time
+        if poker.is_ready() && !poker.are_selections_done() && poker.is_player_timeout_expired() {
+            poker.auto_select_on_timeout();
+            update_embed(ctx, &mut msg, &poker).await?;
+
+            // If both players have made their selections (due to auto-selection), break out
+            if poker.are_selections_done() {
+                break;
+            }
+        }
+
+        // Abort if we've been waiting too long for someone to join
+        // This prevents the game from running forever if nobody joins
+        if !poker.is_ready() && interaction.is_none() {
+            let elapsed = msg.timestamp.unix_timestamp() + 600 < chrono::Utc::now().timestamp();
+            if elapsed {
+                poker
+                    .abort_game(ctx, pool, &msg, "timed out waiting for players")
+                    .await?;
+                return Ok(());
+            }
+        }
+
+        // If no interaction occurred in this timeout window, continue checking
+        let Some(mci) = interaction else {
+            continue;
+        };
+
         let user = mci.user.clone();
 
         if mci.data.custom_id == join_id {
@@ -585,6 +675,17 @@ pub async fn create_poker_game(
                 continue;
             }
 
+            // If this was the second player joining, deduct catcoin and set timeouts immediately
+            if poker.is_ready() {
+                if !poker
+                    .deduct_wagers_and_set_timeouts(pool, ctx, &msg)
+                    .await?
+                {
+                    // If deduction failed, the method already handled the error messaging
+                    continue;
+                }
+            }
+
             update_embed(ctx, &mut msg, &poker).await?;
             mci.create_response(ctx, CreateInteractionResponse::Acknowledge)
                 .await?;
@@ -594,19 +695,17 @@ pub async fn create_poker_game(
                 continue;
             };
 
-            // If this is the first time we're dealing hands, deduct catcoin and set timeouts
-            if poker.player1_hand.is_none() && poker.player2_hand.is_none() {
-                if !poker.deduct_wagers_and_set_timeouts(pool, ctx, &msg).await? {
-                    // If deduction failed, the method already handled the error messaging
-                    continue;
-                }
-            }
+            let Some(hand) = poker.get_hand(player_num).cloned() else {
+                err_respond(ctx, &mci, "hands haven't been dealt yet, please try again").await?;
+                continue;
+            };
 
-            let hand = poker.get_hand_or_deal(player_num).clone();
             // Send ephemeral message with player's cards, selection menu, and timeout
             let hand_text = poker.format_hand_with_rank(&hand);
-            let timeout_text = format!("\n\nMake your selection by {}! If you don't choose, no cards will be redrawn.", 
-                poker.format_timeout_timestamp(player_num));
+            let timeout_text = format!(
+                "\n\nselection time ends {}",
+                poker.format_timeout_timestamp()
+            );
 
             mci.create_response(
                 ctx,
@@ -643,35 +742,39 @@ pub async fn create_poker_game(
             // Get the updated hand
             let hand_text = poker.format_hand_with_rank(&hand);
 
-            mci.create_response(
-                ctx,
-                CreateInteractionResponse::Message(
-                    CreateInteractionResponseMessage::new()
-                        .content(format!(
-                            "u redrew {} cards. ur new hand:\n\n{}",
-                            selections.len(),
-                            hand_text
-                        ))
-                        .ephemeral(true),
-                ),
-            )
-            .await?;
+            if selections.contains(&"none".to_owned()) {
+                mci.create_response(ctx, CreateInteractionResponse::Acknowledge)
+                    .await?;
+            } else {
+                mci.create_response(
+                    ctx,
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::new()
+                            .content(format!(
+                                "you redrew {} card(s).\n{}",
+                                selections.len(),
+                                hand_text
+                            ))
+                            .ephemeral(true),
+                    ),
+                )
+                .await?;
+            }
 
             update_embed(ctx, &mut msg, &poker).await?;
-        }
 
-        // Check timeouts and auto-select for players who didn't make a choice in time
-        poker.auto_select_on_timeout();
-        
-        // If both players have made their selections, determine winner
-        if poker.is_ready() && poker.are_selections_done() {
-            break;
+            // If both players have made their selections (after this interaction), break out
+            if poker.is_ready() && poker.are_selections_done() {
+                break;
+            }
         }
     }
 
     // If game didn't complete (timeout, etc.), clean up
     if !poker.is_ready() || !poker.are_selections_done() {
-        msg.delete(ctx).await?;
+        poker
+            .abort_game(ctx, pool, &msg, "game broke >//< aborted..")
+            .await?;
         return Ok(());
     }
 
@@ -681,24 +784,40 @@ pub async fn create_poker_game(
 
     let comparison = player1_hand.compare(player2_hand);
 
-    let winner_id = match comparison {
-        std::cmp::Ordering::Greater => poker.player1.as_ref().unwrap().id,
-        std::cmp::Ordering::Less => poker.player2.as_ref().unwrap().id,
-        std::cmp::Ordering::Equal => poker.player1.as_ref().unwrap().id, // Default to player 1 on tie
+    let winner_id: Option<UserId> = match comparison {
+        Ordering::Greater => {
+            let winner = poker.player1.as_ref().unwrap().id;
+            grant_catcoin(pool, winner, wager * 2).await?;
+            Some(winner)
+        }
+        Ordering::Less => {
+            let winner = poker.player2.as_ref().unwrap().id;
+            grant_catcoin(pool, winner, wager * 2).await?;
+            Some(winner)
+        }
+        Ordering::Equal => {
+            let a = poker.player2.as_ref().unwrap().id;
+            let b = poker.player1.as_ref().unwrap().id;
+            grant_catcoin(pool, a, wager).await?;
+            grant_catcoin(pool, b, wager).await?;
+            None
+        }
     };
 
-    // Award prize to winner
-    grant_catcoin(pool, winner_id, wager * 2).await?;
+    // Create a results embed for final hand reveal
+    let revealed_hands_embed = poker.create_revealed_hands_embed();
 
-    // Update the message with final results
-    let mut embed = poker.to_embed();
-    embed = poker.update_embed_with_final_hands(embed);
-
+    // Update original message with revealed hands
     msg.edit(
         ctx,
-        EditMessage::new().embed(embed).components(vec![]), // No components needed at the end
+        EditMessage::new()
+            .embed(revealed_hands_embed)
+            .components(vec![]),
     )
     .await?;
+
+    // Create and send winner announcement as reply
+    poker.send_winner_announcement(ctx, winner_id, &msg).await?;
 
     Ok(())
 }

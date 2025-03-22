@@ -164,7 +164,7 @@ pub async fn increment_and_get_pulls(pool: &Pool<MySql>, reward_id: i32) -> Resu
 
 /// grant a user catcoin
 pub async fn grant_catcoin(
-    pool: &Pool<MySql>,
+    pool: impl Executor<'_, Database = MySql>,
     uid: serenity::UserId,
     catcoin: u64,
 ) -> Result<(), Error> {

@@ -63,6 +63,24 @@ impl Rank {
         };
         emoji(&format!("{color}_{rank}_top")).to_owned()
     }
+
+    pub fn full_name(&self) -> &'static str {
+        match self {
+            Rank::Two => "2",
+            Rank::Three => "3",
+            Rank::Four => "4",
+            Rank::Five => "5",
+            Rank::Six => "6",
+            Rank::Seven => "7",
+            Rank::Eight => "8",
+            Rank::Nine => "9",
+            Rank::Ten => "10",
+            Rank::Jack => "Jack",
+            Rank::Queen => "Queen",
+            Rank::King => "King",
+            Rank::Ace => "Ace",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,10 +94,10 @@ pub enum Suit {
 impl Display for Suit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let suit_str = match self {
-            Suit::Hearts => "hearts",
-            Suit::Diamonds => "diamonds",
-            Suit::Clubs => "clubs",
-            Suit::Spades => "spades",
+            Suit::Hearts => "♥",
+            Suit::Diamonds => "♦",
+            Suit::Clubs => "♣",
+            Suit::Spades => "♠",
         };
         write!(f, "{}", suit_str)
     }
@@ -326,6 +344,60 @@ impl Hand {
                 }
             }
         }
+    }
+
+    pub fn sort(&mut self) {
+        // Sort by rank for easier evaluation
+        self.cards.sort_by(|a, b| b.rank.cmp(&a.rank));
+    }
+}
+
+pub fn format_rank_tie(rank: HandRank, tiebreakers: &Vec<Rank>) -> String {
+    match rank {
+        HandRank::HighCard => {
+            // In one pair, the first tiebreaker is the pair rank
+            format!("{} High", tiebreakers[0].full_name())
+        }
+        HandRank::OnePair => {
+            // In one pair, the first tiebreaker is the pair rank
+            format!("{} ({}s)", rank, tiebreakers[0].full_name())
+        }
+        HandRank::TwoPair => {
+            // In two pair, first two tiebreakers are the pair ranks
+            format!(
+                "{} ({}s & {})",
+                rank,
+                tiebreakers[0].full_name(),
+                tiebreakers[1].full_name()
+            )
+        }
+        HandRank::ThreeOfAKind => {
+            format!("{} ({}s)", rank, tiebreakers[0].full_name())
+        }
+        HandRank::Straight => {
+            // In a straight, the first tiebreaker is the high card
+            format!("{} ({}-high)", rank, tiebreakers[0].full_name())
+        }
+        HandRank::Flush => {
+            // In a flush, the first tiebreaker is the high card
+            format!("{} ({}-high)", rank, tiebreakers[0].full_name())
+        }
+        HandRank::FullHouse => {
+            // In a full house, first is three of a kind, second is pair
+            format!(
+                "{} ({}s full of {}s)",
+                rank,
+                tiebreakers[0].full_name(),
+                tiebreakers[1].full_name()
+            )
+        }
+        HandRank::FourOfAKind => {
+            format!("{} ({}s)", rank, tiebreakers[0].full_name())
+        }
+        HandRank::StraightFlush => {
+            format!("{} ({}-high)", rank, tiebreakers[0].full_name())
+        }
+        _ => rank.to_string(),
     }
 }
 
