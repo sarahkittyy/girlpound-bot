@@ -350,10 +350,18 @@ impl PokerLobby {
     }
 
     fn try_register_player(&mut self, user: User) -> Result<(), &'static str> {
-        if self.player1.is_none() && self.player2.as_ref().is_none_or(|p| p.id != user.id) {
-            self.player1 = Some(user);
-        } else if self.player2.is_none() && self.player1.as_ref().is_none_or(|p| p.id != user.id) {
-            self.player2 = Some(user);
+        if self.player1.is_none() {
+            if self.player2.as_ref().is_none_or(|p| p.id != user.id) {
+                self.player1 = Some(user);
+            } else {
+                return Err("u alweady joined >//<");
+            }
+        } else if self.player2.is_none() {
+            if self.player1.as_ref().is_none_or(|p| p.id != user.id) {
+                self.player2 = Some(user);
+            } else {
+                return Err("u alweady joined >//<");
+            }
         } else {
             return Err("da lobby is full >//<");
         }
@@ -491,7 +499,7 @@ impl PokerLobby {
         } else if !self.are_selections_done() {
             // Game in progress - view cards and select cards to redraw
             let view = CreateButton::new(format!("{}-view", self.uuid))
-                .label("redraw cawds")
+                .label("view cards")
                 .style(ButtonStyle::Success)
                 .emoji('👀');
 
@@ -701,7 +709,7 @@ pub async fn create_poker_game(
     }
 
     // Set up a shorter timeout for the component collector to allow regular timeout checks
-    let collector_timeout = Duration::from_secs(3); // Check every 10 seconds
+    let collector_timeout = Duration::from_secs(3);
 
     // Wait for players to join and handle gameplay
     loop {
@@ -826,14 +834,15 @@ pub async fn create_poker_game(
             } else {
                 mci.create_response(
                     ctx,
-                    CreateInteractionResponse::Message(
+                    CreateInteractionResponse::UpdateMessage(
                         CreateInteractionResponseMessage::new()
                             .content(format!(
                                 "you redrew {} card(s).\n{}",
                                 selections.len(),
                                 hand_text
                             ))
-                            .ephemeral(true),
+                            .ephemeral(true)
+                            .components(vec![]),
                     ),
                 )
                 .await?;
