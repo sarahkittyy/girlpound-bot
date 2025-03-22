@@ -52,6 +52,8 @@ pub struct PokerLobby {
     player2_hand: Option<Hand>,
     player1_selected: bool,
     player2_selected: bool,
+    player1_redrawn_count: usize,
+    player2_redrawn_count: usize,
     draw_timeout: Option<u64>, // Unix timestamp when selection time expires
 }
 
@@ -70,6 +72,8 @@ impl PokerLobby {
             player2_hand: None,
             player1_selected: false,
             player2_selected: false,
+            player1_redrawn_count: 0,
+            player2_redrawn_count: 0,
             draw_timeout: None,
         }
     }
@@ -141,19 +145,34 @@ impl PokerLobby {
                 (
                     self.player1.as_ref().unwrap(),
                     player1_rank,
-                    player1_tiebreakers,
+                    player1_tiebreakers.clone(),
                 )
             } else {
                 (
                     self.player2.as_ref().unwrap(),
                     player2_rank,
+                    player2_tiebreakers.clone(),
+                )
+            };
+
+            // Get loser info
+            let loser = if winner_id == self.player1.as_ref().unwrap().id {
+                (
+                    self.player2.as_ref().unwrap(),
+                    player2_rank,
                     player2_tiebreakers,
+                )
+            } else {
+                (
+                    self.player1.as_ref().unwrap(),
+                    player1_rank,
+                    player1_tiebreakers,
                 )
             };
 
             // Create a more detailed description when both players have the same hand rank
             let description = format!(
-                "{} wins +**{}** {} with **{}**",
+                "{} wins +**{}** {} with **{}** over {}'s **{}**",
                 winner.0.mention(),
                 self.wager * 2,
                 emoji("catcoin"),
@@ -161,6 +180,12 @@ impl PokerLobby {
                     format_rank_tie(winner.1, &winner.2)
                 } else {
                     winner.1.to_string()
+                },
+                loser.0.mention(),
+                if player1_rank == player2_rank {
+                    format_rank_tie(loser.1, &loser.2)
+                } else {
+                    loser.1.to_string()
                 }
             );
 
@@ -264,16 +289,44 @@ impl PokerLobby {
                 );
         } else {
             // Game in progress
+            let player1_status = if self.player1_selected && self.player1_redrawn_count > 0 {
+                format!(
+                    " (redrew {} card{})",
+                    self.player1_redrawn_count,
+                    if self.player1_redrawn_count == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
+                )
+            } else if self.player1_selected {
+                " (ready)".to_string()
+            } else {
+                "".to_string()
+            };
+
+            let player2_status = if self.player2_selected && self.player2_redrawn_count > 0 {
+                format!(
+                    " (redrew {} card{})",
+                    self.player2_redrawn_count,
+                    if self.player2_redrawn_count == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
+                )
+            } else if self.player2_selected {
+                " (ready)".to_string()
+            } else {
+                "".to_string()
+            };
+
             embed = embed
                 .field(
                     format!(
                         "{}'s hand{}",
                         self.player1.as_ref().unwrap().display_name(),
-                        if self.player1_selected {
-                            " (ready)"
-                        } else {
-                            ""
-                        }
+                        player1_status
                     ),
                     emoji("card_back").repeat(5), // Card back emoji
                     true,
@@ -282,11 +335,7 @@ impl PokerLobby {
                     format!(
                         "{}'s hand{}",
                         self.player2.as_ref().unwrap().display_name(),
-                        if self.player2_selected {
-                            " (ready)"
-                        } else {
-                            ""
-                        }
+                        player2_status
                     ),
                     emoji("card_back").repeat(5), // Card back emoji
                     true,
@@ -442,7 +491,7 @@ impl PokerLobby {
         } else if !self.are_selections_done() {
             // Game in progress - view cards and select cards to redraw
             let view = CreateButton::new(format!("{}-view", self.uuid))
-                .label("view cawds")
+                .label("redraw cawds")
                 .style(ButtonStyle::Success)
                 .emoji('👀');
 
@@ -537,6 +586,8 @@ impl PokerLobby {
                     self.player1_selected = true;
                     return;
                 }
+                // Update redrawn count before redrawing
+                self.player1_redrawn_count = indices.len();
                 hand.redraw(&mut self.deck, &indices);
                 hand.sort();
                 self.player1_selected = true;
@@ -547,6 +598,8 @@ impl PokerLobby {
                     self.player2_selected = true;
                     return;
                 }
+                // Update redrawn count before redrawing
+                self.player2_redrawn_count = indices.len();
                 hand.redraw(&mut self.deck, &indices);
                 hand.sort();
                 self.player2_selected = true;
