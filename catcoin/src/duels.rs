@@ -21,7 +21,7 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, msg: &Message) -> Res
         let mut rng = thread_rng();
 
         // should message spawn a duel?
-        if !rng.gen_ratio(1, 1500) {
+        if !rng.gen_ratio(1, 2000) {
             return Ok(());
         }
 

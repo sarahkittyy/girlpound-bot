@@ -237,6 +237,9 @@ async fn event_handler(
                 let _ = catcoin::duels::on_message(ctx, &data.local_pool, new_message)
                     .await
                     .inspect_err(|e| log::error!("Duel fail: {e}"));
+                let _ = cardgames::on_message(ctx, &data.local_pool, new_message)
+                    .await
+                    .inspect_err(|e| log::error!("Cardgames fail: {e}"));
             }
         }
         Event::MessageDelete {

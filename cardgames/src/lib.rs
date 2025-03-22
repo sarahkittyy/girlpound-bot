@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::fmt::{self, Display};
 
 mod poker;
-pub use poker::create_poker_game;
+pub use poker::{create_poker_game, on_message};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Rank {

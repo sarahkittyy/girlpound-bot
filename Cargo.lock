@@ -756,6 +756,7 @@ dependencies = [
  "emoji 0.1.0",
  "poise",
  "rand 0.8.5",
+ "rand_distr",
  "sqlx",
  "tokio",
 ]

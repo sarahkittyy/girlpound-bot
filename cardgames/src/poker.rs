@@ -4,18 +4,43 @@ use std::{
 };
 
 use poise::serenity_prelude::{
-    ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector,
+    self as serenity, ButtonStyle, ChannelId, ComponentInteraction, ComponentInteractionCollector,
     ComponentInteractionDataKind, Context, CreateActionRow, CreateButton, CreateEmbed,
     CreateInteractionResponse, CreateInteractionResponseMessage, CreateMessage, CreateSelectMenu,
     CreateSelectMenuKind, CreateSelectMenuOption, EditMessage, Mentionable, Message, User, UserId,
 };
 
 use common::Error;
+use rand::{thread_rng, Rng};
+use rand_distr::{Distribution, Normal};
 use sqlx::{MySql, Pool};
 
-use crate::{format_rank_tie, Deck, Hand, HandRank, Rank};
+use crate::{format_rank_tie, Deck, Hand};
 use catcoin::{get_catcoin, grant_catcoin, spend_catcoin};
 use emoji::emoji;
+
+pub async fn on_message(
+    ctx: &serenity::Context,
+    pool: &Pool<MySql>,
+    msg: &serenity::Message,
+) -> Result<(), Error> {
+    let wager: u64 = {
+        let mut rng = thread_rng();
+
+        // should message spawn a game?
+        if !rng.gen_ratio(1, 2000) {
+            return Ok(());
+        }
+
+        // determine wager
+        let dist: Normal<f32> = Normal::new(50.0, 50.0).unwrap();
+        dist.sample(&mut rng).max(5.0).round().abs() as u64
+    };
+
+    create_poker_game(ctx, pool, msg.channel_id, msg.id.get(), wager).await?;
+
+    Ok(())
+}
 
 pub struct PokerLobby {
     uuid: String,
