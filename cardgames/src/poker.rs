@@ -174,7 +174,7 @@ impl PokerLobby {
             let description = format!(
                 "{} wins +**{}** {} with **{}** over {}'s **{}**",
                 winner.0.mention(),
-                self.wager * 2,
+                self.wager,
                 emoji("catcoin"),
                 if player1_rank == player2_rank {
                     format_rank_tie(winner.1, &winner.2)
