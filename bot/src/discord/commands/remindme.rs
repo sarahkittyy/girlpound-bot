@@ -143,7 +143,12 @@ pub async fn remindme_slash(
 }
 
 /// Remind me of something
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(
+    slash_command,
+    prefix_command,
+    channel_cooldown = 3,
+    user_cooldown = 15
+)]
 pub async fn remindme(
     ctx: Context<'_>,
     #[description = "When to remind you? (eg. 6d 3h)"] when: String,
