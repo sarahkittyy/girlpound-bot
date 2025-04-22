@@ -131,13 +131,46 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
 #[poise::command(prefix_command)]
 pub async fn dihh(ctx: Context<'_>) -> Result<(), Error> {
     if let Some(member) = ctx.author_member().await {
+        // update count
+        if let Err(e) = sqlx::query!(
+            r#"
+		INSERT INTO dihh (uid, count) VALUES (?, 1)
+		ON DUPLICATE KEY UPDATE count = count + 1
+		"#,
+            member.user.id.to_string()
+        )
+        .execute(&ctx.data().local_pool)
+        .await
+        {
+            log::error!("failed to dihh db upsert: {}", e);
+            return Ok(());
+        };
+
+        // fetch count
+        let Ok(result) = sqlx::query!(
+            "SELECT count FROM dihh WHERE uid = ?",
+            member.user.id.to_string()
+        )
+        .fetch_one(&ctx.data().local_pool)
+        .await
+        else {
+            log::error!("failed to dihh db get");
+            return Ok(());
+        };
+
         let mut member = member.into_owned();
-        member
+        if let Err(e) = member
             .disable_communication_until_datetime(
                 ctx,
-                Timestamp::from(chrono::Utc::now() + Duration::from_secs(10)),
+                Timestamp::from(
+                    chrono::Utc::now()
+                        + Duration::from_secs(2u64.pow(result.count as u32).min(2160000)),
+                ),
             )
-            .await?;
+            .await
+        {
+            log::error!("failed to dihh: {}", e);
+        }
     }
     Ok(())
 }
