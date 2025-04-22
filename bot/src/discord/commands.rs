@@ -128,7 +128,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
 ];
 
 /// dihh
-#[poise::command(prefix_command)]
+#[poise::command(prefix_command, discard_spare_arguments)]
 pub async fn dihh(ctx: Context<'_>) -> Result<(), Error> {
     if let Some(member) = ctx.author_member().await {
         // update count
