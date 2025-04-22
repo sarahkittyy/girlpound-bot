@@ -65,6 +65,7 @@ use stats::psychostats;
 use poise::serenity_prelude::{
     self as serenity, ButtonStyle, ChannelType, ComponentInteractionCollector, CreateActionRow,
     CreateButton, CreateInteractionResponse, CreateInteractionResponseMessage, Mentionable,
+    Timestamp,
 };
 use poise::{self, CreateReply};
 use serenity::{CreateAllowedMentions, CreateEmbed, CreateEmbedFooter, CreateMessage, GetMessages};
@@ -99,6 +100,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     birthday_modal,
     pug,
     donate,
+    dihh,
     rcon,
     snipers,
     seeder,
@@ -124,6 +126,21 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2ungag,
     get_videos,
 ];
+
+/// dihh
+#[poise::command(prefix_command)]
+pub async fn dihh(ctx: Context<'_>) -> Result<(), Error> {
+    if let Some(member) = ctx.author_member().await {
+        let mut member = member.into_owned();
+        member
+            .disable_communication_until_datetime(
+                ctx,
+                Timestamp::from(chrono::Utc::now() + Duration::from_secs(10)),
+            )
+            .await?;
+    }
+    Ok(())
+}
 
 /// Forcefully spawn a poker duel lobby
 
