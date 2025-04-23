@@ -100,7 +100,7 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     birthday_modal,
     pug,
     donate,
-    dihh,
+    //dihh,
     rcon,
     snipers,
     seeder,
