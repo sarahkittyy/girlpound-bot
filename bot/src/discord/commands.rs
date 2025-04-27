@@ -125,7 +125,37 @@ pub static ALL: &[fn() -> poise::Command<PoiseData, Error>] = &[
     tf2gag,
     tf2ungag,
     get_videos,
+    pingpugs,
 ];
+
+/// ping pugs
+#[poise::command(slash_command, global_cooldown = 5, user_cooldown = 300)]
+pub async fn pingpugs(
+    ctx: Context<'_>,
+    #[description = "Optional message to attach"] message: Option<String>,
+) -> Result<(), Error> {
+    ctx.defer().await?;
+    ctx.send(
+        CreateReply::default()
+            .content(format!(
+                "{}<@&{}> come play pugs :3\nraowquested by: {}",
+                if let Some(msg) = message {
+                    remove_backticks(&(msg + "\n"))
+                } else {
+                    "".to_owned()
+                },
+                ctx.data().scrim_role.get(),
+                ctx.author().mention()
+            ))
+            .allowed_mentions(
+                CreateAllowedMentions::new()
+                    .roles(vec![ctx.data().scrim_role])
+                    .all_users(true),
+            ),
+    )
+    .await?;
+    Ok(())
+}
 
 /// dihh
 #[poise::command(prefix_command, discard_spare_arguments)]
