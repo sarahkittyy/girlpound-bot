@@ -138,7 +138,7 @@ pub async fn pingpugs(
     ctx.send(
         CreateReply::default()
             .content(format!(
-                "{}<@&{}> come play pugs :3\nraowquested by: {}",
+                "{}<@&{}> come play pugs react if interested :3\nraowquested by: {}",
                 if let Some(msg) = message {
                     remove_backticks(&(msg + "\n"))
                 } else {
@@ -149,8 +149,7 @@ pub async fn pingpugs(
             ))
             .allowed_mentions(
                 CreateAllowedMentions::new()
-                    .roles(vec![ctx.data().scrim_role])
-                    .all_users(true),
+                    .roles(vec![ctx.data().scrim_role.get()]),
             ),
     )
     .await?;
