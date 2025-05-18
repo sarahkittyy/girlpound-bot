@@ -100,8 +100,7 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, message: &Message) ->
         let mut rng = thread_rng();
 
         // chance to pull
-        //if !rng.gen_ratio(1, 500) {
-        if !rng.gen_ratio(1, 1) {
+        if !rng.gen_ratio(1, 500) {
             return Ok(());
         }
 
