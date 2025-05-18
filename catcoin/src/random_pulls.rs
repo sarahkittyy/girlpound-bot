@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, path::Path};
 
 use emoji::emoji;
 use poise::serenity_prelude::{
@@ -8,6 +8,7 @@ use sqlx::{MySql, Pool};
 
 use crate::{drops, inventory::add_to_inventory};
 use common::Error;
+use image::{codecs::png::PngEncoder, imageops::FilterType, ImageEncoder, ImageReader};
 use rand::prelude::*;
 use rand_distr::Normal;
 
@@ -99,7 +100,8 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, message: &Message) ->
         let mut rng = thread_rng();
 
         // chance to pull
-        if !rng.gen_ratio(1, 500) {
+        //if !rng.gen_ratio(1, 500) {
+        if !rng.gen_ratio(1, 1) {
             return Ok(());
         }
 
@@ -120,7 +122,23 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, message: &Message) ->
     add_to_inventory(pool, message.author.id, reward.id, pulls, catcoins).await?;
     grant_catcoin(pool, message.author.id, catcoins).await?;
 
-    let attachment = CreateAttachment::path(&reward.file).await?;
+    let image = ImageReader::open(&reward.file)?.decode()?;
+    let smaller = image.resize(125, 125, FilterType::Lanczos3);
+    let mut data: Vec<u8> = vec![];
+    PngEncoder::new(&mut data).write_image(
+        smaller.as_bytes(),
+        smaller.width(),
+        smaller.height(),
+        smaller.color().into(),
+    )?;
+    let attachment = CreateAttachment::bytes(
+        data.as_slice(),
+        Path::new(&reward.file)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap(),
+    );
     let embed = CreateEmbed::new()
         .title(format!(
             ":bangbang: {} Pull: {} #{} :sparkles:",
