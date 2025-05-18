@@ -144,7 +144,7 @@ pub async fn on_message(ctx: &Context, pool: &Pool<MySql>, message: &Message) ->
             rarity, reward.name, pulls
         ))
         .description(format!("{} **+{}**", emoji("catcoin"), catcoins))
-        .footer(CreateEmbedFooter::new("/catcoin balance"))
+        //.footer(CreateEmbedFooter::new("/catcoin balance"))
         .attachment(&attachment.filename)
         .color(reward.rarity.color());
 
