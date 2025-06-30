@@ -1,9 +1,9 @@
 use poise::{
+    Modal,
     serenity_prelude::{
         self as serenity, ComponentInteractionDataKind, CreateInteractionResponse,
         CreateInteractionResponseMessage,
     },
-    Modal,
 };
 use profile::{
     edits::{
@@ -14,11 +14,13 @@ use profile::{
 };
 use serenity::ComponentInteraction;
 
-use common::{discord::execute_modal_generic, Error};
+use common::{Error, discord::execute_modal_generic};
+
+use crate::discord::new_user;
 
 use super::{
-    commands::{birthday_check, SteamLinkCodeModal},
     PoiseData,
+    commands::{SteamLinkCodeModal, birthday_check},
 };
 
 /// handle all permanent component interactions
@@ -41,6 +43,16 @@ pub async fn dispatch(
                 mci.create_response(&ctx, CreateInteractionResponse::Acknowledge)
                     .await?;
             }
+        },
+        "newuser.bet" => match &mci.data.kind {
+            ComponentInteractionDataKind::Button => {
+                new_user::bet_button(ctx, data, mci)
+                    .await
+                    .inspect_err(|e| {
+                        log::error!("Error in newuser.bet button: {e}");
+                    })?;
+            }
+            _ => (),
         },
         "delete.msg" => match &mci.data.kind {
             ComponentInteractionDataKind::Button => {

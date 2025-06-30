@@ -25,31 +25,22 @@ pub async fn try_callout_nsfw_role(
                     && data.horny_callouts.write().await.insert(new.user.id.get())
                 {
                     let total_s = since_join.num_seconds() as u64;
-                    // Find winner of NSFWBet
-                    let mut bets = data.nsfwbets.write().await;
-                    let resp = if let Some(bet) = bets.get_pool_mut(new.user.id)
-                        && let Some(winner) = bet.get_winner(total_s)
+                    // Handle NSFW role assignment
+                    let resp = if let Ok(Some(result)) = data.nsfwbets
+                        .write()
+                        .await
+                        .on_nsfw_role_assigned(ctx, new.user.id, total_s, &data.local_pool)
+                        .await
                     {
-                        // total catcoin
-                        let pool_coin: u64 = bet.wager * bet.bets.iter().len() as u64;
-
-                        // grant winner catcoin
-                        grant_catcoin(&data.local_pool, winner.0, pool_coin).await?;
-
-                        // get response data
-                        let resp = format!(
+                        format!(
                             "{} has assigned themselves the NSFW role. Time since joining: `{}`\nClosest guess: `{}` by {} ({} **+{}**)",
                             new.mention(),
                             hhmmss(total_s.try_into()?),
-                            hhmmss(winner.1),
-                            winner.0.mention(),
+                            hhmmss(result.winner_guess),
+                            result.winner_id.mention(),
                             emoji("catcoin"),
-                            pool_coin
-                        );
-
-                        bets.remove_pool(new.user.id);
-
-                        resp
+                            result.pool_coin
+                        )
                     } else {
                         format!(
                             "{} has assigned themselves the NSFW role. Time since joining: `{}`",

@@ -282,6 +282,11 @@ async fn event_handler(
                     )),
                 )
                 .await?;
+            data.nsfwbets
+                .write()
+                .await
+                .on_leave(ctx, user.id, &data.local_pool)
+                .await?;
         }
         _ => (),
     };
