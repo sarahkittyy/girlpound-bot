@@ -3,25 +3,27 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use chrono::{DateTime, Duration, Utc};
-use poise::serenity_prelude::{self as serenity, ChannelId, GuildId, Mentionable, RoleId};
 use poise::PrefixFrameworkOptions;
+use poise::serenity_prelude::{self as serenity, ChannelId, GuildId, Mentionable, RoleId};
 use serenity::CreateMessage;
 
 use api::ApiState;
-use common::{util::parse_env, Error};
+use common::{Error, util::parse_env};
 use genimg::GenImg;
 use steam::SteamIDClient;
-use tf2::{logs, wacky, Server};
+use tf2::{Server, logs, wacky};
 use yapawards::{self, YapTracker};
 
 use tokio_cron_scheduler::JobScheduler;
 
 use sqlx::{MySql, Pool, Row};
-use tokio::sync::mpsc::Sender;
 use tokio::sync::OnceCell;
+use tokio::sync::mpsc::Sender;
 use tokio::{self, sync::RwLock};
 
 mod commands;
+
+use crate::discord::new_user::NSFWBets;
 
 use self::commands::ReminderManager;
 use self::media_cooldown::CooldownMessage;
@@ -60,6 +62,9 @@ pub struct PoiseData {
 
     /// Yap tracker
     pub yap_tracker: Arc<RwLock<YapTracker>>,
+
+    /// NSFW betting tracker
+    pub nsfwbets: Arc<RwLock<NSFWBets>>,
 
     /// For preventing catcoin farming
     pub catcoin_spam_filter: Arc<RwLock<catcoin::SpamFilter>>,
@@ -191,7 +196,7 @@ async fn event_handler(
             nsfw_callout::try_callout_nsfw_role(ctx, data, old_if_available, new).await?;
         }
         Event::GuildMemberAddition { new_member } => {
-            new_user::welcome_user(ctx, new_member).await?;
+            new_user::welcome_user(ctx, &data, new_member).await?;
         }
         Event::Message { new_message } => {
             // ignore bots
@@ -410,6 +415,7 @@ pub async fn start_bot(
                         general_channel,
                         deleted_message_log_channel,
                         yap_tracker,
+                        nsfwbets: Arc::new(RwLock::new(NSFWBets::new())),
                         leaver_log_channel,
                         _mod_channel: mod_channel,
                         _birthday_channel: birthday_channel,
