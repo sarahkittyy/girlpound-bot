@@ -181,11 +181,13 @@ impl NSFWBets {
                     "You are way too broke to bet on this user.".to_string(),
                 ));
             }
-        }
 
-        // Add the bet
-        bet.add_bet(bettor_id, total_seconds);
-        Ok(BetResult::Success)
+            // Add the bet
+            bet.add_bet(bettor_id, total_seconds);
+            Ok(BetResult::Success)
+        } else {
+            return Ok(BetResult::Error("You have already bet.".to_string()));
+        }
     }
 
     /// Handles when user gets NSFW role, returns winner info and message
