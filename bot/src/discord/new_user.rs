@@ -8,12 +8,12 @@ use poise::{
     Modal,
     serenity_prelude::{
         self as serenity, ComponentInteraction, CreateActionRow, CreateButton,
-        CreateInteractionResponse, CreateInteractionResponseMessage, EditMessage, MessageId, ReactionType,
-        UserId,
+        CreateInteractionResponse, CreateInteractionResponseMessage, EditMessage, MessageId,
+        ReactionType, UserId,
     },
 };
 use regex::Regex;
-use serenity::{CreateMessage, Member, Mentionable, ChannelId};
+use serenity::{ChannelId, CreateMessage, Member, Mentionable};
 
 use common::{Error, discord::execute_modal_generic};
 use rand::prelude::*;
@@ -53,7 +53,13 @@ impl NSFWBets {
         }
     }
 
-    pub fn create_pool(&mut self, user: UserId, wager: u64, message_id: MessageId, channel_id: ChannelId) {
+    pub fn create_pool(
+        &mut self,
+        user: UserId,
+        wager: u64,
+        message_id: MessageId,
+        channel_id: ChannelId,
+    ) {
         self.pools
             .insert(user, NSFWBet::new(user, wager, message_id, channel_id));
     }
@@ -93,13 +99,13 @@ impl NSFWBets {
             .label("Betting Closed")
             .disabled(true)
             .emoji(ReactionType::try_from("❌")?);
-        
+
         let components = vec![CreateActionRow::Buttons(vec![disabled_button])];
-        
+
         channel_id
             .edit_message(ctx, message_id, EditMessage::new().components(components))
             .await?;
-        
+
         Ok(())
     }
 
@@ -169,10 +175,12 @@ impl NSFWBets {
         };
 
         // Spend the coin
-        if !spend_catcoin(local_pool, bettor_id, bet.wager).await? {
-            return Ok(BetResult::Error(
-                "You are way too broke to bet on this user.".to_string(),
-            ));
+        if !bet.has_bet_already(bettor_id) {
+            if !spend_catcoin(local_pool, bettor_id, bet.wager).await? {
+                return Ok(BetResult::Error(
+                    "You are way too broke to bet on this user.".to_string(),
+                ));
+            }
         }
 
         // Add the bet
@@ -200,7 +208,8 @@ impl NSFWBets {
             for (bettor, _) in &bet.bets {
                 grant_catcoin(local_pool, *bettor, bet.wager).await?;
             }
-            self.disable_betting_button(ctx, channel_id, message_id).await?;
+            self.disable_betting_button(ctx, channel_id, message_id)
+                .await?;
             self.remove_pool(user_id);
             return Ok(None);
         }
@@ -221,13 +230,15 @@ impl NSFWBets {
             };
 
             // Disable the button and remove the pool
-            self.disable_betting_button(ctx, channel_id, message_id).await?;
+            self.disable_betting_button(ctx, channel_id, message_id)
+                .await?;
             self.remove_pool(user_id);
 
             Ok(Some(result))
         } else {
             // No winner, disable button and remove pool
-            self.disable_betting_button(ctx, channel_id, message_id).await?;
+            self.disable_betting_button(ctx, channel_id, message_id)
+                .await?;
             self.remove_pool(user_id);
             Ok(None)
         }
@@ -252,16 +263,18 @@ impl NSFWBets {
             for (bettor, _) in &bet.bets {
                 grant_catcoin(local_pool, *bettor, bet.wager).await?;
             }
-            self.disable_betting_button(ctx, channel_id, message_id).await?;
+            self.disable_betting_button(ctx, channel_id, message_id)
+                .await?;
             self.remove_pool(user_id);
             return Ok(None);
         }
 
         let winners = bet.get_never_bets();
-        
+
         if winners.is_empty() {
             // Disable button and remove pool
-            self.disable_betting_button(ctx, channel_id, message_id).await?;
+            self.disable_betting_button(ctx, channel_id, message_id)
+                .await?;
             self.remove_pool(user_id);
             return Ok(None);
         }
@@ -281,7 +294,8 @@ impl NSFWBets {
         };
 
         // Disable the button and remove the pool
-        self.disable_betting_button(ctx, channel_id, message_id).await?;
+        self.disable_betting_button(ctx, channel_id, message_id)
+            .await?;
         self.remove_pool(user_id);
 
         Ok(Some(result))
@@ -297,14 +311,15 @@ impl NSFWBets {
         if let Some(bet) = self.get_pool(user_id) {
             let channel_id = bet.channel_id;
             let message_id = bet.message_id;
-            
+
             // Refund all bettors
             for (bettor, _) in &bet.bets {
                 grant_catcoin(local_pool, *bettor, bet.wager).await?;
             }
-            
+
             // Disable the button and remove pool
-            self.disable_betting_button(ctx, channel_id, message_id).await?;
+            self.disable_betting_button(ctx, channel_id, message_id)
+                .await?;
             self.remove_pool(user_id);
         }
         Ok(())
@@ -337,6 +352,10 @@ impl NSFWBet {
 
     fn add_bet(&mut self, user: UserId, seconds: Option<u64>) {
         self.bets.insert(user, seconds);
+    }
+
+    fn has_bet_already(&self, user: UserId) -> bool {
+        self.bets.contains_key(&user)
     }
 
     pub fn get_never_bets(&self) -> Vec<UserId> {
@@ -481,11 +500,12 @@ pub async fn welcome_user(
                 .await?;
 
             // Create betting pool with message ID and add components
-            let components =
-                data.nsfwbets
-                    .write()
-                    .await
-                    .on_join(new_member.user.id, msg.id, msg.channel_id, wager)?;
+            let components = data.nsfwbets.write().await.on_join(
+                new_member.user.id,
+                msg.id,
+                msg.channel_id,
+                wager,
+            )?;
 
             // Edit message to add betting button
             msg.edit(ctx, serenity::EditMessage::new().components(components))
@@ -502,7 +522,7 @@ pub async fn welcome_user(
                 let nsfwbets = data.nsfwbets.clone();
                 tokio::task::spawn(async move {
                     tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
-                    
+
                     // First check if betting pool still exists (could have been resolved already)
                     let pool_exists = nsfwbets.read().await.get_pool(new_member.user.id).is_some();
                     if !pool_exists {
@@ -511,7 +531,11 @@ pub async fn welcome_user(
                     }
 
                     // Try to get current member info
-                    match ctx.http.get_member(new_member.guild_id, new_member.user.id).await {
+                    match ctx
+                        .http
+                        .get_member(new_member.guild_id, new_member.user.id)
+                        .await
+                    {
                         Ok(member) => {
                             // User is still in server
                             if !member.roles.contains(&horny_role) {
