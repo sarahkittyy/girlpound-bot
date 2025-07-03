@@ -1,5 +1,5 @@
 use super::{as_discord_message, LogReceiver};
-use crate::Server;
+use crate::{banid, Server};
 use common::Error;
 use poise::serenity_prelude::{self as serenity, CreateAllowedMentions};
 use serenity::CreateMessage;
@@ -10,6 +10,20 @@ use std::sync::Arc;
 use tokio::time;
 
 use srcds_log_parser::MessageType;
+
+pub async fn ban_noobs(parsed: &MessageType, server: &Server) -> Result<(), Error> {
+    match parsed {
+        MessageType::JoinedTeam { user, .. } => {
+            let name = decancer::cure!(&user.name)?;
+            if name.to_ascii_lowercase() == "doeshotter" {
+                let cmd = format!("sm_ban \"{}\" 0 $50 for unban", user.name);
+                server.controller.write().await.run(&cmd).await?;
+            }
+        }
+        _ => (),
+    };
+    Ok(())
+}
 
 /// receives logs from the tf2 server & posts them in a channel
 pub async fn spawn_log_thread(
@@ -57,6 +71,14 @@ pub async fn spawn_log_thread(
                         None
                     }
                 };
+
+                let Some(server) = servers.get(&from) else {
+                    log::info!("No server found for address {:?} in log thread", from);
+                    continue;
+                };
+                let _ = ban_noobs(&parsed, server).await.inspect_err(|e| {
+                    log::info!("Could not ban noobs: {:?}", e);
+                });
 
                 let dm = as_discord_message(&parsed, dom_score);
 

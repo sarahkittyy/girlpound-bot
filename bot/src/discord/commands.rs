@@ -4,14 +4,14 @@ use std::time::Duration;
 
 use super::{Context, PoiseData};
 
-use ::catcoin::inventory::{claim_old_pull, CatcoinPullMessageData};
-use ::profile::{get_user_profile, get_user_profiles, UserProfile};
+use ::catcoin::inventory::{CatcoinPullMessageData, claim_old_pull};
+use ::profile::{UserProfile, get_user_profile, get_user_profiles};
 use common::{
-    util::{get_bit, remove_backticks},
     Error,
+    util::{get_bit, remove_backticks},
 };
 use steam::SteamIDProfile;
-use tf2::{rcon_user_output, Server, TF2Class};
+use tf2::{Server, TF2Class, rcon_user_output};
 
 pub mod util;
 use futures::StreamExt;
@@ -1040,7 +1040,7 @@ pub async fn status(
     let mut res = common::util::recv_timeout(rx, Duration::from_millis(2500)).await;
     res.sort_by(|(_, a), (_, b)| a.cmp(b));
     for (state, emoji) in res {
-        output += &state.as_discord_output(&emoji, show_uids);
+        output += state.as_discord_output(&emoji, show_uids).as_str();
     }
 
     // delete last status msg
@@ -1158,11 +1158,12 @@ pub async fn bark(ctx: Context<'_>) -> Result<(), Error> {
 
     let user_list = results
         .iter()
-        .map(|n| &n.last_nickname)
+        .map(|n| n.last_nickname.as_str())
         .fold(String::new(), |acc, s| acc + s + "\n");
 
-    let response =
-        format!("Barking is strictly prohibited. Your ID has been logged.\nLast 15 infractions:```\n{user_list}```");
+    let response = format!(
+        "Barking is strictly prohibited. Your ID has been logged.\nLast 15 infractions:```\n{user_list}```"
+    );
 
     ctx.send(CreateReply::default().ephemeral(true).content(response))
         .await?;
@@ -1202,10 +1203,10 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
         "is she, yknow, like, *curls paw*?",
         "ehe, uhm, mraow !! >w<",
         "guh wuh huh ?? nya...",
-		"omg >w< like literally,, nya !!! :3",
-		"mrraow !! raow raow >w< prraow raow raow",
-		"raow nya.. prraow >w<",
-		"meow meow meow",
+        "omg >w< like literally,, nya !!! :3",
+        "mrraow !! raow raow >w< prraow raow raow",
+        "raow nya.. prraow >w<",
+        "meow meow meow",
         "eep!! *purrs*",
         "rawr i'm feral !!!! grrr >_<",
         "rrrr",
@@ -1213,21 +1214,21 @@ pub async fn meow(ctx: Context<'_>) -> Result<(), Error> {
         "prraow raow... raow mrrrp :3",
         r#"I'd just wike to intewject fow a moment. What you'we wefewwing to as linux, is in fact, gnu/linux, ow as i've wecentwy taken to cawwing it, gnu pwus linux. linux is not an opewating system unto itsewf, but wathew anothew fwee component of a fuwwy functioning gnu system made usefuw by the gnu cowewibs, sheww utiwities and vitaw system components compwising a fuww os as defined by posix. many computew usews wun a modified vewsion of the gnu system evewy day, without weawizing it. Thwough a pecuwiaw tuwn of events, the vewsion of gnu which is widewy used today is often cawwed "linux", and many of its usews awe not awawe that it is basicawwy the gnu system, devewoped by the gnu pwoject. thewe weawwy is a linux, and these peopwe awe using it, but it is just a pawt of the system they use. Linux is the kewnew: the pwogwam in the system that awwocates the machine's wesouwces to the othew pwogwams that you wun. the kewnew is an essentiaw pawt of an opewating system, but usewess by itsewf; it can onwy function in the context of a compwete opewating system. Linux is nowmawwy used in combination with the gnu opewating system: the whowe system is basicawwy gnu with linux added, ow gnu/linux. Aww the so-cawwed "linux" distwibutions awe weawwy distwibutions of gnu/linux."#,
         "dm me immeowdiately!! :revolving_hearts:",
-		"u sound feline add me NOW!!!!!!!!!!!!!!",
-		"you sound feline enough add me",
-		"save me balls of yarn\nballs of yarn\nballs of yarn save me",
-		"any kitty girls in chat???? :3",
-		"FWICK!!! *pukes on the carpet*",
-		"mooooooooooods my food bowl is empty >_<",
-		"https://media.discordapp.net/attachments/923967765302378496/1092546578859950190/meow.gif",
-		"https://media.discordapp.net/attachments/716323693877395537/883757436434018355/tumblr_beb1f92611396501e6370766e57257dc_05f5405f_250.gif",
-		"https://media.discordapp.net/attachments/901299978817925131/1126298371410366494/JMvRJlHy.gif",
-		"https://media.discordapp.net/attachments/779900906665017405/1061512722228981860/attachment-19.gif",
-		"https://media.discordapp.net/attachments/984367821901402153/1043398180722720848/kat.gif",
-		"https://tenor.com/view/cat-meow-angry-pet-hiss-gif-16838272",
-		"https://tenor.com/view/cat-power-cat-cat-pillow-repost-this-post-this-cat-gif-23865940",
-		"https://tenor.com/view/cat-gif-7623921",
-		"meow",
+        "u sound feline add me NOW!!!!!!!!!!!!!!",
+        "you sound feline enough add me",
+        "save me balls of yarn\nballs of yarn\nballs of yarn save me",
+        "any kitty girls in chat???? :3",
+        "FWICK!!! *pukes on the carpet*",
+        "mooooooooooods my food bowl is empty >_<",
+        "https://media.discordapp.net/attachments/923967765302378496/1092546578859950190/meow.gif",
+        "https://media.discordapp.net/attachments/716323693877395537/883757436434018355/tumblr_beb1f92611396501e6370766e57257dc_05f5405f_250.gif",
+        "https://media.discordapp.net/attachments/901299978817925131/1126298371410366494/JMvRJlHy.gif",
+        "https://media.discordapp.net/attachments/779900906665017405/1061512722228981860/attachment-19.gif",
+        "https://media.discordapp.net/attachments/984367821901402153/1043398180722720848/kat.gif",
+        "https://tenor.com/view/cat-meow-angry-pet-hiss-gif-16838272",
+        "https://tenor.com/view/cat-power-cat-cat-pillow-repost-this-post-this-cat-gif-23865940",
+        "https://tenor.com/view/cat-gif-7623921",
+        "meow",
         "meow",
         "meow",
         "meow",

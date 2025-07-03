@@ -54,7 +54,7 @@ impl GameState {
                     "{}{}",
                     remove_backticks(&p.name),
                     &if show_uids {
-                        " ".to_owned() + &p.id
+                        " ".to_owned() + p.id.as_str()
                     } else {
                         "".to_owned()
                     }

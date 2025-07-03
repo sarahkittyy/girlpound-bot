@@ -163,23 +163,25 @@ impl UserProfile {
                 let mut output = String::new();
                 if let Some(player) = steam_data.stats4.as_ref() {
                     // stats field
-                    output += &format!(
+                    output += format!(
                         "#4: [**#{}** _(Top {:.1}%)_]({}playerinfo/{})\n",
                         player.rank,
                         player.percentile,
                         psychostats::BASEURL4,
                         player.id
-                    );
+                    )
+                    .as_str();
                 }
                 if let Some(player) = steam_data.stats5.as_ref() {
                     // stats field
-                    output += &format!(
+                    output += format!(
                         "#5: [**#{}** _(Top {:.1}%)_]({}playerinfo/{})",
                         player.rank,
                         player.percentile,
                         psychostats::BASEURL5,
                         player.id
-                    );
+                    )
+                    .as_str();
                 }
                 if !output.is_empty() {
                     e = e.field("Stats 📈", output, true);
